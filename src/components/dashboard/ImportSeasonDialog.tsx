@@ -4,6 +4,7 @@ import { Profile, Group } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Upload, Plus, Trash2, ChevronDown } from 'lucide-react';
@@ -27,6 +28,8 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
   const [seasonNumber, setSeasonNumber] = useState(String(existingSeasonCount + 1));
   const [seasonTitle, setSeasonTitle] = useState('');
   const [movies, setMovies] = useState<ImportMovie[]>([{ title: '', pickedBy: [], year: '' }]);
+  const [seasonStatus, setSeasonStatus] = useState<'completed' | 'watching' | 'picking' | 'guessing'>('completed');
+  const [currentMovieIndex, setCurrentMovieIndex] = useState('0');
   const [importing, setImporting] = useState(false);
 
   const addMovie = () => {
@@ -74,14 +77,18 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
 
     setImporting(true);
     try {
+      const movieIndex = seasonStatus === 'completed'
+        ? validMovies.length - 1
+        : Math.max(0, Math.min((Number.parseInt(currentMovieIndex, 10) || 1) - 1, validMovies.length - 1));
+
       const { data: seasonData, error: seasonError } = await supabase
         .from('seasons')
         .insert({
           group_id: group.id,
           season_number: parsedSeasonNumber,
           title: seasonTitle.trim() || null,
-          status: 'completed',
-          current_movie_index: validMovies.length - 1,
+          status: seasonStatus,
+          current_movie_index: movieIndex,
         })
         .select()
         .single();
@@ -123,12 +130,12 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Upload className="w-4 h-4 mr-1" /> Import Past Season
+          <Upload className="w-4 h-4 mr-1" /> Import Season
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display">Import Past Season</DialogTitle>
+          <DialogTitle className="font-display">Import Season</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
@@ -153,6 +160,38 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
                 className="bg-muted/50"
               />
             </div>
+          </div>
+
+          {/* Status & Current Movie */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">Status</label>
+              <Select value={seasonStatus} onValueChange={(v) => setSeasonStatus(v as typeof seasonStatus)}>
+                <SelectTrigger className="bg-muted/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="completed">✅ Completed</SelectItem>
+                  <SelectItem value="watching">🍿 Watching</SelectItem>
+                  <SelectItem value="guessing">🔮 Guessing</SelectItem>
+                  <SelectItem value="picking">🎬 Picking</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {seasonStatus === 'watching' && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Current Movie #</label>
+                <Input
+                  type="number"
+                  value={currentMovieIndex}
+                  onChange={(e) => setCurrentMovieIndex(e.target.value)}
+                  className="w-24 bg-muted/50"
+                  min={1}
+                  placeholder="1"
+                />
+                <p className="text-xs text-muted-foreground mt-0.5">Which movie are you on?</p>
+              </div>
+            )}
           </div>
 
           {/* Movies */}
