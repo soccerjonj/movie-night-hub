@@ -96,27 +96,47 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
 
       {season.status === 'watching' && currentMovie && (
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 mt-4">
-          {posterUrl ? (
-            <img
-              src={posterUrl}
-              alt={currentMovie.title}
-              className="w-28 sm:w-44 rounded-xl shadow-xl ring-1 ring-border/20"
-            />
-          ) : (
-            <div className="w-28 sm:w-44 aspect-[2/3] rounded-xl bg-muted/30 flex items-center justify-center">
-              <Film className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/30" />
+          <div className="flex flex-row sm:flex-col items-start gap-3 sm:gap-0 w-full sm:w-auto">
+            {posterUrl ? (
+              <img
+                src={posterUrl}
+                alt={currentMovie.title}
+                className="w-36 sm:w-44 rounded-xl shadow-xl ring-1 ring-border/20 shrink-0"
+              />
+            ) : (
+              <div className="w-36 sm:w-44 aspect-[2/3] rounded-xl bg-muted/30 flex items-center justify-center shrink-0">
+                <Film className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/30" />
+              </div>
+            )}
+            {/* Title + year next to poster on mobile, hidden on desktop */}
+            <div className="sm:hidden flex-1 min-w-0">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Now Watching</p>
+              <h3 className="font-display text-lg font-bold">{currentMovie.title}</h3>
+              {currentMovie.year && <p className="text-xs text-muted-foreground mt-0.5">{currentMovie.year}</p>}
+              {director && <p className="text-xs text-muted-foreground mt-0.5">Directed by {director}</p>}
+              {currentMovie.revealed && (currentMovie.watch_order ?? 0) < season.current_movie_index && (
+                <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                  <Eye className="w-3 h-3" />
+                  Picked by {getProfile(currentMovie.user_id)?.display_name}
+                </p>
+              )}
             </div>
+          </div>
+          {/* Description below poster row on mobile */}
+          {currentMovie.overview && (
+            <p className="text-xs text-muted-foreground sm:hidden">{currentMovie.overview}</p>
           )}
-          <div className="flex-1 text-center sm:text-left">
-            <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-1">Now Watching</p>
-            <h3 className="font-display text-xl sm:text-2xl font-bold">{currentMovie.title}</h3>
-            {currentMovie.year && <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{currentMovie.year}</p>}
-            {director && <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Directed by {director}</p>}
+          {/* Desktop layout */}
+          <div className="flex-1 hidden sm:block text-left">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Now Watching</p>
+            <h3 className="font-display text-2xl font-bold">{currentMovie.title}</h3>
+            {currentMovie.year && <p className="text-sm text-muted-foreground mt-0.5">{currentMovie.year}</p>}
+            {director && <p className="text-sm text-muted-foreground mt-0.5">Directed by {director}</p>}
             {currentMovie.overview && (
-              <p className="text-xs sm:text-sm text-muted-foreground mt-2 line-clamp-3">{currentMovie.overview}</p>
+              <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{currentMovie.overview}</p>
             )}
             {currentMovie.revealed && (currentMovie.watch_order ?? 0) < season.current_movie_index && (
-              <p className="text-xs sm:text-sm text-primary mt-2 flex items-center gap-1 justify-center sm:justify-start">
+              <p className="text-sm text-primary mt-2 flex items-center gap-1">
                 <Eye className="w-3 h-3" />
                 Picked by {getProfile(currentMovie.user_id)?.display_name}
               </p>
