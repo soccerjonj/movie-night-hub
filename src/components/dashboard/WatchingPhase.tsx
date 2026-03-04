@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Eye, EyeOff, Film, ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import { Eye, EyeOff, Film, ChevronDown, ChevronUp, Clock, CalendarClock, Pencil, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 interface Props {
   season: Season;
@@ -11,8 +14,14 @@ interface Props {
   onUpdate: () => void;
 }
 
-const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
+const CountdownTimer = ({ targetDate, isAdmin, onEdit, onDelete }: {
+  targetDate: string;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) => {
   const [timeLeft, setTimeLeft] = useState('');
+  const [isPast, setIsPast] = useState(false);
 
   useEffect(() => {
     const update = () => {
@@ -21,10 +30,12 @@ const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
       const diff = target - now;
 
       if (diff <= 0) {
-        setTimeLeft('Now!');
+        setTimeLeft('Time\'s up!');
+        setIsPast(true);
         return;
       }
 
+      setIsPast(false);
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -43,34 +54,126 @@ const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
     return () => clearInterval(interval);
   }, [targetDate]);
 
+  const target = new Date(targetDate);
+
   return (
-    <div className="glass-card rounded-2xl p-5 mt-6 flex items-center gap-4">
-      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-        <Clock className="w-5 h-5 text-primary" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground">Watch by / Next call in</p>
-        <p className="font-display text-2xl font-bold text-primary tracking-wide">{timeLeft}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {new Date(targetDate).toLocaleDateString(undefined, {
-            weekday: 'long',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-          })}
-        </p>
+    <div className="glass-card rounded-2xl p-5 mt-6">
+      <div className="flex items-start gap-4">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isPast ? 'bg-destructive/10' : 'bg-primary/10'}`}>
+          <CalendarClock className={`w-5 h-5 ${isPast ? 'text-destructive' : 'text-primary'}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground">Next call / Watch by</p>
+          <p className={`font-display text-2xl font-bold tracking-wide ${isPast ? 'text-destructive' : 'text-primary'}`}>
+            {timeLeft}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {target.toLocaleDateString(undefined, {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+            {' at '}
+            {target.toLocaleTimeString(undefined, {
+              hour: 'numeric',
+              minute: '2-digit',
+            })}
+          </p>
+        </div>
+        {isAdmin && (
+          <div className="flex gap-1 shrink-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={onDelete}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const WatchingPhase = ({ season, moviePicks, getProfile }: Props) => {
+const CallDateEditor = ({ season, onSave, onCancel, initialDate }: {
+  season: Season;
+  onSave: () => void;
+  onCancel: () => void;
+  initialDate?: string;
+}) => {
+  const initial = initialDate ? new Date(initialDate) : new Date();
+  const [date, setDate] = useState(
+    `${initial.getFullYear()}-${String(initial.getMonth() + 1).padStart(2, '0')}-${String(initial.getDate()).padStart(2, '0')}`
+  );
+  const [time, setTime] = useState(
+    `${String(initial.getHours()).padStart(2, '0')}:${String(initial.getMinutes()).padStart(2, '0')}`
+  );
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const dateTime = new Date(`${date}T${time}`);
+    if (isNaN(dateTime.getTime())) {
+      toast.error('Invalid date/time');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('seasons')
+        .update({ next_call_date: dateTime.toISOString() })
+        .eq('id', season.id);
+      if (error) throw error;
+      toast.success('Call date updated!');
+      onSave();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="glass-card rounded-2xl p-5 mt-6 space-y-3">
+      <div className="flex items-center gap-2">
+        <CalendarClock className="w-4 h-4 text-primary" />
+        <p className="text-sm font-medium">{initialDate ? 'Edit' : 'Set'} Next Call Date</p>
+      </div>
+      <div className="flex gap-2">
+        <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-muted/50 flex-1" />
+        <Input type="time" value={time} onChange={e => setTime(e.target.value)} className="bg-muted/50 w-32" />
+      </div>
+      <div className="flex gap-2">
+        <Button variant="gold" size="sm" onClick={handleSave} disabled={saving} className="flex-1">
+          {saving ? 'Saving...' : 'Save'}
+        </Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
+};
+
+const WatchingPhase = ({ season, moviePicks, getProfile, isAdmin, onUpdate }: Props) => {
   const [showWatched, setShowWatched] = useState(false);
+  const [editing, setEditing] = useState(false);
   const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
 
   const watchedPicks = sortedPicks.filter((_, i) => i < season.current_movie_index);
   const currentAndUpcoming = sortedPicks.filter((_, i) => i >= season.current_movie_index);
+
+  const handleDeleteCallDate = async () => {
+    try {
+      const { error } = await supabase
+        .from('seasons')
+        .update({ next_call_date: null })
+        .eq('id', season.id);
+      if (error) throw error;
+      toast.success('Call date removed');
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove call date');
+    }
+  };
 
   const renderPick = (pick: MoviePick, i: number) => {
     const isCurrent = i === season.current_movie_index;
@@ -127,15 +230,37 @@ const WatchingPhase = ({ season, moviePicks, getProfile }: Props) => {
 
   return (
     <>
-      {season.next_call_date && (
-        <CountdownTimer targetDate={season.next_call_date} />
-      )}
+      {/* Countdown / Call Date */}
+      {editing ? (
+        <CallDateEditor
+          season={season}
+          initialDate={season.next_call_date || undefined}
+          onSave={() => { setEditing(false); onUpdate(); }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : season.next_call_date ? (
+        <CountdownTimer
+          targetDate={season.next_call_date}
+          isAdmin={isAdmin}
+          onEdit={() => setEditing(true)}
+          onDelete={handleDeleteCallDate}
+        />
+      ) : isAdmin ? (
+        <div className="glass-card rounded-2xl p-5 mt-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CalendarClock className="w-5 h-5 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">No call date set</p>
+          </div>
+          <Button variant="gold" size="sm" onClick={() => setEditing(true)}>
+            <Plus className="w-4 h-4 mr-1" /> Set Call Date
+          </Button>
+        </div>
+      ) : null}
 
       <div className="glass-card rounded-2xl p-6 mt-6">
         <h2 className="font-display text-xl font-bold mb-4">Watch Schedule</h2>
 
         <div className="space-y-3">
-          {/* Watched movies (collapsible) */}
           {watchedPicks.length > 0 && (
             <>
               <Button
@@ -151,7 +276,6 @@ const WatchingPhase = ({ season, moviePicks, getProfile }: Props) => {
             </>
           )}
 
-          {/* Current + upcoming */}
           {currentAndUpcoming.map((pick) => renderPick(pick, sortedPicks.indexOf(pick)))}
         </div>
       </div>
