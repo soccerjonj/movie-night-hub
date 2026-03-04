@@ -4,7 +4,7 @@ import { Group, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClipboardList, Plus, Trash2 } from 'lucide-react';
+import { ClipboardList, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -26,18 +26,13 @@ interface MoviePickOption {
   watch_order: number | null;
 }
 
-interface GuessEntry {
-  guesser_id: string;
-  movie_pick_id: string;
-  guessed_user_id: string;
-}
-
 const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
   const [open, setOpen] = useState(false);
   const [seasons, setSeasons] = useState<SeasonOption[]>([]);
-  const [selectedSeason, setSelectedSeason] = useState<string>('');
+  const [selectedSeason, setSelectedSeason] = useState('');
+  const [selectedGuesser, setSelectedGuesser] = useState('');
   const [picks, setPicks] = useState<MoviePickOption[]>([]);
-  const [entries, setEntries] = useState<GuessEntry[]>([]);
+  const [guesses, setGuesses] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -54,7 +49,7 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
   }, [open, group.id]);
 
   useEffect(() => {
-    if (!selectedSeason) { setPicks([]); setEntries([]); return; }
+    if (!selectedSeason) { setPicks([]); return; }
     const fetchPicks = async () => {
       const { data } = await supabase
         .from('movie_picks')
@@ -62,42 +57,40 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
         .eq('season_id', selectedSeason)
         .order('watch_order', { ascending: true });
       setPicks((data || []) as MoviePickOption[]);
-      setEntries([]);
+      setGuesses({});
     };
     fetchPicks();
   }, [selectedSeason]);
 
-  const addEntry = () => {
-    setEntries(prev => [...prev, { guesser_id: '', movie_pick_id: '', guessed_user_id: '' }]);
-  };
-
-  const updateEntry = (index: number, field: keyof GuessEntry, value: string) => {
-    setEntries(prev => prev.map((e, i) => i === index ? { ...e, [field]: value } : e));
-  };
-
-  const removeEntry = (index: number) => {
-    setEntries(prev => prev.filter((_, i) => i !== index));
-  };
+  // Reset guesses when guesser changes
+  useEffect(() => { setGuesses({}); }, [selectedGuesser]);
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
+  // Movies the guesser didn't pick (they don't guess their own)
+  const guessableMovies = picks.filter(p => p.user_id !== selectedGuesser);
+
+  // Members excluding the guesser (for guess options)
+  const guessableMembers = profiles.filter(p => p.user_id !== selectedGuesser);
+
+  const filledCount = Object.values(guesses).filter(Boolean).length;
+
   const handleImport = async () => {
-    const valid = entries.filter(e => e.guesser_id && e.movie_pick_id && e.guessed_user_id);
-    if (valid.length === 0) { toast.error('No valid guesses to import'); return; }
+    const valid = Object.entries(guesses).filter(([, v]) => v);
+    if (valid.length === 0) { toast.error('No guesses to import'); return; }
     setLoading(true);
     try {
-      const rows = valid.map(e => ({
+      const rows = valid.map(([movie_pick_id, guessed_user_id]) => ({
         season_id: selectedSeason,
-        guesser_id: e.guesser_id,
-        movie_pick_id: e.movie_pick_id,
-        guessed_user_id: e.guessed_user_id,
+        guesser_id: selectedGuesser,
+        movie_pick_id,
+        guessed_user_id,
       }));
       const { error } = await supabase.from('guesses').insert(rows);
       if (error) throw error;
-      toast.success(`Imported ${valid.length} guesses!`);
-      setOpen(false);
-      setEntries([]);
-      setSelectedSeason('');
+      toast.success(`Imported ${valid.length} guesses for ${getProfile(selectedGuesser)?.display_name}!`);
+      setGuesses({});
+      setSelectedGuesser('');
       onImported();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to import guesses');
@@ -113,7 +106,7 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
           <ClipboardList className="w-4 h-4 mr-1" /> Import Guesses
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Guesses</DialogTitle>
         </DialogHeader>
@@ -122,7 +115,7 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
           {/* Season selector */}
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Season</label>
-            <Select value={selectedSeason} onValueChange={setSelectedSeason}>
+            <Select value={selectedSeason} onValueChange={(v) => { setSelectedSeason(v); setSelectedGuesser(''); }}>
               <SelectTrigger className="bg-muted/50">
                 <SelectValue placeholder="Select a season" />
               </SelectTrigger>
@@ -136,62 +129,53 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
             </Select>
           </div>
 
-          {selectedSeason && picks.length > 0 && (
+          {/* Member selector */}
+          {selectedSeason && (
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Member (guesser)</label>
+              <Select value={selectedGuesser} onValueChange={setSelectedGuesser}>
+                <SelectTrigger className="bg-muted/50">
+                  <SelectValue placeholder="Who is guessing?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {profiles.map(p => (
+                    <SelectItem key={p.user_id} value={p.user_id}>{p.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Movie guesses */}
+          {selectedGuesser && guessableMovies.length > 0 && (
             <>
-              {/* Guess entries */}
-              <div className="space-y-3">
-                {entries.map((entry, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-muted/20 rounded-xl p-3">
-                    <div className="flex-1 space-y-2">
-                      <Select value={entry.guesser_id} onValueChange={v => updateEntry(i, 'guesser_id', v)}>
-                        <SelectTrigger className="bg-muted/50 text-xs h-8">
-                          <SelectValue placeholder="Who guessed?" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {profiles.map(p => (
-                            <SelectItem key={p.user_id} value={p.user_id}>{p.display_name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <div className="flex gap-2">
-                        <Select value={entry.movie_pick_id} onValueChange={v => updateEntry(i, 'movie_pick_id', v)}>
-                          <SelectTrigger className="bg-muted/50 text-xs h-8 flex-1">
-                            <SelectValue placeholder="Movie" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {picks.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select value={entry.guessed_user_id} onValueChange={v => updateEntry(i, 'guessed_user_id', v)}>
-                          <SelectTrigger className="bg-muted/50 text-xs h-8 flex-1">
-                            <SelectValue placeholder="Guessed picker" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {profiles.map(p => (
-                              <SelectItem key={p.user_id} value={p.user_id}>{p.display_name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+              <p className="text-xs text-muted-foreground">
+                For each movie, select who {getProfile(selectedGuesser)?.display_name} guessed picked it:
+              </p>
+              <div className="space-y-2">
+                {guessableMovies.map(pick => (
+                  <div key={pick.id} className="flex items-center gap-3 bg-muted/20 rounded-xl p-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{pick.title}</p>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeEntry(i)}>
-                      <Trash2 className="w-3 h-3 text-muted-foreground" />
-                    </Button>
+                    <Select value={guesses[pick.id] || ''} onValueChange={v => setGuesses(prev => ({ ...prev, [pick.id]: v }))}>
+                      <SelectTrigger className="w-36 bg-muted/50 text-xs h-8">
+                        <SelectValue placeholder="Who picked?" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {guessableMembers.map(p => (
+                          <SelectItem key={p.user_id} value={p.user_id}>{p.display_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 ))}
               </div>
 
-              <Button variant="outline" size="sm" onClick={addEntry} className="w-full">
-                <Plus className="w-4 h-4 mr-1" /> Add Guess
+              <Button variant="gold" onClick={handleImport} disabled={loading || filledCount === 0} className="w-full">
+                <Check className="w-4 h-4 mr-1" />
+                {loading ? 'Importing...' : `Import ${filledCount} Guesses`}
               </Button>
-
-              {entries.length > 0 && (
-                <Button variant="gold" onClick={handleImport} disabled={loading} className="w-full">
-                  {loading ? 'Importing...' : `Import ${entries.filter(e => e.guesser_id && e.movie_pick_id && e.guessed_user_id).length} Guesses`}
-                </Button>
-              )}
             </>
           )}
         </div>
