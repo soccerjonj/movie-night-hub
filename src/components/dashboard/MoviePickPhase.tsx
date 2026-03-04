@@ -95,8 +95,8 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
   };
 
   return (
-    <div className="glass-card rounded-2xl p-6 mt-6">
-      <h2 className="font-display text-xl font-bold mb-1">Pick Your Movie</h2>
+    <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
+      <h2 className="font-display text-lg sm:text-xl font-bold mb-1">Pick Your Movie</h2>
       <p className="text-sm text-muted-foreground mb-4">
         {pickedCount} of {totalMembers} members have picked
       </p>

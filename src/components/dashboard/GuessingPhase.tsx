@@ -73,12 +73,12 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   const allGuessed = moviePicks.filter(p => p.user_id !== user?.id).every(p => guesses[p.id]);
 
   return (
-    <div className="glass-card rounded-2xl p-6 mt-6">
+    <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
       <div className="flex items-center gap-2 mb-1">
-        <HelpCircle className="w-5 h-5 text-primary" />
-        <h2 className="font-display text-xl font-bold">Guess Who Picked What</h2>
+        <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+        <h2 className="font-display text-lg sm:text-xl font-bold">Guess Who Picked What</h2>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">
+      <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
         {submitted ? "You've submitted your guesses!" : 'For each movie, guess which member picked it.'}
       </p>
 
@@ -86,7 +86,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
         {moviePicks
           .filter(pick => pick.user_id !== user?.id)
           .map((pick) => (
-            <div key={pick.id} className="flex items-center gap-4 bg-muted/20 rounded-xl p-3">
+            <div key={pick.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 bg-muted/20 rounded-xl p-3">
               {pick.poster_url ? (
                 <img src={pick.poster_url} alt={pick.title} className="w-12 h-18 rounded-lg object-cover" />
               ) : (
@@ -94,7 +94,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                   <Film className="w-5 h-5 text-muted-foreground" />
                 </div>
               )}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm">{pick.title}</p>
                 {pick.year && <p className="text-xs text-muted-foreground">{pick.year}</p>}
               </div>
@@ -103,7 +103,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                 onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
                 disabled={submitted}
               >
-                <SelectTrigger className="w-40 bg-muted/50">
+                <SelectTrigger className="w-full sm:w-40 bg-muted/50">
                   <SelectValue placeholder="Who picked?" />
                 </SelectTrigger>
                 <SelectContent>
