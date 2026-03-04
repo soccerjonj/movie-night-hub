@@ -4,6 +4,7 @@ import { Profile } from '@/hooks/useGroup';
 import { Film, ChevronDown, ChevronUp, Trophy, TrendingUp, User, Users, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
@@ -346,87 +347,90 @@ const History = ({ group, profiles, members }: Props) => {
                   {movies.map((movie) => {
                     const isExpanded = expandedMovie === movie.pickId;
                     return (
-                      <div key={movie.pickId} className="relative group">
-                        <button
-                          onClick={() => setExpandedMovie(isExpanded ? null : movie.pickId)}
-                          className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-muted transition-transform hover:scale-105 hover:ring-2 hover:ring-primary/40 focus:ring-2 focus:ring-primary/40"
-                        >
-                          {movie.posterUrl ? (
-                            <img src={movie.posterUrl} alt={movie.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-1">
-                              <Film className="w-5 h-5 text-muted-foreground" />
-                              <span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-3">{movie.title}</span>
-                            </div>
-                          )}
-                        </button>
-                        {isExpanded && (() => {
-                          const pick = picks.find(p => p.id === movie.pickId);
-                          const watched = pick ? isPickWatched(pick) : false;
-                          const guesses = allGuesses.filter(g => g.movie_pick_id === movie.pickId);
-                          const correctCount = watched ? guesses.filter(g => g.guessed_user_id === movie.pickUserId).length : 0;
-                          const pct = watched && guesses.length > 0 ? Math.round((correctCount / guesses.length) * 100) : 0;
-
-                          return (
-                            <div className="absolute z-50 bottom-full mb-1 left-1/2 -translate-x-1/2 p-3 rounded-xl bg-card border border-border shadow-xl space-y-1.5 min-w-[220px] w-max max-w-[280px]">
-                              <p className="font-medium text-sm leading-tight">{movie.title}</p>
-                              <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
-                                {movie.year && <span>{movie.year}</span>}
-                                {directors[movie.pickId] && (
-                                  <>
-                                    {movie.year && <span>·</span>}
-                                    <span>{directors[movie.pickId]}</span>
-                                  </>
-                                )}
+                      <Popover key={movie.pickId} open={expandedMovie === movie.pickId} onOpenChange={(open) => setExpandedMovie(open ? movie.pickId : null)}>
+                        <PopoverTrigger asChild>
+                          <button
+                            className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-muted transition-transform hover:scale-105 hover:ring-2 hover:ring-primary/40 focus:ring-2 focus:ring-primary/40"
+                          >
+                            {movie.posterUrl ? (
+                              <img src={movie.posterUrl} alt={movie.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-1">
+                                <Film className="w-5 h-5 text-muted-foreground" />
+                                <span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-3">{movie.title}</span>
                               </div>
-                              <div className="flex items-center gap-1.5 text-xs">
-                                <User className="w-3 h-3 text-primary" />
-                                <span className="text-muted-foreground">Picked by</span>
-                                <span className="font-medium">{movie.pickerNames}</span>
-                              </div>
+                            )}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent side="top" align="center" sideOffset={4} collisionPadding={8} className="p-3 space-y-1.5 min-w-[220px] w-max max-w-[280px]">
+                          {(() => {
+                            const pick = picks.find(p => p.id === movie.pickId);
+                            const watched = pick ? isPickWatched(pick) : false;
+                            const guesses = allGuesses.filter(g => g.movie_pick_id === movie.pickId);
+                            const correctCount = watched ? guesses.filter(g => g.guessed_user_id === movie.pickUserId).length : 0;
+                            const pct = watched && guesses.length > 0 ? Math.round((correctCount / guesses.length) * 100) : 0;
 
-                              {guesses.length > 0 && (
-                                <div className="border-t border-border/30 pt-1.5 mt-1.5">
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                                    <Users className="w-3 h-3" />
-                                    <span>Guesses</span>
-                                    {watched && guesses.length > 0 && (
-                                      <span className="ml-auto text-primary font-medium">{correctCount}/{guesses.length} ({pct}%)</span>
-                                    )}
-                                  </div>
-                                  <div className="space-y-1">
-                                    {guesses.map(g => {
-                                      const guesserName = getProfile(g.guesser_id)?.display_name || '?';
-                                      const guessedName = getProfile(g.guessed_user_id)?.display_name || '?';
-                                      const isCorrect = watched && g.guessed_user_id === movie.pickUserId;
-                                      const isWrong = watched && g.guessed_user_id !== movie.pickUserId;
-
-                                      return (
-                                        <div
-                                          key={g.guesser_id}
-                                          className={`flex items-center justify-between rounded-md px-2 py-1 text-[11px] ${
-                                            isCorrect ? 'bg-green-500/10' : isWrong ? 'bg-destructive/5' : 'bg-muted/20'
-                                          }`}
-                                        >
-                                          <span className="font-medium">{guesserName}</span>
-                                          <div className="flex items-center gap-1">
-                                            <span className="text-muted-foreground">→</span>
-                                            <span className={`font-medium ${isCorrect ? 'text-green-400' : isWrong ? 'text-destructive' : ''}`}>
-                                              {guessedName}
-                                            </span>
-                                            {isCorrect && <Check className="w-2.5 h-2.5 text-green-400" />}
-                                            {isWrong && <X className="w-2.5 h-2.5 text-destructive" />}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
+                            return (
+                              <>
+                                <p className="font-medium text-sm leading-tight">{movie.title}</p>
+                                <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
+                                  {movie.year && <span>{movie.year}</span>}
+                                  {directors[movie.pickId] && (
+                                    <>
+                                      {movie.year && <span>·</span>}
+                                      <span>{directors[movie.pickId]}</span>
+                                    </>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
+                                <div className="flex items-center gap-1.5 text-xs">
+                                  <User className="w-3 h-3 text-primary" />
+                                  <span className="text-muted-foreground">Picked by</span>
+                                  <span className="font-medium">{movie.pickerNames}</span>
+                                </div>
+
+                                {guesses.length > 0 && (
+                                  <div className="border-t border-border/30 pt-1.5 mt-1.5">
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                                      <Users className="w-3 h-3" />
+                                      <span>Guesses</span>
+                                      {watched && guesses.length > 0 && (
+                                        <span className="ml-auto text-primary font-medium">{correctCount}/{guesses.length} ({pct}%)</span>
+                                      )}
+                                    </div>
+                                    <div className="space-y-1">
+                                      {guesses.map(g => {
+                                        const guesserName = getProfile(g.guesser_id)?.display_name || '?';
+                                        const guessedName = getProfile(g.guessed_user_id)?.display_name || '?';
+                                        const isCorrect = watched && g.guessed_user_id === movie.pickUserId;
+                                        const isWrong = watched && g.guessed_user_id !== movie.pickUserId;
+
+                                        return (
+                                          <div
+                                            key={g.guesser_id}
+                                            className={`flex items-center justify-between rounded-md px-2 py-1 text-[11px] ${
+                                              isCorrect ? 'bg-green-500/10' : isWrong ? 'bg-destructive/5' : 'bg-muted/20'
+                                            }`}
+                                          >
+                                            <span className="font-medium">{guesserName}</span>
+                                            <div className="flex items-center gap-1">
+                                              <span className="text-muted-foreground">→</span>
+                                              <span className={`font-medium ${isCorrect ? 'text-green-400' : isWrong ? 'text-destructive' : ''}`}>
+                                                {guessedName}
+                                              </span>
+                                              {isCorrect && <Check className="w-2.5 h-2.5 text-green-400" />}
+                                              {isWrong && <X className="w-2.5 h-2.5 text-destructive" />}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </PopoverContent>
+                      </Popover>
                     );
                   })}
                 </>
