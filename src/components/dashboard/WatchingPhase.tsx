@@ -330,7 +330,10 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
             }
 
             if (!isWatched && !guessedName) {
-              return (
+              const isYourPick = pick.user_id === user?.id;
+              return isYourPick ? (
+                <span className="text-[10px] text-primary/70 italic">Your pick</span>
+              ) : (
                 <span className="text-[10px] text-muted-foreground/50 italic">No guess</span>
               );
             }
