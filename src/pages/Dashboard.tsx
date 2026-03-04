@@ -47,7 +47,9 @@ const Dashboard = () => {
             <div>
               <h1 className="font-display text-lg font-bold">{group.name}</h1>
               {season && (
-                <p className="text-xs text-muted-foreground">Season {season.season_number}</p>
+                <p className="text-xs text-muted-foreground">
+                  Season {season.season_number}{season.title ? ` — ${season.title}` : ''}
+                </p>
               )}
             </div>
           </div>

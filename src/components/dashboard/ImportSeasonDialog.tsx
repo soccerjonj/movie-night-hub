@@ -24,6 +24,7 @@ interface ImportMovie {
 const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }: Props) => {
   const [open, setOpen] = useState(false);
   const [seasonNumber, setSeasonNumber] = useState(String(existingSeasonCount + 1));
+  const [seasonTitle, setSeasonTitle] = useState('');
   const [movies, setMovies] = useState<ImportMovie[]>([{ title: '', pickedBy: '', year: '' }]);
   const [importing, setImporting] = useState(false);
 
@@ -56,9 +57,10 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
         .insert({
           group_id: group.id,
           season_number: parseInt(seasonNumber),
+          title: seasonTitle.trim() || null,
           status: 'completed' as any,
           current_movie_index: validMovies.length - 1,
-        })
+        } as any)
         .select()
         .single();
 
@@ -110,16 +112,27 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
-          {/* Season Number */}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground mb-1 block">Season Number</label>
-            <Input
-              type="number"
-              value={seasonNumber}
-              onChange={(e) => setSeasonNumber(e.target.value)}
-              className="w-24 bg-muted/50"
-              min={1}
-            />
+          {/* Season Number & Title */}
+          <div className="flex gap-3">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">Season #</label>
+              <Input
+                type="number"
+                value={seasonNumber}
+                onChange={(e) => setSeasonNumber(e.target.value)}
+                className="w-20 bg-muted/50"
+                min={1}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">Title (optional)</label>
+              <Input
+                value={seasonTitle}
+                onChange={(e) => setSeasonTitle(e.target.value)}
+                placeholder="e.g. Horror Month"
+                className="bg-muted/50"
+              />
+            </div>
           </div>
 
           {/* Movies */}

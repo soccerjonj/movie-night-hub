@@ -13,6 +13,7 @@ export interface Season {
   id: string;
   group_id: string;
   season_number: number;
+  title: string | null;
   status: 'picking' | 'guessing' | 'watching' | 'completed';
   current_movie_index: number;
   next_call_date: string | null;
