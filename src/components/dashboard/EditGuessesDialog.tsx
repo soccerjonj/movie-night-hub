@@ -227,20 +227,44 @@ const EditGuessesDialog = ({ group, profiles, onUpdated }: Props) => {
 
           {selectedGuesser && (existingGuesses.length > 0 || missingSlots.length > 0) && (
             <>
-              {/* Existing guesses */}
-              {existingGuesses.length > 0 && (
-                <>
-                  <p className="text-xs text-muted-foreground">
-                    Edit {getProfile(selectedGuesser)?.display_name}'s guesses:
-                  </p>
-                  <div className="space-y-2">
-                    {existingGuesses.map(guess => {
+              <p className="text-xs text-muted-foreground">
+                Edit {getProfile(selectedGuesser)?.display_name}'s guesses:
+              </p>
+              <div className="space-y-2">
+                {/* Merge existing guesses and missing slots, sorted by watch order */}
+                {(() => {
+                  // Build a unified list sorted by watch_order
+                  type UnifiedItem = 
+                    | { type: 'existing'; guess: GuessRow; slot: MovieSlot }
+                    | { type: 'missing'; slot: MovieSlot };
+                  
+                  const items: UnifiedItem[] = [];
+                  
+                  existingGuesses.forEach(guess => {
+                    const slot = guessableSlots.find(s => s.pickId === guess.movie_pick_id);
+                    if (slot) items.push({ type: 'existing', guess, slot });
+                    else {
+                      // Guess references a pick not in current slots — find from all movieSlots
+                      const anySlot = movieSlots.find(s => s.pickId === guess.movie_pick_id);
+                      items.push({ type: 'existing', guess, slot: anySlot || { pickId: guess.movie_pick_id, title: getPickTitle(guess.movie_pick_id), watchOrder: null, pickerUserIds: [] } });
+                    }
+                  });
+                  
+                  missingSlots.forEach(slot => {
+                    items.push({ type: 'missing', slot });
+                  });
+                  
+                  items.sort((a, b) => (a.slot.watchOrder ?? 999) - (b.slot.watchOrder ?? 999));
+                  
+                  return items.map(item => {
+                    if (item.type === 'existing') {
+                      const guess = item.guess;
                       const currentValue = edits[guess.id] ?? guess.guessed_user_id;
                       const isEdited = edits[guess.id] !== undefined;
                       return (
                         <div key={guess.id} className={`flex items-center gap-3 rounded-xl p-3 ${isEdited ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20'}`}>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{getPickTitle(guess.movie_pick_id)}</p>
+                            <p className="font-medium text-sm truncate">{item.slot.title}</p>
                           </div>
                           <Select
                             value={currentValue}
@@ -266,45 +290,33 @@ const EditGuessesDialog = ({ group, profiles, onUpdated }: Props) => {
                           </Select>
                         </div>
                       );
-                    })}
-                  </div>
-                </>
-              )}
-
-              {/* Missing guesses */}
-              {missingSlots.length > 0 && (
-                <>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Plus className="w-3.5 h-3.5 text-primary" />
-                    <p className="text-xs text-muted-foreground">
-                      Missing guesses ({missingSlots.length}):
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    {missingSlots.map(slot => (
-                      <div key={slot.pickId} className={`flex items-center gap-3 rounded-xl p-3 ${newGuesses[slot.pickId] ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20 border border-dashed border-muted-foreground/20'}`}>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{slot.title}</p>
-                          <p className="text-xs text-muted-foreground">No guess recorded</p>
+                    } else {
+                      const slot = item.slot;
+                      return (
+                        <div key={slot.pickId} className={`flex items-center gap-3 rounded-xl p-3 ${newGuesses[slot.pickId] ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20 border border-dashed border-muted-foreground/20'}`}>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{slot.title}</p>
+                            <p className="text-xs text-muted-foreground">No guess recorded</p>
+                          </div>
+                          <Select
+                            value={newGuesses[slot.pickId] || ''}
+                            onValueChange={v => setNewGuesses(prev => ({ ...prev, [slot.pickId]: v }))}
+                          >
+                            <SelectTrigger className="w-36 bg-muted/50 text-xs h-8">
+                              <SelectValue placeholder="Who picked?" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {guessOptions.map(p => (
+                                <SelectItem key={p.user_id} value={p.user_id}>{p.display_name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                        <Select
-                          value={newGuesses[slot.pickId] || ''}
-                          onValueChange={v => setNewGuesses(prev => ({ ...prev, [slot.pickId]: v }))}
-                        >
-                          <SelectTrigger className="w-36 bg-muted/50 text-xs h-8">
-                            <SelectValue placeholder="Who picked?" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {guessOptions.map(p => (
-                              <SelectItem key={p.user_id} value={p.user_id}>{p.display_name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+                      );
+                    }
+                  });
+                })()}
+              </div>
 
               <Button variant="gold" onClick={handleSave} disabled={loading || !hasChanges} className="w-full">
                 <Save className="w-4 h-4 mr-1" />
