@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
+const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
+
 interface Props {
   season: Season;
   moviePicks: MoviePick[];
@@ -156,7 +159,41 @@ const CallDateEditor = ({ season, onSave, onCancel, initialDate }: {
 const WatchingPhase = ({ season, moviePicks, getProfile, isAdmin, onUpdate }: Props) => {
   const [showWatched, setShowWatched] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [posterOverrides, setPosterOverrides] = useState<Record<string, string>>({});
   const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
+
+  // Auto-fetch posters for movies missing them
+  useEffect(() => {
+    const fetchMissingPosters = async () => {
+      const missing = moviePicks.filter(p => !p.poster_url);
+      if (missing.length === 0) return;
+
+      for (const pick of missing) {
+        try {
+          const yearParam = pick.year ? `&year=${pick.year}` : '';
+          const res = await fetch(
+            `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(pick.title)}&include_adult=false&language=en-US&page=1${yearParam}`,
+            { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
+          );
+          const data = await res.json();
+          const movie = data.results?.[0];
+          if (movie?.poster_path) {
+            const url = `${TMDB_IMAGE_BASE}${movie.poster_path}`;
+            setPosterOverrides(prev => ({ ...prev, [pick.id]: url }));
+            // Persist to DB
+            await supabase.from('movie_picks').update({
+              poster_url: url,
+              tmdb_id: movie.id,
+              overview: movie.overview || null,
+            }).eq('id', pick.id);
+          }
+        } catch {
+          // silently skip
+        }
+      }
+    };
+    fetchMissingPosters();
+  }, [moviePicks]);
 
   const watchedPicks = sortedPicks.filter((_, i) => i < season.current_movie_index);
   const currentAndUpcoming = sortedPicks.filter((_, i) => i >= season.current_movie_index);
@@ -196,8 +233,8 @@ const WatchingPhase = ({ season, moviePicks, getProfile, isAdmin, onUpdate }: Pr
           {i + 1}
         </div>
 
-        {pick.poster_url ? (
-          <img src={pick.poster_url} alt={pick.title} className="w-10 rounded-lg object-cover" />
+        {(pick.poster_url || posterOverrides[pick.id]) ? (
+          <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className="w-10 rounded-lg object-cover" />
         ) : (
           <div className="w-10 h-14 rounded-lg bg-muted flex items-center justify-center">
             <Film className="w-4 h-4 text-muted-foreground" />
