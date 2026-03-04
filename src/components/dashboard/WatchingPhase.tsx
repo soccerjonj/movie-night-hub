@@ -12,6 +12,8 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
 interface Props {
   season: Season;
   moviePicks: MoviePick[];
+  profiles: Profile[];
+  members: { user_id: string }[];
   getProfile: (userId: string) => Profile | undefined;
   isAdmin: boolean;
   onUpdate: () => void;
@@ -156,7 +158,7 @@ const CallDateEditor = ({ season, onSave, onCancel, initialDate }: {
   );
 };
 
-const WatchingPhase = ({ season, moviePicks, getProfile, isAdmin, onUpdate }: Props) => {
+const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAdmin, onUpdate }: Props) => {
   const [showWatched, setShowWatched] = useState(false);
   const [editing, setEditing] = useState(false);
   const [posterOverrides, setPosterOverrides] = useState<Record<string, string>>({});
@@ -277,14 +279,36 @@ const WatchingPhase = ({ season, moviePicks, getProfile, isAdmin, onUpdate }: Pr
               Picked by {getProfile(pick.user_id)?.display_name}
             </span>
           )}
+          {!isWatched && (() => {
+            // Get user_ids of members whose picks haven't been watched yet
+            const unwatchedPicks = sortedPicks.filter((_, idx) => idx >= season.current_movie_index);
+            const revealedPickerIds = sortedPicks
+              .filter((_, idx) => idx < season.current_movie_index)
+              .map(p => p.user_id);
+            const remainingMembers = members
+              .filter(m => !revealedPickerIds.includes(m.user_id))
+              .map(m => getProfile(m.user_id)?.display_name)
+              .filter(Boolean);
+            
+            return (
+              <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                {remainingMembers.map((name, idx) => (
+                  <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/40 text-muted-foreground">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="flex items-center gap-2">
           {!isWatched && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <EyeOff className="w-3 h-3" />
-              {isCurrent ? 'Now watching' : 'TBD'}
-            </span>
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+              isCurrent ? 'bg-primary/15' : 'bg-muted/30'
+            }`}>
+              <EyeOff className={`w-4 h-4 ${isCurrent ? 'text-primary' : 'text-muted-foreground/60'}`} />
+            </div>
           )}
         </div>
       </div>
