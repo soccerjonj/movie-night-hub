@@ -1,0 +1,1 @@
+CREATE POLICY "Admin can update guesses" ON public.guesses FOR UPDATE USING (EXISTS (SELECT 1 FROM seasons s WHERE s.id = guesses.season_id AND is_group_admin(auth.uid(), s.group_id)));
