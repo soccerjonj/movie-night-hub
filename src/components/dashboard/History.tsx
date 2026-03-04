@@ -291,56 +291,69 @@ const History = ({ group, profiles, members }: Props) => {
       ) : (
         <>
           {/* Movies */}
-          {groupedMovies.map(({ seasonId, seasonInfo, movies }) => (
-            <div key={seasonId} className="glass-card rounded-2xl p-5">
-              {selectedSeasonId === 'all' && seasonInfo && (
-                <h3 className="font-display text-lg font-bold mb-3">
-                  Season {seasonInfo.season_number}{seasonInfo.title ? ` — ${seasonInfo.title}` : ''}
-                </h3>
-              )}
-              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2">
-                {movies.map((movie) => {
-                  const isExpanded = expandedMovie === movie.pickId;
-                  return (
-                    <div key={movie.pickId} className="relative group">
-                      <button
-                        onClick={() => setExpandedMovie(isExpanded ? null : movie.pickId)}
-                        className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-muted transition-transform hover:scale-105 hover:ring-2 hover:ring-primary/40 focus:ring-2 focus:ring-primary/40"
-                      >
-                        {movie.posterUrl ? (
-                          <img src={movie.posterUrl} alt={movie.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-1">
-                            <Film className="w-5 h-5 text-muted-foreground" />
-                            <span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-3">{movie.title}</span>
+          <div className="glass-card rounded-2xl p-5">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2">
+              {groupedMovies.map(({ seasonId, seasonInfo, movies }, groupIdx) => (
+                <>
+                  {selectedSeasonId === 'all' && seasonInfo && groupIdx > 0 && (
+                    <div key={`sep-${seasonId}`} className="col-span-full flex items-center gap-3 py-1">
+                      <div className="flex-1 h-px bg-border/30" />
+                      <span className="text-[11px] text-muted-foreground/60 font-medium whitespace-nowrap">
+                        Season {seasonInfo.season_number}{seasonInfo.title ? ` — ${seasonInfo.title}` : ''}
+                      </span>
+                      <div className="flex-1 h-px bg-border/30" />
+                    </div>
+                  )}
+                  {selectedSeasonId === 'all' && seasonInfo && groupIdx === 0 && (
+                    <div key={`label-${seasonId}`} className="col-span-full">
+                      <span className="text-[11px] text-muted-foreground/60 font-medium">
+                        Season {seasonInfo.season_number}{seasonInfo.title ? ` — ${seasonInfo.title}` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {movies.map((movie) => {
+                    const isExpanded = expandedMovie === movie.pickId;
+                    return (
+                      <div key={movie.pickId} className="relative group">
+                        <button
+                          onClick={() => setExpandedMovie(isExpanded ? null : movie.pickId)}
+                          className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-muted transition-transform hover:scale-105 hover:ring-2 hover:ring-primary/40 focus:ring-2 focus:ring-primary/40"
+                        >
+                          {movie.posterUrl ? (
+                            <img src={movie.posterUrl} alt={movie.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-1">
+                              <Film className="w-5 h-5 text-muted-foreground" />
+                              <span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-3">{movie.title}</span>
+                            </div>
+                          )}
+                        </button>
+                        {isExpanded && (
+                          <div className="absolute z-20 left-0 right-0 top-full mt-1 p-3 rounded-xl bg-card border border-border shadow-xl space-y-1.5 min-w-[200px] w-max max-w-[260px]">
+                            <p className="font-medium text-sm leading-tight">{movie.title}</p>
+                            <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
+                              {movie.year && <span>{movie.year}</span>}
+                              {directors[movie.pickId] && (
+                                <>
+                                  {movie.year && <span>·</span>}
+                                  <span>{directors[movie.pickId]}</span>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <User className="w-3 h-3 text-primary" />
+                              <span className="text-muted-foreground">Picked by</span>
+                              <span className="font-medium">{movie.pickerNames}</span>
+                            </div>
                           </div>
                         )}
-                      </button>
-                      {isExpanded && (
-                        <div className="absolute z-20 left-0 right-0 top-full mt-1 p-3 rounded-xl bg-card border border-border shadow-xl space-y-1.5 min-w-[200px] w-max max-w-[260px]">
-                          <p className="font-medium text-sm leading-tight">{movie.title}</p>
-                          <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
-                            {movie.year && <span>{movie.year}</span>}
-                            {directors[movie.pickId] && (
-                              <>
-                                {movie.year && <span>·</span>}
-                                <span>{directors[movie.pickId]}</span>
-                              </>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <User className="w-3 h-3 text-primary" />
-                            <span className="text-muted-foreground">Picked by</span>
-                            <span className="font-medium">{movie.pickerNames}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      </div>
+                    );
+                  })}
+                </>
+              ))}
             </div>
-          ))}
+          </div>
 
           {/* Scoreboard */}
           <div className="glass-card rounded-2xl p-6">
