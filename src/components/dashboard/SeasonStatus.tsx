@@ -113,7 +113,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
             {currentMovie.overview && (
               <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{currentMovie.overview}</p>
             )}
-            {currentMovie.revealed && (
+            {currentMovie.revealed && (currentMovie.watch_order ?? 0) < season.current_movie_index && (
               <p className="text-sm text-primary mt-2 flex items-center gap-1 justify-center sm:justify-start">
                 <Eye className="w-3 h-3" />
                 Picked by {getProfile(currentMovie.user_id)?.display_name}

@@ -11,6 +11,7 @@ import MoviePickPhase from '@/components/dashboard/MoviePickPhase';
 import GuessingPhase from '@/components/dashboard/GuessingPhase';
 import WatchingPhase from '@/components/dashboard/WatchingPhase';
 import MemberList from '@/components/dashboard/MemberList';
+import Scoreboard from '@/components/dashboard/Scoreboard';
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
@@ -90,6 +91,11 @@ const Dashboard = () => {
           )}
           {season?.status === 'watching' && (
             <WatchingPhase season={season} moviePicks={moviePicks} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} />
+          )}
+
+          {/* Scoreboard */}
+          {group && (
+            <Scoreboard group={group} season={season} profiles={profiles} members={members} />
           )}
 
           {/* Members */}
