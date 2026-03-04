@@ -17,7 +17,7 @@ const statusLabels: Record<string, string> = {
   completed: '✅ Season Complete',
 };
 
-const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0YjYyZmI2ZmI0NTRiODFiNjU2MjkzZTIwMjI0Njg2NiIsIm5iZiI6MTc0OTA1MDQ5NC4wNjgsInN1YiI6IjY4NDEyNTQ2MDEzMWI0Y2I4YWFkNTZhMiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.0R-GO8fzHb7bsFqkGYBWoHY5oX6M-h_JOjBlyg1pUjI';
+const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 const TMDB_IMAGE_LG = 'https://image.tmdb.org/t/p/w500';
 
 const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
