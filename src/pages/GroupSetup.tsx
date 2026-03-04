@@ -5,17 +5,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Film, Users, Plus, ArrowRight } from 'lucide-react';
+import { Film, Users, Plus, ArrowRight, Ghost, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+
+interface PlaceholderProfile {
+  user_id: string;
+  display_name: string;
+}
 
 const GroupSetup = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'choose' | 'create' | 'join'>('choose');
+  const [mode, setMode] = useState<'choose' | 'create' | 'join' | 'claim'>('choose');
   const [groupName, setGroupName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [foundGroupId, setFoundGroupId] = useState<string | null>(null);
+  const [placeholders, setPlaceholders] = useState<PlaceholderProfile[]>([]);
+  const [selectedPlaceholder, setSelectedPlaceholder] = useState<string | null>(null);
 
   // Check if user already has a group
   useEffect(() => {
@@ -59,25 +67,72 @@ const GroupSetup = () => {
     }
   };
 
-  const handleJoinGroup = async (e: React.FormEvent) => {
+  const handleFindGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setLoading(true);
     try {
-      // Find group by join code using security definer function
       const { data: groups, error: findError } = await supabase
         .rpc('find_group_by_code', { _code: joinCode.trim().toLowerCase() });
-      
+
       if (findError || !groups || groups.length === 0) {
         throw new Error('Invalid join code. Please check and try again.');
       }
 
-      const { error: joinError } = await supabase
-        .from('group_members')
-        .insert({ group_id: groups[0].id, user_id: user.id });
-      if (joinError) throw joinError;
+      const groupId = groups[0].id;
+      setFoundGroupId(groupId);
 
-      toast.success('Joined the group!');
+      // Fetch placeholder members in this group
+      const { data: members } = await supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId);
+
+      if (members && members.length > 0) {
+        const memberUserIds = members.map(m => m.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, is_placeholder')
+          .in('user_id', memberUserIds)
+          .eq('is_placeholder', true);
+
+        if (profiles && profiles.length > 0) {
+          setPlaceholders(profiles as PlaceholderProfile[]);
+          setMode('claim');
+          return;
+        }
+      }
+
+      // No placeholders — join directly
+      await joinGroup(groupId, null);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to find group');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const joinGroup = async (groupId: string, placeholderUserId: string | null) => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      if (placeholderUserId) {
+        // Claim the placeholder
+        const { error } = await supabase.rpc('claim_placeholder', {
+          _placeholder_user_id: placeholderUserId,
+          _real_user_id: user.id,
+          _group_id: groupId,
+        });
+        if (error) throw error;
+        toast.success('Joined the group!');
+      } else {
+        // Join normally
+        const { error: joinError } = await supabase
+          .from('group_members')
+          .insert({ group_id: groupId, user_id: user.id });
+        if (joinError) throw joinError;
+        toast.success('Joined the group!');
+      }
       navigate('/dashboard');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to join group');
@@ -143,7 +198,7 @@ const GroupSetup = () => {
         )}
 
         {mode === 'join' && (
-          <form onSubmit={handleJoinGroup} className="space-y-6">
+          <form onSubmit={handleFindGroup} className="space-y-6">
             <div className="text-center">
               <h2 className="text-2xl font-display font-bold">Join a Club</h2>
               <p className="text-muted-foreground mt-2">Enter the code from your admin</p>
@@ -162,10 +217,64 @@ const GroupSetup = () => {
             <div className="flex gap-3">
               <Button type="button" variant="ghost" onClick={() => setMode('choose')}>Back</Button>
               <Button type="submit" variant="gold" className="flex-1" disabled={loading}>
-                {loading ? 'Joining...' : 'Join Club'}
+                {loading ? 'Finding...' : 'Join Club'}
               </Button>
             </div>
           </form>
+        )}
+
+        {mode === 'claim' && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
+                <UserCheck className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-display font-bold">Who are you?</h2>
+              <p className="text-muted-foreground mt-2">
+                Select your name if you see it below, or join as a new member
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {placeholders.map((p) => (
+                <button
+                  key={p.user_id}
+                  type="button"
+                  onClick={() => setSelectedPlaceholder(p.user_id === selectedPlaceholder ? null : p.user_id)}
+                  className={`w-full flex items-center gap-3 rounded-xl p-4 border transition-all ${
+                    selectedPlaceholder === p.user_id
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-muted/10 hover:border-primary/50'
+                  }`}
+                >
+                  <Ghost className={`w-5 h-5 ${selectedPlaceholder === p.user_id ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <span className="font-medium">{p.display_name}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="gold"
+                className="w-full"
+                disabled={loading || !selectedPlaceholder}
+                onClick={() => foundGroupId && selectedPlaceholder && joinGroup(foundGroupId, selectedPlaceholder)}
+              >
+                {loading ? 'Joining...' : 'Claim & Join'}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={loading}
+                onClick={() => foundGroupId && joinGroup(foundGroupId, null)}
+              >
+                {loading ? 'Joining...' : "I'm not listed — join as new member"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => { setMode('join'); setPlaceholders([]); setSelectedPlaceholder(null); }}>
+                Back
+              </Button>
+            </div>
+          </div>
         )}
       </motion.div>
     </div>
