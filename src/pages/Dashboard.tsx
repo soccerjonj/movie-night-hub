@@ -44,21 +44,21 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Film className="w-5 h-5 text-primary" />
+        <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Film className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
-            <div>
-              <h1 className="font-display text-lg font-bold">{group.name}</h1>
+            <div className="min-w-0">
+              <h1 className="font-display text-base sm:text-lg font-bold truncate">{group.name}</h1>
               {season && tab === 'current' && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
                   Season {season.season_number}{season.title ? ` — ${season.title}` : ''}
                 </p>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {isAdmin && (
               <Button
                 variant="ghost"
@@ -72,18 +72,18 @@ const Dashboard = () => {
             <span className="text-sm text-muted-foreground hidden sm:block">
               {getProfile(user!.id)?.display_name}
             </span>
-            <Button variant="ghost" size="icon" onClick={() => { signOut(); navigate('/'); }}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => { signOut(); navigate('/'); }}>
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="container max-w-5xl mx-auto px-4">
+        <div className="container max-w-5xl mx-auto px-3 sm:px-4">
           <div className="flex gap-1 -mb-px">
             <button
               onClick={() => setTab('current')}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                 tab === 'current'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -93,7 +93,7 @@ const Dashboard = () => {
             </button>
             <button
               onClick={() => setTab('history')}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                 tab === 'history'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -105,7 +105,7 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="container max-w-5xl mx-auto px-4 py-8 space-y-8">
+      <main className="container max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8">
         <motion.div
           key={tab}
           initial={{ opacity: 0, y: 10 }}

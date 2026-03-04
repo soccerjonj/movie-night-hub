@@ -211,7 +211,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   return (
     <>
       {showPanel && (
-        <div className="glass-card rounded-2xl p-6 space-y-4">
+        <div className="glass-card rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
           {/* Join Code */}
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">Join Code:</span>
@@ -235,7 +235,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             </div>
           )}
           {season && editingSeason && (
-            <div className="flex items-end gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Season #</label>
                 <Input
