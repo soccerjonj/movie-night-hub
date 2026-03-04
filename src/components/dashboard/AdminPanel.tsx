@@ -31,6 +31,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const [editingCallDate, setEditingCallDate] = useState(false);
   const [callDate, setCallDate] = useState('');
   const [callTime, setCallTime] = useState('');
+  const [callTimezone, setCallTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
 
   const copyJoinCode = () => {
     navigator.clipboard.writeText(group.join_code);
@@ -221,11 +222,27 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
   const saveCallDate = async () => {
     if (!season) return;
-    const dateTime = new Date(`${callDate}T${callTime}`);
-    if (isNaN(dateTime.getTime())) {
+    // Build date in the selected timezone
+    const localString = `${callDate}T${callTime}:00`;
+    // Use a formatter to get the offset for the selected timezone
+    const tempDate = new Date(localString);
+    if (isNaN(tempDate.getTime())) {
       toast.error('Invalid date/time');
       return;
     }
+    // Get the offset by formatting in the target timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: callTimezone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    });
+    // Calculate offset: parse the date as if it's in the target timezone
+    const parts = formatter.formatToParts(tempDate);
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+    const tzNow = new Date(`${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`);
+    const offsetMs = tempDate.getTime() - tzNow.getTime();
+    const dateTime = new Date(tempDate.getTime() + offsetMs);
     setLoading(true);
     try {
       const { error } = await supabase.from('seasons').update({ next_call_date: dateTime.toISOString() }).eq('id', season.id);
@@ -372,7 +389,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
           {/* Call Date Editor */}
           {editingCallDate && season && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2 flex-wrap">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Date</label>
                 <Input type="date" value={callDate} onChange={e => setCallDate(e.target.value)} className="bg-muted/50" />
@@ -381,12 +398,37 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <label className="text-xs text-muted-foreground mb-1 block">Time</label>
                 <Input type="time" value={callTime} onChange={e => setCallTime(e.target.value)} className="bg-muted/50 w-32" />
               </div>
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-green-500" onClick={saveCallDate} disabled={loading}>
-                <Check className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setEditingCallDate(false)}>
-                <X className="w-4 h-4" />
-              </Button>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Timezone</label>
+                <select
+                  value={callTimezone}
+                  onChange={e => setCallTimezone(e.target.value)}
+                  className="h-9 rounded-md border border-input bg-muted/50 px-2 text-sm text-foreground max-w-[200px]"
+                >
+                  {[
+                    'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+                    'America/Phoenix', 'America/Anchorage', 'Pacific/Honolulu',
+                    'America/Toronto', 'America/Vancouver', 'America/Mexico_City',
+                    'America/Sao_Paulo', 'America/Argentina/Buenos_Aires',
+                    'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid',
+                    'Europe/Rome', 'Europe/Amsterdam', 'Europe/Stockholm', 'Europe/Moscow',
+                    'Asia/Dubai', 'Asia/Kolkata', 'Asia/Bangkok', 'Asia/Singapore',
+                    'Asia/Shanghai', 'Asia/Tokyo', 'Asia/Seoul',
+                    'Australia/Sydney', 'Australia/Melbourne', 'Australia/Perth',
+                    'Pacific/Auckland', 'Pacific/Fiji',
+                  ].map(tz => (
+                    <option key={tz} value={tz}>{tz.replace(/_/g, ' ').replace('America/', '').replace('Europe/', '').replace('Asia/', '').replace('Australia/', '').replace('Pacific/', '')} ({tz.split('/')[0]})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-green-500" onClick={saveCallDate} disabled={loading}>
+                  <Check className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setEditingCallDate(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           )}
 
