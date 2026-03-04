@@ -150,7 +150,7 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
 
   const renderUserGuesses = (userId: string) => {
     const userGuesses = guesses.filter(g => g.guesser_id === userId);
-    const watchedPicks = picks.filter(p => isPickWatchedCheck(p)).sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
+    const watchedPicks = picks.filter(p => isPickWatchedCheck(p)).sort((a, b) => (b.watch_order ?? 0) - (a.watch_order ?? 0));
 
     // Deduplicate by watch_order (co-picks)
     const seen = new Set<string>();
