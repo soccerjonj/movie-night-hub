@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Play, SkipForward, Clock, Eye, Shuffle, Settings, Trash2 } from 'lucide-react';
+import { Copy, Play, SkipForward, Clock, Eye, Shuffle, Settings, Trash2, Pencil, Check, X } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
@@ -24,6 +24,9 @@ interface Props {
 const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, showPanel, setShowPanel }: Props & { showPanel: boolean; setShowPanel: (v: boolean) => void }) => {
   const [loading, setLoading] = useState(false);
   const [newSeasonTitle, setNewSeasonTitle] = useState('');
+  const [editingSeason, setEditingSeason] = useState(false);
+  const [editSeasonNumber, setEditSeasonNumber] = useState('');
+  const [editSeasonTitle, setEditSeasonTitle] = useState('');
 
   const copyJoinCode = () => {
     navigator.clipboard.writeText(group.join_code);
@@ -174,6 +177,37 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     }
   };
 
+  const startEditingSeason = () => {
+    if (!season) return;
+    setEditSeasonNumber(String(season.season_number));
+    setEditSeasonTitle(season.title || '');
+    setEditingSeason(true);
+  };
+
+  const saveSeasonEdit = async () => {
+    if (!season) return;
+    setLoading(true);
+    try {
+      const num = parseInt(editSeasonNumber);
+      if (isNaN(num) || num < 1) {
+        toast.error('Season number must be a positive number');
+        return;
+      }
+      const { error } = await supabase.from('seasons').update({
+        season_number: num,
+        title: editSeasonTitle.trim() || null,
+      }).eq('id', season.id);
+      if (error) throw error;
+      toast.success('Season updated!');
+      setEditingSeason(false);
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update season');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       {showPanel && (
@@ -188,6 +222,47 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
               <Copy className="w-4 h-4" />
             </Button>
           </div>
+
+          {/* Edit Season */}
+          {season && !editingSeason && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Season {season.season_number}{season.title ? ` — ${season.title}` : ''}
+              </span>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={startEditingSeason}>
+                <Pencil className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
+          {season && editingSeason && (
+            <div className="flex items-end gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Season #</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={editSeasonNumber}
+                  onChange={(e) => setEditSeasonNumber(e.target.value)}
+                  className="bg-muted/50 w-20"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Theme (optional)</label>
+                <Input
+                  value={editSeasonTitle}
+                  onChange={(e) => setEditSeasonTitle(e.target.value)}
+                  placeholder="e.g. Horror Month"
+                  className="bg-muted/50 w-48"
+                />
+              </div>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-green-500" onClick={saveSeasonEdit} disabled={loading}>
+                <Check className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setEditingSeason(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
 
           {/* Season Actions */}
           <div className="flex flex-wrap gap-2 items-end">
