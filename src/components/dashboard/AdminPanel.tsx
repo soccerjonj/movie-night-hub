@@ -20,6 +20,7 @@ interface Props {
 const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: Props) => {
   const [loading, setLoading] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
+  const [newSeasonTitle, setNewSeasonTitle] = useState('');
 
   const copyJoinCode = () => {
     navigator.clipboard.writeText(group.join_code);
@@ -31,15 +32,16 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: 
     return setMinutes(setHours(next, 19), 30); // 7:30 PM — user should adjust for timezone
   };
 
-  const startNewSeason = async () => {
+  const startNewSeason = async (title?: string) => {
     setLoading(true);
     try {
       const seasonNumber = season ? season.season_number + 1 : 1;
       await supabase.from('seasons').insert({
         group_id: group.id,
         season_number: seasonNumber,
+        title: title?.trim() || null,
         status: 'picking' as any,
-      });
+      } as any);
       toast.success(`Season ${seasonNumber} started!`);
       onUpdate();
     } catch (err: any) {
@@ -168,11 +170,22 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: 
           </div>
 
           {/* Season Actions */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-end">
             {(!season || season.status === 'completed') && (
-              <Button variant="gold" size="sm" onClick={startNewSeason} disabled={loading}>
-                <Play className="w-4 h-4 mr-1" /> Start New Season
-              </Button>
+              <div className="flex items-end gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Season Title (optional)</label>
+                  <Input
+                    value={newSeasonTitle}
+                    onChange={(e) => setNewSeasonTitle(e.target.value)}
+                    placeholder="e.g. Horror Month"
+                    className="bg-muted/50 w-48"
+                  />
+                </div>
+                <Button variant="gold" size="sm" onClick={() => { startNewSeason(newSeasonTitle); setNewSeasonTitle(''); }} disabled={loading}>
+                  <Play className="w-4 h-4 mr-1" /> Start New Season
+                </Button>
+              </div>
             )}
 
             {season?.status === 'picking' && (
