@@ -63,11 +63,23 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
       const guesses = (guessesRes.data || []) as GuessRow[];
       const picks = picksRes.data || [];
 
-      // Build a map of movie_pick_id -> actual user_id (only for revealed picks)
-      const pickMap: Record<string, string> = {};
+      // Build a map of movie_pick_id -> set of valid user_ids (for co-picks, any co-picker is correct)
+      // Group picks by season_id + watch_order to find co-picks
+      const coPickGroups = new Map<string, string[]>();
       picks.forEach(p => {
-        if (p.revealed) {
-          pickMap[p.id] = p.user_id;
+        if (p.revealed && p.watch_order != null) {
+          const key = `${p.season_id}:${p.watch_order}`;
+          if (!coPickGroups.has(key)) coPickGroups.set(key, []);
+          coPickGroups.get(key)!.push(p.user_id);
+        }
+      });
+
+      // Map each pick id to the set of valid user_ids (all co-pickers)
+      const pickValidUsers: Record<string, Set<string>> = {};
+      picks.forEach(p => {
+        if (p.revealed && p.watch_order != null) {
+          const key = `${p.season_id}:${p.watch_order}`;
+          pickValidUsers[p.id] = new Set(coPickGroups.get(key) || [p.user_id]);
         }
       });
 
@@ -82,9 +94,9 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
           scoreMap[g.guesser_id] = { correct: 0, total: 0 };
         }
         // Only count guesses for revealed movies
-        if (pickMap[g.movie_pick_id]) {
+        if (pickValidUsers[g.movie_pick_id]) {
           scoreMap[g.guesser_id].total += 1;
-          if (g.guessed_user_id === pickMap[g.movie_pick_id]) {
+          if (pickValidUsers[g.movie_pick_id].has(g.guessed_user_id)) {
             scoreMap[g.guesser_id].correct += 1;
           }
         }
