@@ -1,0 +1,1 @@
+ALTER TABLE public.movie_picks DROP CONSTRAINT IF EXISTS movie_picks_season_id_user_id_key;
