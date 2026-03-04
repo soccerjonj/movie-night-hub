@@ -279,9 +279,10 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
               Picked by {getProfile(pick.user_id)?.display_name}
             </span>
           )}
-          {!isWatched && (() => {
-            // Get user_ids of members whose picks haven't been watched yet
-            const unwatchedPicks = sortedPicks.filter((_, idx) => idx >= season.current_movie_index);
+        </div>
+
+        <div className="flex items-center">
+          {isCurrent && (() => {
             const revealedPickerIds = sortedPicks
               .filter((_, idx) => idx < season.current_movie_index)
               .map(p => p.user_id);
@@ -289,27 +290,20 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
               .filter(m => !revealedPickerIds.includes(m.user_id))
               .map(m => getProfile(m.user_id)?.display_name)
               .filter(Boolean);
-            
+
             return (
-              <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                {remainingMembers.map((name, idx) => (
-                  <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/40 text-muted-foreground">
-                    {name}
-                  </span>
-                ))}
+              <div className="text-right">
+                <span className="text-[10px] text-muted-foreground block mb-1">Picked by:</span>
+                <div className="flex flex-wrap justify-end gap-1">
+                  {remainingMembers.map((name, idx) => (
+                    <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                      {name}
+                    </span>
+                  ))}
+                </div>
               </div>
             );
           })()}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {!isWatched && (
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-              isCurrent ? 'bg-primary/15' : 'bg-muted/30'
-            }`}>
-              <EyeOff className={`w-4 h-4 ${isCurrent ? 'text-primary' : 'text-muted-foreground/60'}`} />
-            </div>
-          )}
         </div>
       </div>
     );
