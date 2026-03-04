@@ -21,9 +21,8 @@ interface Props {
   onUpdate: () => void;
 }
 
-const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: Props) => {
+const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, showPanel, setShowPanel }: Props & { showPanel: boolean; setShowPanel: (v: boolean) => void }) => {
   const [loading, setLoading] = useState(false);
-  const [showPanel, setShowPanel] = useState(false);
   const [newSeasonTitle, setNewSeasonTitle] = useState('');
 
   const copyJoinCode = () => {
@@ -176,16 +175,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: 
   };
 
   return (
-    <div className="mb-6">
-      <Button
-        variant="ghost-gold"
-        size="sm"
-        onClick={() => setShowPanel(!showPanel)}
-        className="mb-3"
-      >
-        <Settings className="w-4 h-4 mr-2" /> Admin Controls
-      </Button>
-
+    <>
       {showPanel && (
         <div className="glass-card rounded-2xl p-6 space-y-4">
           {/* Join Code */}
@@ -300,8 +290,9 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: 
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
+export { AdminPanel };
 export default AdminPanel;
