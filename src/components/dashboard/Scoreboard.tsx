@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Trophy, TrendingUp } from 'lucide-react';
+import { Trophy, TrendingUp, Check, X, Film, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface Props {
   group: { id: string };
@@ -28,6 +29,10 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
   const [view, setView] = useState<'season' | 'alltime'>('season');
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [guesses, setGuesses] = useState<GuessRow[]>([]);
+  const [picks, setPicks] = useState<{ id: string; user_id: string; season_id: string; watch_order: number | null; title: string; poster_url: string | null }[]>([]);
+  const [seasonMap, setSeasonMap] = useState<Map<string, { id: string; status: string; current_movie_index: number }>>(new Map());
 
   useEffect(() => {
     fetchScores();
@@ -55,20 +60,23 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
         return;
       }
 
-      const seasonMap = new Map(seasonData.map(s => [s.id, s]));
+      const sMap = new Map(seasonData.map(s => [s.id, s]));
+      setSeasonMap(sMap);
 
       // Fetch guesses and movie picks for those seasons
       const [guessesRes, picksRes] = await Promise.all([
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
-        supabase.from('movie_picks').select('id, user_id, season_id, revealed, watch_order').in('season_id', seasonIds),
+        supabase.from('movie_picks').select('id, user_id, season_id, revealed, watch_order, title, poster_url').in('season_id', seasonIds),
       ]);
 
-      const guesses = (guessesRes.data || []) as GuessRow[];
-      const picks = picksRes.data || [];
+      const fetchedGuesses = (guessesRes.data || []) as GuessRow[];
+      const fetchedPicks = picksRes.data || [];
+      setGuesses(fetchedGuesses);
+      setPicks(fetchedPicks as typeof picks);
 
       // Determine which picks are "watched" based on season status and current_movie_index
-      const isPickWatched = (pick: typeof picks[0]) => {
-        const s = seasonMap.get(pick.season_id);
+      const isPickWatched = (pick: typeof fetchedPicks[0]) => {
+        const s = sMap.get(pick.season_id);
         if (!s) return false;
         if (s.status === 'completed') return true;
         if (s.status === 'watching' && pick.watch_order != null) {
@@ -77,10 +85,8 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
         return false;
       };
 
-      // Build a map of movie_pick_id -> set of valid user_ids (for co-picks, any co-picker is correct)
-      // Only include watched picks
       const coPickGroups = new Map<string, string[]>();
-      picks.forEach(p => {
+      fetchedPicks.forEach(p => {
         if (isPickWatched(p) && p.watch_order != null) {
           const key = `${p.season_id}:${p.watch_order}`;
           if (!coPickGroups.has(key)) coPickGroups.set(key, []);
@@ -88,26 +94,23 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
         }
       });
 
-      // Map each pick id to the set of valid user_ids (all co-pickers)
       const pickValidUsers: Record<string, Set<string>> = {};
-      picks.forEach(p => {
+      fetchedPicks.forEach(p => {
         if (isPickWatched(p) && p.watch_order != null) {
           const key = `${p.season_id}:${p.watch_order}`;
           pickValidUsers[p.id] = new Set(coPickGroups.get(key) || [p.user_id]);
         }
       });
 
-      // Calculate scores per guesser
       const scoreMap: Record<string, { correct: number; total: number }> = {};
       members.forEach(m => {
         scoreMap[m.user_id] = { correct: 0, total: 0 };
       });
 
-      guesses.forEach(g => {
+      fetchedGuesses.forEach(g => {
         if (!scoreMap[g.guesser_id]) {
           scoreMap[g.guesser_id] = { correct: 0, total: 0 };
         }
-        // Only count guesses for watched movies
         if (pickValidUsers[g.movie_pick_id]) {
           scoreMap[g.guesser_id].total += 1;
           if (pickValidUsers[g.movie_pick_id].has(g.guessed_user_id)) {
@@ -130,11 +133,80 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
+  const isPickWatchedCheck = (pick: typeof picks[0]) => {
+    const s = seasonMap.get(pick.season_id);
+    if (!s) return false;
+    if (s.status === 'completed') return true;
+    if (s.status === 'watching' && pick.watch_order != null) return pick.watch_order < s.current_movie_index;
+    return false;
+  };
+
   const getMedal = (index: number) => {
     if (index === 0) return '🥇';
     if (index === 1) return '🥈';
     if (index === 2) return '🥉';
     return `${index + 1}`;
+  };
+
+  const renderUserGuesses = (userId: string) => {
+    const userGuesses = guesses.filter(g => g.guesser_id === userId);
+    const watchedPicks = picks.filter(p => isPickWatchedCheck(p)).sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
+
+    // Deduplicate by watch_order (co-picks)
+    const seen = new Set<string>();
+    const uniquePicks = watchedPicks.filter(p => {
+      const key = `${p.season_id}:${p.watch_order}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    if (uniquePicks.length === 0) return <p className="text-xs text-muted-foreground italic py-2">No watched movies yet</p>;
+
+    return (
+      <div className="space-y-1 py-2">
+        {uniquePicks.map(pick => {
+          const guess = userGuesses.find(g => g.movie_pick_id === pick.id);
+          // For co-picks, also check sibling pick IDs
+          const siblingPicks = picks.filter(p => p.season_id === pick.season_id && p.watch_order === pick.watch_order);
+          const guessForSlot = guess || userGuesses.find(g => siblingPicks.some(sp => sp.id === g.movie_pick_id));
+          const actualGuess = guess || (guessForSlot ? userGuesses.find(g => siblingPicks.some(sp => sp.id === g.movie_pick_id)) : undefined);
+          
+          const validUserIds = new Set(siblingPicks.map(sp => sp.user_id));
+          const guessedName = actualGuess ? getProfile(actualGuess.guessed_user_id)?.display_name || '?' : null;
+          const isCorrect = actualGuess ? validUserIds.has(actualGuess.guessed_user_id) : false;
+          const pickerNames = siblingPicks.map(sp => getProfile(sp.user_id)?.display_name || '?').join(' & ');
+
+          return (
+            <div
+              key={pick.id}
+              className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] ${
+                actualGuess ? (isCorrect ? 'bg-green-500/10' : 'bg-destructive/5') : 'bg-muted/20'
+              }`}
+            >
+              {pick.poster_url ? (
+                <img src={pick.poster_url} alt={pick.title} className="w-5 h-7 rounded object-cover shrink-0" />
+              ) : (
+                <div className="w-5 h-7 rounded bg-muted flex items-center justify-center shrink-0">
+                  <Film className="w-2.5 h-2.5 text-muted-foreground" />
+                </div>
+              )}
+              <span className="font-medium truncate flex-1">{pick.title}</span>
+              {actualGuess ? (
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className={`font-medium ${isCorrect ? 'text-green-400' : 'text-destructive'}`}>
+                    {guessedName}
+                  </span>
+                  {isCorrect ? <Check className="w-2.5 h-2.5 text-green-400" /> : <X className="w-2.5 h-2.5 text-destructive" />}
+                </div>
+              ) : (
+                <span className="text-muted-foreground italic shrink-0">no guess</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -177,24 +249,42 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
           {scores.map((entry, i) => {
             const profile = getProfile(entry.user_id);
             const pct = entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
+            const isExpanded = expandedUser === entry.user_id;
             return (
-              <div
-                key={entry.user_id}
-                className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${
-                  i === 0 && entry.correct > 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20'
-                }`}
-              >
-                <span className="text-lg w-8 text-center">{getMedal(i)}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {entry.correct}/{entry.total} correct ({pct}%)
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-display text-lg font-bold text-primary">{entry.correct}</p>
-                  <p className="text-xs text-muted-foreground">pts</p>
-                </div>
+              <div key={entry.user_id}>
+                <button
+                  onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
+                  className={`w-full flex items-center gap-3 rounded-xl p-3 transition-colors text-left ${
+                    i === 0 && entry.correct > 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20 hover:bg-muted/30'
+                  }`}
+                >
+                  <span className="text-lg w-8 text-center">{getMedal(i)}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {entry.correct}/{entry.total} correct ({pct}%)
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-display text-lg font-bold text-primary">{entry.correct}</p>
+                    <p className="text-xs text-muted-foreground">pts</p>
+                  </div>
+                </button>
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="ml-10 pl-3 border-l-2 border-border/30 mt-1 mb-2">
+                        {renderUserGuesses(entry.user_id)}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}
