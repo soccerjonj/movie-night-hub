@@ -223,9 +223,19 @@ const History = ({ group, profiles, members }: Props) => {
   }, [selectedSeasonId, seasons, members]);
 
   // Group picks by season + watch_order for display (co-picks become one entry)
+  // Filter to only watched picks
+  const isPickWatched = (pick: PickRow) => {
+    const s = seasons.find(s => s.id === pick.season_id);
+    if (!s) return false;
+    if (s.status === 'completed') return true;
+    if (s.status === 'watching' && pick.watch_order != null) return pick.watch_order < s.current_movie_index;
+    return false;
+  };
+
   const groupedMovies = (() => {
+    const watchedPicks = picks.filter(isPickWatched);
     const seasonGroups = new Map<string, Map<number | string, PickRow[]>>();
-    picks.forEach(p => {
+    watchedPicks.forEach(p => {
       if (!seasonGroups.has(p.season_id)) seasonGroups.set(p.season_id, new Map());
       const key = p.watch_order ?? p.id;
       const group = seasonGroups.get(p.season_id)!;
@@ -250,7 +260,7 @@ const History = ({ group, profiles, members }: Props) => {
           tmdbId: groupPicks[0].tmdb_id,
           pickId: groupPicks[0].id,
         }));
-      result.push({ seasonId: seasonInfo.id, seasonInfo, movies });
+      if (movies.length > 0) result.push({ seasonId: seasonInfo.id, seasonInfo, movies });
     });
     return result;
   })();
