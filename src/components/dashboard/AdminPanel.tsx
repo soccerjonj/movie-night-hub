@@ -11,6 +11,7 @@ import ImportSeasonDialog from './ImportSeasonDialog';
 import ImportGuessesDialog from './ImportGuessesDialog';
 import EditGuessesDialog from './EditGuessesDialog';
 import EditPicksDialog from './EditPicksDialog';
+import AddPlaceholderDialog from './AddPlaceholderDialog';
 
 interface Props {
   group: Group;
@@ -317,6 +318,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
           {/* Import Past Season */}
           <div className="flex flex-wrap gap-2 items-center">
+            <AddPlaceholderDialog group={group} onAdded={onUpdate} />
             <ImportSeasonDialog
               group={group}
               profiles={profiles}
