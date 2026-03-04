@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
 import ImportSeasonDialog from './ImportSeasonDialog';
+import ImportGuessesDialog from './ImportGuessesDialog';
 
 interface Props {
   group: Group;
@@ -259,6 +260,11 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: 
               group={group}
               profiles={profiles}
               existingSeasonCount={season?.season_number ?? 0}
+              onImported={onUpdate}
+            />
+            <ImportGuessesDialog
+              group={group}
+              profiles={profiles}
               onImported={onUpdate}
             />
 
