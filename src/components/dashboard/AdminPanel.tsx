@@ -10,6 +10,7 @@ import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
 import ImportSeasonDialog from './ImportSeasonDialog';
 import ImportGuessesDialog from './ImportGuessesDialog';
 import EditGuessesDialog from './EditGuessesDialog';
+import EditPicksDialog from './EditPicksDialog';
 
 interface Props {
   group: Group;
@@ -269,6 +270,11 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: 
               onImported={onUpdate}
             />
             <EditGuessesDialog
+              group={group}
+              profiles={profiles}
+              onUpdated={onUpdate}
+            />
+            <EditPicksDialog
               group={group}
               profiles={profiles}
               onUpdated={onUpdate}
