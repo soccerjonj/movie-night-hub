@@ -223,7 +223,7 @@ const History = ({ group, profiles, members }: Props) => {
   }, [selectedSeasonId, seasons, members]);
 
   // Group picks by season + watch_order for display (co-picks become one entry)
-  // Filter to only watched picks
+  // Check if a pick has been watched
   const isPickWatched = (pick: PickRow) => {
     const s = seasons.find(s => s.id === pick.season_id);
     if (!s) return false;
@@ -233,9 +233,8 @@ const History = ({ group, profiles, members }: Props) => {
   };
 
   const groupedMovies = (() => {
-    const watchedPicks = picks.filter(isPickWatched);
     const seasonGroups = new Map<string, Map<number | string, PickRow[]>>();
-    watchedPicks.forEach(p => {
+    picks.forEach(p => {
       if (!seasonGroups.has(p.season_id)) seasonGroups.set(p.season_id, new Map());
       const key = p.watch_order ?? p.id;
       const group = seasonGroups.get(p.season_id)!;
@@ -251,15 +250,20 @@ const History = ({ group, profiles, members }: Props) => {
       if (!pickGroups) return;
       const movies: MovieDisplay[] = Array.from(pickGroups.entries())
         .sort(([a], [b]) => (typeof a === 'number' ? a : 999) - (typeof b === 'number' ? b : 999))
-        .map(([, groupPicks]) => ({
-          watchOrder: groupPicks[0].watch_order,
-          title: groupPicks[0].title,
-          year: groupPicks[0].year,
-          posterUrl: groupPicks[0].poster_url,
-          pickerNames: groupPicks.map(p => getProfile(p.user_id)?.display_name || '?').join(' & '),
-          tmdbId: groupPicks[0].tmdb_id,
-          pickId: groupPicks[0].id,
-        }));
+        .map(([, groupPicks]) => {
+          const watched = isPickWatched(groupPicks[0]);
+          return {
+            watchOrder: groupPicks[0].watch_order,
+            title: groupPicks[0].title,
+            year: groupPicks[0].year,
+            posterUrl: groupPicks[0].poster_url,
+            pickerNames: watched
+              ? groupPicks.map(p => getProfile(p.user_id)?.display_name || '?').join(' & ')
+              : '???',
+            tmdbId: groupPicks[0].tmdb_id,
+            pickId: groupPicks[0].id,
+          };
+        });
       if (movies.length > 0) result.push({ seasonId: seasonInfo.id, seasonInfo, movies });
     });
     return result;
