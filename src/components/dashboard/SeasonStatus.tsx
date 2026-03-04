@@ -88,7 +88,9 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
           {season.title ? ` — ${season.title}` : ''}
         </h2>
         <span className="text-sm px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">
-          {statusLabels[season.status]}
+          {season.status === 'watching'
+            ? `Currently watching Season ${season.season_number} Episode ${season.current_movie_index + 1}`
+            : statusLabels[season.status]}
         </span>
       </div>
 
