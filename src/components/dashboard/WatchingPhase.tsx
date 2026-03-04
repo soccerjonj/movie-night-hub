@@ -55,7 +55,7 @@ const WatchingPhase = ({ season, moviePicks, getProfile }: Props) => {
         </div>
 
         <div className="flex items-center gap-2">
-          {pick.revealed ? (
+          {isWatched && pick.revealed ? (
             <span className="flex items-center gap-1 text-xs text-primary">
               <Eye className="w-3 h-3" />
               {getProfile(pick.user_id)?.display_name}
@@ -63,7 +63,7 @@ const WatchingPhase = ({ season, moviePicks, getProfile }: Props) => {
           ) : (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <EyeOff className="w-3 h-3" />
-              Hidden
+              {isWatched ? 'Hidden' : 'TBD'}
             </span>
           )}
         </div>
