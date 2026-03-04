@@ -1,21 +1,23 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Group, Season, MoviePick, GroupMember } from '@/hooks/useGroup';
+import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Copy, Play, SkipForward, Clock, Eye, Shuffle, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
+import ImportSeasonDialog from './ImportSeasonDialog';
 
 interface Props {
   group: Group;
   season: Season | null;
   moviePicks: MoviePick[];
   members: GroupMember[];
+  profiles: Profile[];
   onUpdate: () => void;
 }
 
-const AdminPanel = ({ group, season, moviePicks, members, onUpdate }: Props) => {
+const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: Props) => {
   const [loading, setLoading] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
 
@@ -210,6 +212,14 @@ const AdminPanel = ({ group, season, moviePicks, members, onUpdate }: Props) => 
               </>
             )}
           </div>
+
+          {/* Import Past Season */}
+          <ImportSeasonDialog
+            group={group}
+            profiles={profiles}
+            existingSeasonCount={season?.season_number ?? 0}
+            onImported={onUpdate}
+          />
         </div>
       )}
     </div>
