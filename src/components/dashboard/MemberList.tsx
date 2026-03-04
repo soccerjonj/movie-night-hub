@@ -1,14 +1,16 @@
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown } from 'lucide-react';
+import { Users, Crown, Ghost } from 'lucide-react';
+import AddPlaceholderDialog from './AddPlaceholderDialog';
 
 interface Props {
   members: GroupMember[];
   profiles: Profile[];
   group: Group;
   isAdmin: boolean;
+  onUpdate: () => void;
 }
 
-const MemberList = ({ members, profiles, group, isAdmin }: Props) => {
+const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
   return (
@@ -17,19 +19,21 @@ const MemberList = ({ members, profiles, group, isAdmin }: Props) => {
         <Users className="w-5 h-5 text-primary" />
         <h2 className="font-display text-lg font-bold">Members</h2>
         <span className="text-xs text-muted-foreground ml-auto">{members.length} members</span>
+        {isAdmin && <AddPlaceholderDialog group={group} onAdded={onUpdate} />}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {members.map((member) => {
           const profile = getProfile(member.user_id);
           const isGroupAdmin = member.user_id === group.admin_user_id;
+          const isPlaceholder = (profile as any)?.is_placeholder;
           return (
             <div
               key={member.id}
-              className="flex items-center gap-2 bg-muted/20 rounded-xl p-3"
+              className={`flex items-center gap-2 rounded-xl p-3 ${isPlaceholder ? 'bg-muted/10 border border-dashed border-border' : 'bg-muted/20'}`}
             >
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isPlaceholder ? 'bg-muted/30 text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                {isPlaceholder ? <Ghost className="w-4 h-4" /> : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{profile?.display_name || 'Unknown'}</p>
@@ -37,6 +41,9 @@ const MemberList = ({ members, profiles, group, isAdmin }: Props) => {
                   <span className="flex items-center gap-1 text-xs text-primary">
                     <Crown className="w-3 h-3" /> Admin
                   </span>
+                )}
+                {isPlaceholder && (
+                  <span className="text-xs text-muted-foreground">Placeholder</span>
                 )}
               </div>
             </div>
