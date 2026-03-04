@@ -4,8 +4,9 @@ import { Profile, Group } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Upload, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -17,7 +18,7 @@ interface Props {
 
 interface ImportMovie {
   title: string;
-  pickedBy: string; // user_id
+  pickedBy: string[]; // user_ids
   year?: string;
 }
 
@@ -25,21 +26,37 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
   const [open, setOpen] = useState(false);
   const [seasonNumber, setSeasonNumber] = useState(String(existingSeasonCount + 1));
   const [seasonTitle, setSeasonTitle] = useState('');
-  const [movies, setMovies] = useState<ImportMovie[]>([{ title: '', pickedBy: '', year: '' }]);
+  const [movies, setMovies] = useState<ImportMovie[]>([{ title: '', pickedBy: [], year: '' }]);
   const [importing, setImporting] = useState(false);
 
   const addMovie = () => {
-    setMovies([...movies, { title: '', pickedBy: '', year: '' }]);
+    setMovies([...movies, { title: '', pickedBy: [], year: '' }]);
   };
 
   const removeMovie = (index: number) => {
     setMovies(movies.filter((_, i) => i !== index));
   };
 
-  const updateMovie = (index: number, field: keyof ImportMovie, value: string) => {
+  const updateMovie = (index: number, field: 'title' | 'year', value: string) => {
     const updated = [...movies];
     updated[index] = { ...updated[index], [field]: value };
     setMovies(updated);
+  };
+
+  const togglePicker = (movieIndex: number, userId: string) => {
+    const updated = [...movies];
+    const current = updated[movieIndex].pickedBy;
+    if (current.includes(userId)) {
+      updated[movieIndex] = { ...updated[movieIndex], pickedBy: current.filter(id => id !== userId) };
+    } else {
+      updated[movieIndex] = { ...updated[movieIndex], pickedBy: [...current, userId] };
+    }
+    setMovies(updated);
+  };
+
+  const getPickerNames = (pickedBy: string[]) => {
+    if (pickedBy.length === 0) return null;
+    return pickedBy.map(id => memberProfiles.find(p => p.user_id === id)?.display_name || '?').join(' & ');
   };
 
   const handleImport = async () => {
@@ -49,7 +66,7 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
       return;
     }
 
-    const validMovies = movies.filter(m => m.title.trim() && m.pickedBy);
+    const validMovies = movies.filter(m => m.title.trim() && m.pickedBy.length > 0);
     if (validMovies.length === 0) {
       toast.error('Add at least one movie with a picker');
       return;
@@ -57,7 +74,6 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
 
     setImporting(true);
     try {
-      // Create the season as completed
       const { data: seasonData, error: seasonError } = await supabase
         .from('seasons')
         .insert({
@@ -72,25 +88,27 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
 
       if (seasonError) throw seasonError;
 
-      // Insert all movie picks with watch order and revealed
-      const picks = validMovies.map((movie, i) => ({
-        season_id: seasonData.id,
-        user_id: movie.pickedBy,
-        title: movie.title.trim(),
-        year: movie.year?.trim() || null,
-        watch_order: i,
-        revealed: true,
-        poster_url: null,
-        tmdb_id: null,
-        overview: null,
-      }));
+      // Create one pick per user per movie (for co-picks, same movie gets multiple rows)
+      const picks = validMovies.flatMap((movie, i) =>
+        movie.pickedBy.map(userId => ({
+          season_id: seasonData.id,
+          user_id: userId,
+          title: movie.title.trim(),
+          year: movie.year?.trim() || null,
+          watch_order: i,
+          revealed: true,
+          poster_url: null,
+          tmdb_id: null,
+          overview: null,
+        }))
+      );
 
       const { error: picksError } = await supabase.from('movie_picks').insert(picks);
       if (picksError) throw picksError;
 
       toast.success(`Season ${seasonNumber} imported with ${validMovies.length} movies!`);
       setOpen(false);
-      setMovies([{ title: '', pickedBy: '', year: '' }]);
+      setMovies([{ title: '', pickedBy: [], year: '' }]);
       onImported();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to import season');
@@ -99,11 +117,7 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
     }
   };
 
-  // Get group member profiles only
-  const memberProfiles = profiles.filter(p =>
-    // We show all profiles; in practice these should be group members
-    p.display_name
-  );
+  const memberProfiles = profiles.filter(p => p.display_name);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -165,21 +179,28 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
                         className="bg-muted/50 w-20"
                       />
                     </div>
-                    <Select
-                      value={movie.pickedBy}
-                      onValueChange={(v) => updateMovie(i, 'pickedBy', v)}
-                    >
-                      <SelectTrigger className="bg-muted/50">
-                        <SelectValue placeholder="Who picked this?" />
-                      </SelectTrigger>
-                      <SelectContent>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between bg-muted/50 font-normal">
+                          {getPickerNames(movie.pickedBy) || <span className="text-muted-foreground">Who picked this?</span>}
+                          <ChevronDown className="w-4 h-4 ml-2 text-muted-foreground" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2" align="start">
                         {memberProfiles.map((p) => (
-                          <SelectItem key={p.user_id} value={p.user_id}>
-                            {p.display_name}
-                          </SelectItem>
+                          <label
+                            key={p.user_id}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={movie.pickedBy.includes(p.user_id)}
+                              onCheckedChange={() => togglePicker(i, p.user_id)}
+                            />
+                            <span className="text-sm">{p.display_name}</span>
+                          </label>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <Button
                     variant="ghost"
