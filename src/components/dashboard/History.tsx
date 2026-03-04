@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useGroup';
-import { Film, ChevronDown, ChevronUp, Trophy, TrendingUp, User } from 'lucide-react';
+import { Film, ChevronDown, ChevronUp, Trophy, TrendingUp, User, Users, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -48,14 +48,16 @@ interface MovieDisplay {
   pickerNames: string;
   tmdbId: number | null;
   pickId: string;
+  pickUserId: string;
+  seasonId: string;
 }
-
 const History = ({ group, profiles, members }: Props) => {
   const [seasons, setSeasons] = useState<SeasonInfo[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>('all');
   const [picks, setPicks] = useState<PickRow[]>([]);
   const [directors, setDirectors] = useState<Record<string, string>>({});
   const [expandedMovie, setExpandedMovie] = useState<string | null>(null);
+  const [allGuesses, setAllGuesses] = useState<GuessRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Scoreboard state
@@ -98,6 +100,20 @@ const History = ({ group, profiles, members }: Props) => {
       setLoading(false);
     };
     if (seasons.length > 0) fetchPicks();
+  }, [selectedSeasonId, seasons]);
+
+  // Fetch all guesses for selected seasons
+  useEffect(() => {
+    const fetchGuesses = async () => {
+      const seasonIds = selectedSeasonId === 'all' ? seasons.map(s => s.id) : [selectedSeasonId];
+      if (seasonIds.length === 0) return;
+      const { data } = await supabase
+        .from('guesses')
+        .select('guesser_id, guessed_user_id, movie_pick_id, season_id')
+        .in('season_id', seasonIds);
+      setAllGuesses((data || []) as GuessRow[]);
+    };
+    if (seasons.length > 0) fetchGuesses();
   }, [selectedSeasonId, seasons]);
 
   // Fetch directors
@@ -262,6 +278,8 @@ const History = ({ group, profiles, members }: Props) => {
               : '???',
             tmdbId: groupPicks[0].tmdb_id,
             pickId: groupPicks[0].id,
+            pickUserId: groupPicks[0].user_id,
+            seasonId: groupPicks[0].season_id,
           };
         });
       if (movies.length > 0) result.push({ seasonId: seasonInfo.id, seasonInfo, movies });
@@ -342,25 +360,72 @@ const History = ({ group, profiles, members }: Props) => {
                             </div>
                           )}
                         </button>
-                        {isExpanded && (
-                          <div className="absolute z-50 bottom-full mb-1 left-1/2 -translate-x-1/2 p-3 rounded-xl bg-card border border-border shadow-xl space-y-1.5 min-w-[200px] w-max max-w-[260px]">
-                            <p className="font-medium text-sm leading-tight">{movie.title}</p>
-                            <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
-                              {movie.year && <span>{movie.year}</span>}
-                              {directors[movie.pickId] && (
-                                <>
-                                  {movie.year && <span>·</span>}
-                                  <span>{directors[movie.pickId]}</span>
-                                </>
+                        {isExpanded && (() => {
+                          const pick = picks.find(p => p.id === movie.pickId);
+                          const watched = pick ? isPickWatched(pick) : false;
+                          const guesses = allGuesses.filter(g => g.movie_pick_id === movie.pickId);
+                          const correctCount = watched ? guesses.filter(g => g.guessed_user_id === movie.pickUserId).length : 0;
+                          const pct = watched && guesses.length > 0 ? Math.round((correctCount / guesses.length) * 100) : 0;
+
+                          return (
+                            <div className="absolute z-50 bottom-full mb-1 left-1/2 -translate-x-1/2 p-3 rounded-xl bg-card border border-border shadow-xl space-y-1.5 min-w-[220px] w-max max-w-[280px]">
+                              <p className="font-medium text-sm leading-tight">{movie.title}</p>
+                              <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
+                                {movie.year && <span>{movie.year}</span>}
+                                {directors[movie.pickId] && (
+                                  <>
+                                    {movie.year && <span>·</span>}
+                                    <span>{directors[movie.pickId]}</span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs">
+                                <User className="w-3 h-3 text-primary" />
+                                <span className="text-muted-foreground">Picked by</span>
+                                <span className="font-medium">{movie.pickerNames}</span>
+                              </div>
+
+                              {guesses.length > 0 && (
+                                <div className="border-t border-border/30 pt-1.5 mt-1.5">
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                                    <Users className="w-3 h-3" />
+                                    <span>Guesses</span>
+                                    {watched && guesses.length > 0 && (
+                                      <span className="ml-auto text-primary font-medium">{correctCount}/{guesses.length} ({pct}%)</span>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1">
+                                    {guesses.map(g => {
+                                      const guesserName = getProfile(g.guesser_id)?.display_name || '?';
+                                      const guessedName = getProfile(g.guessed_user_id)?.display_name || '?';
+                                      const isCorrect = watched && g.guessed_user_id === movie.pickUserId;
+                                      const isWrong = watched && g.guessed_user_id !== movie.pickUserId;
+
+                                      return (
+                                        <div
+                                          key={g.guesser_id}
+                                          className={`flex items-center justify-between rounded-md px-2 py-1 text-[11px] ${
+                                            isCorrect ? 'bg-green-500/10' : isWrong ? 'bg-destructive/5' : 'bg-muted/20'
+                                          }`}
+                                        >
+                                          <span className="font-medium">{guesserName}</span>
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-muted-foreground">→</span>
+                                            <span className={`font-medium ${isCorrect ? 'text-green-400' : isWrong ? 'text-destructive' : ''}`}>
+                                              {guessedName}
+                                            </span>
+                                            {isCorrect && <Check className="w-2.5 h-2.5 text-green-400" />}
+                                            {isWrong && <X className="w-2.5 h-2.5 text-destructive" />}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
                               )}
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs">
-                              <User className="w-3 h-3 text-primary" />
-                              <span className="text-muted-foreground">Picked by</span>
-                              <span className="font-medium">{movie.pickerNames}</span>
-                            </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     );
                   })}
