@@ -262,14 +262,6 @@ const GroupSetup = () => {
               >
                 {loading ? 'Joining...' : 'Claim & Join'}
               </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={loading}
-                onClick={() => foundGroupId && joinGroup(foundGroupId, null)}
-              >
-                {loading ? 'Joining...' : "I'm not listed — join as new member"}
-              </Button>
               <Button type="button" variant="ghost" onClick={() => { setMode('join'); setPlaceholders([]); setSelectedPlaceholder(null); }}>
                 Back
               </Button>
