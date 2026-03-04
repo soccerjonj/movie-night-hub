@@ -57,7 +57,7 @@ const AddPlaceholderDialog = ({ group, onAdded }: Props) => {
         });
       if (memberError) throw memberError;
 
-      toast.success(`${name} added as placeholder member`);
+      toast.success(`${name} added as member`);
       setDisplayName('');
       setOpen(false);
       onAdded();
@@ -72,15 +72,15 @@ const AddPlaceholderDialog = ({ group, onAdded }: Props) => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <UserPlus className="w-4 h-4 mr-1" /> Add Placeholder Member
+          <UserPlus className="w-4 h-4 mr-1" /> Add Member
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="font-display">Add Placeholder Member</DialogTitle>
+          <DialogTitle className="font-display">Add Member</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Add a member who hasn't joined yet. They can be assigned movie picks in past season imports.
+          Add a member who hasn't joined yet. They can claim their account later.
         </p>
         <div className="space-y-3 mt-2">
           <Input
