@@ -246,12 +246,6 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: 
                 <Button variant="outline" size="sm" onClick={revealCurrentPicker} disabled={loading}>
                   <Eye className="w-4 h-4 mr-1" /> Reveal Picker
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => delayCall(1)} disabled={loading}>
-                  <Clock className="w-4 h-4 mr-1" /> +1 Day
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => delayCall(7)} disabled={loading}>
-                  <Clock className="w-4 h-4 mr-1" /> +1 Week
-                </Button>
               </>
             )}
           </div>
