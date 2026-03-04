@@ -22,42 +22,62 @@ const TMDB_IMAGE_LG = 'https://image.tmdb.org/t/p/w500';
 
 const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
+  const [director, setDirector] = useState<string | null>(null);
 
   // Find current movie by watch_order matching the index
   const currentMovie = moviePicks.find(p => p.watch_order === season.current_movie_index);
 
-  // Auto-fetch poster from TMDB if not stored
+  // Auto-fetch poster + director from TMDB if not stored
   useEffect(() => {
     if (!currentMovie) return;
     if (currentMovie.poster_url) {
       setPosterUrl(currentMovie.poster_url);
-      return;
     }
 
-    const fetchPoster = async () => {
+    const fetchTmdbData = async () => {
       try {
-        const yearParam = currentMovie.year ? `&year=${currentMovie.year}` : '';
-        const res = await fetch(
-          `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(currentMovie.title)}&include_adult=false&language=en-US&page=1${yearParam}`,
-          { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
-        );
-        const data = await res.json();
-        const movie = data.results?.[0];
-        if (movie?.poster_path) {
-          const url = `${TMDB_IMAGE_LG}${movie.poster_path}`;
-          setPosterUrl(url);
-          // Save it back so we don't fetch again
-          await supabase.from('movie_picks').update({
-            poster_url: url,
-            tmdb_id: movie.id,
-            overview: movie.overview || null,
-          }).eq('id', currentMovie.id);
+        let tmdbId = currentMovie.tmdb_id;
+
+        // Search for movie if we don't have tmdb_id
+        if (!tmdbId || !currentMovie.poster_url) {
+          const yearParam = currentMovie.year ? `&year=${currentMovie.year}` : '';
+          const res = await fetch(
+            `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(currentMovie.title)}&include_adult=false&language=en-US&page=1${yearParam}`,
+            { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
+          );
+          const data = await res.json();
+          const movie = data.results?.[0];
+          if (movie) {
+            tmdbId = movie.id;
+            if (movie.poster_path && !currentMovie.poster_url) {
+              const url = `${TMDB_IMAGE_LG}${movie.poster_path}`;
+              setPosterUrl(url);
+              await supabase.from('movie_picks').update({
+                poster_url: url,
+                tmdb_id: movie.id,
+                overview: movie.overview || null,
+              }).eq('id', currentMovie.id);
+            }
+          }
+        }
+
+        // Fetch director from credits
+        if (tmdbId) {
+          const creditsRes = await fetch(
+            `https://api.themoviedb.org/3/movie/${tmdbId}/credits?language=en-US`,
+            { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
+          );
+          const creditsData = await creditsRes.json();
+          const directors = creditsData.crew?.filter((c: { job: string; name: string }) => c.job === 'Director');
+          if (directors?.length) {
+            setDirector(directors.map((d: { name: string }) => d.name).join(', '));
+          }
         }
       } catch {
         // silently fail
       }
     };
-    fetchPoster();
+    fetchTmdbData();
   }, [currentMovie?.id, currentMovie?.poster_url]);
 
   return (
@@ -89,6 +109,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Now Watching</p>
             <h3 className="font-display text-2xl font-bold">{currentMovie.title}</h3>
             {currentMovie.year && <p className="text-sm text-muted-foreground mt-0.5">{currentMovie.year}</p>}
+            {director && <p className="text-sm text-muted-foreground mt-0.5">Directed by {director}</p>}
             {currentMovie.overview && (
               <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{currentMovie.overview}</p>
             )}
