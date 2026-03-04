@@ -160,39 +160,57 @@ const WatchingPhase = ({ season, moviePicks, getProfile, isAdmin, onUpdate }: Pr
   const [showWatched, setShowWatched] = useState(false);
   const [editing, setEditing] = useState(false);
   const [posterOverrides, setPosterOverrides] = useState<Record<string, string>>({});
+  const [directors, setDirectors] = useState<Record<string, string>>({});
   const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
 
-  // Auto-fetch posters for movies missing them
+  // Auto-fetch posters and directors for movies
   useEffect(() => {
-    const fetchMissingPosters = async () => {
-      const missing = moviePicks.filter(p => !p.poster_url);
-      if (missing.length === 0) return;
-
-      for (const pick of missing) {
+    const fetchMovieData = async () => {
+      for (const pick of moviePicks) {
         try {
-          const yearParam = pick.year ? `&year=${pick.year}` : '';
-          const res = await fetch(
-            `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(pick.title)}&include_adult=false&language=en-US&page=1${yearParam}`,
-            { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
-          );
-          const data = await res.json();
-          const movie = data.results?.[0];
-          if (movie?.poster_path) {
-            const url = `${TMDB_IMAGE_BASE}${movie.poster_path}`;
-            setPosterOverrides(prev => ({ ...prev, [pick.id]: url }));
-            // Persist to DB
-            await supabase.from('movie_picks').update({
-              poster_url: url,
-              tmdb_id: movie.id,
-              overview: movie.overview || null,
-            }).eq('id', pick.id);
+          let tmdbId = pick.tmdb_id;
+
+          // Search if we need poster or don't have tmdb_id
+          if (!tmdbId || !pick.poster_url) {
+            const yearParam = pick.year ? `&year=${pick.year}` : '';
+            const res = await fetch(
+              `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(pick.title)}&include_adult=false&language=en-US&page=1${yearParam}`,
+              { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
+            );
+            const data = await res.json();
+            const movie = data.results?.[0];
+            if (movie) {
+              tmdbId = movie.id;
+              if (movie.poster_path && !pick.poster_url) {
+                const url = `${TMDB_IMAGE_BASE}${movie.poster_path}`;
+                setPosterOverrides(prev => ({ ...prev, [pick.id]: url }));
+                await supabase.from('movie_picks').update({
+                  poster_url: url,
+                  tmdb_id: movie.id,
+                  overview: movie.overview || null,
+                }).eq('id', pick.id);
+              }
+            }
+          }
+
+          // Fetch director
+          if (tmdbId && !directors[pick.id]) {
+            const creditsRes = await fetch(
+              `https://api.themoviedb.org/3/movie/${tmdbId}/credits?language=en-US`,
+              { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
+            );
+            const creditsData = await creditsRes.json();
+            const director = creditsData.crew?.find((c: { job: string; name: string }) => c.job === 'Director');
+            if (director) {
+              setDirectors(prev => ({ ...prev, [pick.id]: director.name }));
+            }
           }
         } catch {
           // silently skip
         }
       }
     };
-    fetchMissingPosters();
+    fetchMovieData();
   }, [moviePicks]);
 
   const watchedPicks = sortedPicks.filter((_, i) => i < season.current_movie_index);
@@ -245,19 +263,27 @@ const WatchingPhase = ({ season, moviePicks, getProfile, isAdmin, onUpdate }: Pr
           <p className={`font-medium text-sm truncate ${isCurrent ? 'text-foreground' : ''}`}>
             {pick.title}
           </p>
-          {pick.year && <p className="text-xs text-muted-foreground">{pick.year}</p>}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
+            {pick.year && <span className="text-xs text-muted-foreground">{pick.year}</span>}
+            {directors[pick.id] && (
+              <>
+                {pick.year && <span className="text-xs text-muted-foreground">·</span>}
+                <span className="text-xs text-muted-foreground">{directors[pick.id]}</span>
+              </>
+            )}
+          </div>
+          {isWatched && (
+            <span className="text-xs text-primary">
+              Picked by {getProfile(pick.user_id)?.display_name}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
-          {isWatched && pick.revealed ? (
-            <span className="flex items-center gap-1 text-xs text-primary">
-              <Eye className="w-3 h-3" />
-              {getProfile(pick.user_id)?.display_name}
-            </span>
-          ) : (
+          {!isWatched && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <EyeOff className="w-3 h-3" />
-              {isWatched ? 'Hidden' : 'TBD'}
+              {isCurrent ? 'Now watching' : 'TBD'}
             </span>
           )}
         </div>
