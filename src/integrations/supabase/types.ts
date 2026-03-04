@@ -195,6 +195,7 @@ export type Database = {
           next_call_date: string | null
           season_number: number
           status: Database["public"]["Enums"]["season_status"]
+          title: string | null
           updated_at: string
         }
         Insert: {
@@ -205,6 +206,7 @@ export type Database = {
           next_call_date?: string | null
           season_number: number
           status?: Database["public"]["Enums"]["season_status"]
+          title?: string | null
           updated_at?: string
         }
         Update: {
@@ -215,6 +217,7 @@ export type Database = {
           next_call_date?: string | null
           season_number?: number
           status?: Database["public"]["Enums"]["season_status"]
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
