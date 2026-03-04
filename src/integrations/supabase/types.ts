@@ -238,6 +238,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_placeholder: {
+        Args: {
+          _group_id: string
+          _placeholder_user_id: string
+          _real_user_id: string
+        }
+        Returns: undefined
+      }
       find_group_by_code: {
         Args: { _code: string }
         Returns: {
