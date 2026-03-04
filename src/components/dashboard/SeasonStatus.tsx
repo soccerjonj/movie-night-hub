@@ -36,9 +36,9 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
 
     const fetchPoster = async () => {
       try {
-        const query = currentMovie.title + (currentMovie.year ? ` ${currentMovie.year}` : '');
+        const yearParam = currentMovie.year ? `&year=${currentMovie.year}` : '';
         const res = await fetch(
-          `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=1`,
+          `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(currentMovie.title)}&include_adult=false&language=en-US&page=1${yearParam}`,
           { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
         );
         const data = await res.json();
