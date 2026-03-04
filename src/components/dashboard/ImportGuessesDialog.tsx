@@ -93,33 +93,27 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
     .filter(([, groupPicks]) => !groupPicks.some(p => excludedUserIds.has(p.user_id)))
     .sort(([a], [b]) => (typeof a === 'number' ? a : 0) - (typeof b === 'number' ? b : 0));
 
-  const guessableMembers = profiles.filter(p => !excludedUserIds.has(p.user_id));
-
-  // For co-picks, build display labels showing both names
-  const getPickLabel = (groupPicks: MoviePickOption[]) => {
-    const names = groupPicks.map(p => getProfile(p.user_id)?.display_name || 'Unknown');
-    if (names.length > 1) return names.join(' & ');
-    return null; // single picker, no label needed in guess options
-  };
-
-  // Build guess member options: include co-pick groups as combined options
+  // Build guess options: co-pick groups as combined, and only individual members who aren't part of a co-pick
+  const coPickUserIds = new Set<string>();
   const guessOptions: { value: string; label: string }[] = [];
+
   guessableGroups.forEach(([, groupPicks]) => {
     if (groupPicks.length > 1) {
-      // Co-pick: add as combined option (use sorted user_ids joined as value)
       const ids = groupPicks.map(p => p.user_id).sort().join('+');
       const names = groupPicks.map(p => getProfile(p.user_id)?.display_name || '?').join(' & ');
+      groupPicks.forEach(p => coPickUserIds.add(p.user_id));
       if (!guessOptions.find(o => o.value === ids)) {
         guessOptions.push({ value: ids, label: names });
       }
     }
   });
-  // Add individual members
-  guessableMembers.forEach(p => {
-    if (!guessOptions.find(o => o.value === p.user_id)) {
+
+  // Only add individual members who are NOT part of any co-pick group
+  profiles
+    .filter(p => !excludedUserIds.has(p.user_id) && !coPickUserIds.has(p.user_id))
+    .forEach(p => {
       guessOptions.push({ value: p.user_id, label: p.display_name });
-    }
-  });
+    });
   const filledCount = Object.values(guesses).filter(Boolean).length;
 
   const handleImport = async () => {
@@ -232,13 +226,11 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
               </p>
               <div className="space-y-2">
                 {guessableGroups.map(([key, groupPicks]) => {
-                  const pickId = groupPicks[0].id; // use first pick's id as key
-                  const coLabel = getPickLabel(groupPicks);
+                  const pickId = groupPicks[0].id;
                   return (
                     <div key={key} className="flex items-center gap-3 bg-muted/20 rounded-xl p-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{groupPicks[0].title}</p>
-                        {coLabel && <p className="text-xs text-muted-foreground">Co-pick</p>}
                       </div>
                       <Select value={guesses[pickId] || ''} onValueChange={v => setGuesses(prev => ({ ...prev, [pickId]: v }))}>
                         <SelectTrigger className="w-36 bg-muted/50 text-xs h-8">
