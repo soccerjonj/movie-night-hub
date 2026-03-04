@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Play, SkipForward, Clock, Eye, Shuffle, Settings, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Copy, Play, SkipForward, Clock, Eye, Shuffle, Settings, Trash2, Pencil, Check, X, CalendarClock } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
@@ -28,6 +28,9 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const [editingSeason, setEditingSeason] = useState(false);
   const [editSeasonNumber, setEditSeasonNumber] = useState('');
   const [editSeasonTitle, setEditSeasonTitle] = useState('');
+  const [editingCallDate, setEditingCallDate] = useState(false);
+  const [callDate, setCallDate] = useState('');
+  const [callTime, setCallTime] = useState('');
 
   const copyJoinCode = () => {
     navigator.clipboard.writeText(group.join_code);
@@ -209,6 +212,49 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     }
   };
 
+  const startEditingCallDate = () => {
+    const d = season?.next_call_date ? new Date(season.next_call_date) : new Date();
+    setCallDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    setCallTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    setEditingCallDate(true);
+  };
+
+  const saveCallDate = async () => {
+    if (!season) return;
+    const dateTime = new Date(`${callDate}T${callTime}`);
+    if (isNaN(dateTime.getTime())) {
+      toast.error('Invalid date/time');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('seasons').update({ next_call_date: dateTime.toISOString() }).eq('id', season.id);
+      if (error) throw error;
+      toast.success('Call date updated!');
+      setEditingCallDate(false);
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update call date');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeCallDate = async () => {
+    if (!season) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('seasons').update({ next_call_date: null }).eq('id', season.id);
+      if (error) throw error;
+      toast.success('Call date removed');
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove call date');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       {showPanel && (
@@ -312,9 +358,38 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <Button variant="outline" size="sm" onClick={revealCurrentPicker} disabled={loading}>
                   <Eye className="w-4 h-4 mr-1" /> Reveal Picker
                 </Button>
+                <Button variant="outline" size="sm" onClick={startEditingCallDate} disabled={loading}>
+                  <CalendarClock className="w-4 h-4 mr-1" /> {season.next_call_date ? 'Change Call Date' : 'Set Call Date'}
+                </Button>
+                {season.next_call_date && (
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={removeCallDate} disabled={loading}>
+                    <Trash2 className="w-4 h-4 mr-1" /> Remove Call Date
+                  </Button>
+                )}
               </>
             )}
           </div>
+
+          {/* Call Date Editor */}
+          {editingCallDate && season && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Date</label>
+                <Input type="date" value={callDate} onChange={e => setCallDate(e.target.value)} className="bg-muted/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Time</label>
+                <Input type="time" value={callTime} onChange={e => setCallTime(e.target.value)} className="bg-muted/50 w-32" />
+              </div>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-green-500" onClick={saveCallDate} disabled={loading}>
+                <Check className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setEditingCallDate(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
 
           {/* Import Past Season */}
           <div className="flex flex-wrap gap-2 items-center">
