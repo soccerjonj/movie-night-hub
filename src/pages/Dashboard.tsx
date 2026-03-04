@@ -71,6 +71,7 @@ const Dashboard = () => {
               season={season}
               moviePicks={moviePicks}
               members={members}
+              profiles={profiles}
               onUpdate={refetch}
             />
           )}
