@@ -1,6 +1,5 @@
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
 import { Users, Crown, Ghost } from 'lucide-react';
-import AddPlaceholderDialog from './AddPlaceholderDialog';
 
 interface Props {
   members: GroupMember[];
@@ -19,7 +18,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
         <Users className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
         <h2 className="font-display text-base sm:text-lg font-bold">Members</h2>
         <span className="text-[10px] sm:text-xs text-muted-foreground ml-auto">{members.length} members</span>
-        {isAdmin && <AddPlaceholderDialog group={group} onAdded={onUpdate} />}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2">
@@ -43,7 +41,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
                   </span>
                 )}
                 {isPlaceholder && (
-                  <span className="text-xs text-muted-foreground">Placeholder</span>
+                  <span className="text-xs text-muted-foreground">Member</span>
                 )}
               </div>
             </div>
