@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Film, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
+import { Film, ChevronDown, ChevronUp, Check, X, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
@@ -18,14 +19,24 @@ interface Props {
   isAdmin: boolean;
   onUpdate: () => void;
 }
+
+interface GuessRow {
+  guesser_id: string;
+  guessed_user_id: string;
+  movie_pick_id: string;
+}
+
 const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAdmin, onUpdate }: Props) => {
   const { user } = useAuth();
   const [showWatched, setShowWatched] = useState(false);
   const [posterOverrides, setPosterOverrides] = useState<Record<string, string>>({});
   const [directors, setDirectors] = useState<Record<string, string>>({});
   const [userGuesses, setUserGuesses] = useState<Record<string, string>>({});
+  const [allGuesses, setAllGuesses] = useState<GuessRow[]>([]);
+  const [expandedPick, setExpandedPick] = useState<string | null>(null);
   const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
 
+  // Fetch current user's guesses
   useEffect(() => {
     const fetchGuesses = async () => {
       if (!user) return;
@@ -43,6 +54,19 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
     fetchGuesses();
   }, [season.id, user]);
 
+  // Fetch ALL guesses for the season (visible during watching/completed)
+  useEffect(() => {
+    const fetchAllGuesses = async () => {
+      const { data } = await supabase
+        .from('guesses')
+        .select('guesser_id, guessed_user_id, movie_pick_id')
+        .eq('season_id', season.id);
+      if (data) setAllGuesses(data);
+    };
+    fetchAllGuesses();
+  }, [season.id]);
+
+  // Fetch movie posters/directors
   useEffect(() => {
     const fetchMovieData = async () => {
       for (const pick of moviePicks) {
@@ -83,94 +107,169 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
   const watchedPicks = sortedPicks.filter((_, i) => i < season.current_movie_index);
   const currentAndUpcoming = sortedPicks.filter((_, i) => i >= season.current_movie_index);
 
+  const getGuessesForPick = (pickId: string) => {
+    return allGuesses.filter(g => g.movie_pick_id === pickId);
+  };
+
+  const renderGuessBreakdown = (pick: MoviePick, isWatched: boolean) => {
+    const guesses = getGuessesForPick(pick.id);
+    if (guesses.length === 0) {
+      return (
+        <p className="text-xs text-muted-foreground italic py-2">No guesses recorded</p>
+      );
+    }
+
+    const correctCount = isWatched ? guesses.filter(g => g.guessed_user_id === pick.user_id).length : 0;
+    const pct = isWatched ? Math.round((correctCount / guesses.length) * 100) : 0;
+
+    return (
+      <div className="space-y-1.5 py-2">
+        {isWatched && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-medium text-primary">{correctCount}/{guesses.length} correct</span>
+            <span className="text-xs text-muted-foreground">({pct}% accuracy)</span>
+          </div>
+        )}
+        {guesses.map(g => {
+          const guesserName = getProfile(g.guesser_id)?.display_name || 'Unknown';
+          const guessedName = getProfile(g.guessed_user_id)?.display_name || 'Unknown';
+          const isCorrect = isWatched && g.guessed_user_id === pick.user_id;
+          const isWrong = isWatched && g.guessed_user_id !== pick.user_id;
+
+          return (
+            <div
+              key={g.guesser_id}
+              className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs ${
+                isCorrect ? 'bg-green-500/10' : isWrong ? 'bg-destructive/5' : 'bg-muted/20'
+              }`}
+            >
+              <span className="font-medium text-foreground">{guesserName}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">guessed</span>
+                <span className={`font-medium ${isCorrect ? 'text-green-400' : isWrong ? 'text-destructive' : 'text-foreground'}`}>
+                  {guessedName}
+                </span>
+                {isCorrect && <Check className="w-3 h-3 text-green-400" />}
+                {isWrong && <X className="w-3 h-3 text-destructive" />}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderPick = (pick: MoviePick, i: number) => {
     const isCurrent = i === season.current_movie_index;
     const isWatched = i < season.current_movie_index;
+    const isExpanded = expandedPick === pick.id;
 
     return (
-      <div
-        key={pick.id}
-        className={`flex items-center gap-2 sm:gap-4 rounded-xl p-2 sm:p-3 transition-colors ${
-          isCurrent
-            ? 'bg-primary/10 ring-1 ring-primary/30'
-            : isWatched
-            ? 'bg-muted/10 opacity-60'
-            : 'bg-muted/20'
-        }`}
-      >
-        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${
-          isCurrent ? 'bg-primary text-primary-foreground' : isWatched ? 'bg-muted text-muted-foreground' : 'bg-muted/50 text-muted-foreground'
-        }`}>
-          {i + 1}
-        </div>
-
-        {(pick.poster_url || posterOverrides[pick.id]) ? (
-          <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className="w-8 sm:w-10 rounded-lg object-cover shrink-0" />
-        ) : (
-          <div className="w-8 sm:w-10 h-11 sm:h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
-            <Film className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+      <div key={pick.id}>
+        <button
+          onClick={() => setExpandedPick(isExpanded ? null : pick.id)}
+          className={`w-full flex items-center gap-2 sm:gap-4 rounded-xl p-2 sm:p-3 transition-colors text-left ${
+            isCurrent
+              ? 'bg-primary/10 ring-1 ring-primary/30'
+              : isWatched
+              ? 'bg-muted/10 opacity-60 hover:opacity-80'
+              : 'bg-muted/20 hover:bg-muted/30'
+          }`}
+        >
+          <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${
+            isCurrent ? 'bg-primary text-primary-foreground' : isWatched ? 'bg-muted text-muted-foreground' : 'bg-muted/50 text-muted-foreground'
+          }`}>
+            {i + 1}
           </div>
-        )}
 
-        <div className="flex-1 min-w-0">
-          <p className={`font-medium text-sm truncate ${isCurrent ? 'text-foreground' : ''}`}>
-            {pick.title}
-          </p>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
-            {pick.year && <span className="text-xs text-muted-foreground">{pick.year}</span>}
-            {directors[pick.id] && (
-              <>
-                {pick.year && <span className="text-xs text-muted-foreground">·</span>}
-                <span className="text-xs text-muted-foreground">{directors[pick.id]}</span>
-              </>
+          {(pick.poster_url || posterOverrides[pick.id]) ? (
+            <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className="w-8 sm:w-10 rounded-lg object-cover shrink-0" />
+          ) : (
+            <div className="w-8 sm:w-10 h-11 sm:h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
+              <Film className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+            </div>
+          )}
+
+          <div className="flex-1 min-w-0">
+            <p className={`font-medium text-sm truncate ${isCurrent ? 'text-foreground' : ''}`}>
+              {pick.title}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
+              {pick.year && <span className="text-xs text-muted-foreground">{pick.year}</span>}
+              {directors[pick.id] && (
+                <>
+                  {pick.year && <span className="text-xs text-muted-foreground">·</span>}
+                  <span className="text-xs text-muted-foreground">{directors[pick.id]}</span>
+                </>
+              )}
+            </div>
+            {isWatched && (
+              <span className="text-xs text-primary">
+                Picked by {getProfile(pick.user_id)?.display_name}
+              </span>
             )}
           </div>
-          {isWatched && (
-            <span className="text-xs text-primary">
-              Picked by {getProfile(pick.user_id)?.display_name}
-            </span>
-          )}
-        </div>
 
-        <div className="flex items-center shrink-0">
-          {(() => {
-            const guessedUserId = userGuesses[pick.id];
-            const guessedName = guessedUserId ? getProfile(guessedUserId)?.display_name : null;
+          <div className="flex items-center shrink-0">
+            {(() => {
+              const guessedUserId = userGuesses[pick.id];
+              const guessedName = guessedUserId ? getProfile(guessedUserId)?.display_name : null;
 
-            if (isWatched && guessedName) {
-              const isCorrect = guessedUserId === pick.user_id;
-              return (
-                <div className="text-right">
-                  <span className="text-[10px] text-muted-foreground block">Your guess:</span>
-                  <div className={`flex items-center gap-1 text-xs font-medium ${isCorrect ? 'text-green-400' : 'text-destructive'}`}>
-                    {isCorrect ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                    {guessedName}
+              if (isWatched && guessedName) {
+                const isCorrect = guessedUserId === pick.user_id;
+                return (
+                  <div className="text-right">
+                    <span className="text-[10px] text-muted-foreground block">Your guess:</span>
+                    <div className={`flex items-center gap-1 text-xs font-medium ${isCorrect ? 'text-green-400' : 'text-destructive'}`}>
+                      {isCorrect ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                      {guessedName}
+                    </div>
                   </div>
+                );
+              }
+
+              if (!isWatched && guessedName) {
+                return (
+                  <div className="text-right">
+                    <span className="text-[10px] text-muted-foreground block">Your guess:</span>
+                    <span className="text-xs font-medium text-primary">{guessedName}</span>
+                  </div>
+                );
+              }
+
+              if (!isWatched && !guessedName) {
+                const isYourPick = pick.user_id === user?.id;
+                return isYourPick ? (
+                  <span className="text-[10px] text-primary/70 italic">Your pick</span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground/50 italic">No guess</span>
+                );
+              }
+
+              return null;
+            })()}
+          </div>
+        </button>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="ml-8 sm:ml-12 pl-2 sm:pl-4 border-l-2 border-border/30 mt-1 mb-2">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                  <Users className="w-3 h-3" />
+                  <span>Everyone's guesses</span>
                 </div>
-              );
-            }
-
-            if (!isWatched && guessedName) {
-              return (
-                <div className="text-right">
-                  <span className="text-[10px] text-muted-foreground block">Your guess:</span>
-                  <span className="text-xs font-medium text-primary">{guessedName}</span>
-                </div>
-              );
-            }
-
-            if (!isWatched && !guessedName) {
-              const isYourPick = pick.user_id === user?.id;
-              return isYourPick ? (
-                <span className="text-[10px] text-primary/70 italic">Your pick</span>
-              ) : (
-                <span className="text-[10px] text-muted-foreground/50 italic">No guess</span>
-              );
-            }
-
-            return null;
-          })()}
-        </div>
+                {renderGuessBreakdown(pick, isWatched)}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
