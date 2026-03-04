@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Eye, EyeOff, Film, ChevronDown, ChevronUp, Clock, CalendarClock, Pencil, Trash2, Plus } from 'lucide-react';
+import { Eye, EyeOff, Film, ChevronDown, ChevronUp, Clock, CalendarClock, Pencil, Trash2, Plus, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -159,11 +160,31 @@ const CallDateEditor = ({ season, onSave, onCancel, initialDate }: {
 };
 
 const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAdmin, onUpdate }: Props) => {
+  const { user } = useAuth();
   const [showWatched, setShowWatched] = useState(false);
   const [editing, setEditing] = useState(false);
   const [posterOverrides, setPosterOverrides] = useState<Record<string, string>>({});
   const [directors, setDirectors] = useState<Record<string, string>>({});
+  const [userGuesses, setUserGuesses] = useState<Record<string, string>>({}); // movie_pick_id -> guessed_user_id
   const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
+
+  // Fetch current user's guesses for this season
+  useEffect(() => {
+    const fetchGuesses = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('guesses')
+        .select('movie_pick_id, guessed_user_id')
+        .eq('season_id', season.id)
+        .eq('guesser_id', user.id);
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach(g => { map[g.movie_pick_id] = g.guessed_user_id; });
+        setUserGuesses(map);
+      }
+    };
+    fetchGuesses();
+  }, [season.id, user]);
 
   // Auto-fetch posters and directors for movies
   useEffect(() => {
@@ -281,28 +302,40 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
           )}
         </div>
 
-        <div className="flex items-center">
-          {isCurrent && (() => {
-            const revealedPickerIds = sortedPicks
-              .filter((_, idx) => idx < season.current_movie_index)
-              .map(p => p.user_id);
-            const remainingMembers = members
-              .filter(m => !revealedPickerIds.includes(m.user_id))
-              .map(m => getProfile(m.user_id)?.display_name)
-              .filter(Boolean);
+        <div className="flex items-center shrink-0">
+          {(() => {
+            const guessedUserId = userGuesses[pick.id];
+            const guessedName = guessedUserId ? getProfile(guessedUserId)?.display_name : null;
 
-            return (
-              <div className="text-right">
-                <span className="text-[10px] text-muted-foreground block mb-1">Picked by:</span>
-                <div className="flex flex-wrap justify-end gap-1">
-                  {remainingMembers.map((name, idx) => (
-                    <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                      {name}
-                    </span>
-                  ))}
+            if (isWatched && guessedName) {
+              const isCorrect = guessedUserId === pick.user_id;
+              return (
+                <div className="text-right">
+                  <span className="text-[10px] text-muted-foreground block">Your guess:</span>
+                  <div className={`flex items-center gap-1 text-xs font-medium ${isCorrect ? 'text-green-400' : 'text-destructive'}`}>
+                    {isCorrect ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                    {guessedName}
+                  </div>
                 </div>
-              </div>
-            );
+              );
+            }
+
+            if (!isWatched && guessedName) {
+              return (
+                <div className="text-right">
+                  <span className="text-[10px] text-muted-foreground block">Your guess:</span>
+                  <span className="text-xs font-medium text-primary">{guessedName}</span>
+                </div>
+              );
+            }
+
+            if (!isWatched && !guessedName) {
+              return (
+                <span className="text-[10px] text-muted-foreground/50 italic">No guess</span>
+              );
+            }
+
+            return null;
           })()}
         </div>
       </div>
