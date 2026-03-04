@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Play, SkipForward, Clock, Eye, Shuffle, Settings } from 'lucide-react';
+import { Copy, Play, SkipForward, Clock, Eye, Shuffle, Settings, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
 import ImportSeasonDialog from './ImportSeasonDialog';
@@ -153,6 +154,24 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: 
     }
   };
 
+  const deleteSeason = async () => {
+    if (!season) return;
+    setLoading(true);
+    try {
+      // Delete guesses, then picks, then season
+      await supabase.from('guesses').delete().eq('season_id', season.id);
+      await supabase.from('movie_picks').delete().eq('season_id', season.id);
+      const { error } = await supabase.from('seasons').delete().eq('id', season.id);
+      if (error) throw error;
+      toast.success(`Season ${season.season_number} deleted!`);
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete season');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="mb-6">
       <Button
@@ -235,12 +254,38 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate }: 
           </div>
 
           {/* Import Past Season */}
-          <ImportSeasonDialog
-            group={group}
-            profiles={profiles}
-            existingSeasonCount={season?.season_number ?? 0}
-            onImported={onUpdate}
-          />
+          <div className="flex flex-wrap gap-2 items-center">
+            <ImportSeasonDialog
+              group={group}
+              profiles={profiles}
+              existingSeasonCount={season?.season_number ?? 0}
+              onImported={onUpdate}
+            />
+
+            {season && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={loading}>
+                    <Trash2 className="w-4 h-4 mr-1" /> Delete Season {season.season_number}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Season {season.season_number}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete this season, all movie picks, and all guesses. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={deleteSeason} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
       )}
     </div>
