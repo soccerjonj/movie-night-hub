@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
 import { Calendar, Film, Eye } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   season: Season;
@@ -15,33 +17,83 @@ const statusLabels: Record<string, string> = {
   completed: '✅ Season Complete',
 };
 
+const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0YjYyZmI2ZmI0NTRiODFiNjU2MjkzZTIwMjI0Njg2NiIsIm5iZiI6MTc0OTA1MDQ5NC4wNjgsInN1YiI6IjY4NDEyNTQ2MDEzMWI0Y2I4YWFkNTZhMiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.0R-GO8fzHb7bsFqkGYBWoHY5oX6M-h_JOjBlyg1pUjI';
+const TMDB_IMAGE_LG = 'https://image.tmdb.org/t/p/w500';
+
 const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
-  const currentMovie = moviePicks.find((_, i) => i === season.current_movie_index);
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
+
+  // Find current movie by watch_order matching the index
+  const currentMovie = moviePicks.find(p => p.watch_order === season.current_movie_index);
+
+  // Auto-fetch poster from TMDB if not stored
+  useEffect(() => {
+    if (!currentMovie) return;
+    if (currentMovie.poster_url) {
+      setPosterUrl(currentMovie.poster_url);
+      return;
+    }
+
+    const fetchPoster = async () => {
+      try {
+        const query = currentMovie.title + (currentMovie.year ? ` ${currentMovie.year}` : '');
+        const res = await fetch(
+          `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=1`,
+          { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
+        );
+        const data = await res.json();
+        const movie = data.results?.[0];
+        if (movie?.poster_path) {
+          const url = `${TMDB_IMAGE_LG}${movie.poster_path}`;
+          setPosterUrl(url);
+          // Save it back so we don't fetch again
+          await supabase.from('movie_picks').update({
+            poster_url: url,
+            tmdb_id: movie.id,
+            overview: movie.overview || null,
+          }).eq('id', currentMovie.id);
+        }
+      } catch {
+        // silently fail
+      }
+    };
+    fetchPoster();
+  }, [currentMovie?.id, currentMovie?.poster_url]);
 
   return (
     <div className="glass-card rounded-2xl p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-xl font-bold">Season {season.season_number}</h2>
+        <h2 className="font-display text-xl font-bold">
+          Season {season.season_number}
+          {season.title ? ` — ${season.title}` : ''}
+        </h2>
         <span className="text-sm px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">
           {statusLabels[season.status]}
         </span>
       </div>
 
       {season.status === 'watching' && currentMovie && (
-        <div className="flex items-start gap-4 mt-4">
-          {currentMovie.poster_url && (
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mt-4">
+          {posterUrl ? (
             <img
-              src={currentMovie.poster_url}
+              src={posterUrl}
               alt={currentMovie.title}
-              className="w-20 rounded-lg shadow-lg"
+              className="w-36 sm:w-44 rounded-xl shadow-xl ring-1 ring-border/20"
             />
+          ) : (
+            <div className="w-36 sm:w-44 aspect-[2/3] rounded-xl bg-muted/30 flex items-center justify-center">
+              <Film className="w-10 h-10 text-muted-foreground/30" />
+            </div>
           )}
-          <div className="flex-1">
+          <div className="flex-1 text-center sm:text-left">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Now Watching</p>
-            <h3 className="font-display text-lg font-bold">{currentMovie.title}</h3>
-            {currentMovie.year && <p className="text-sm text-muted-foreground">{currentMovie.year}</p>}
+            <h3 className="font-display text-2xl font-bold">{currentMovie.title}</h3>
+            {currentMovie.year && <p className="text-sm text-muted-foreground mt-0.5">{currentMovie.year}</p>}
+            {currentMovie.overview && (
+              <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{currentMovie.overview}</p>
+            )}
             {currentMovie.revealed && (
-              <p className="text-sm text-primary mt-1 flex items-center gap-1">
+              <p className="text-sm text-primary mt-2 flex items-center gap-1 justify-center sm:justify-start">
                 <Eye className="w-3 h-3" />
                 Picked by {getProfile(currentMovie.user_id)?.display_name}
               </p>
@@ -63,21 +115,24 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
       {season.status === 'watching' && (
         <div className="mt-4">
           <div className="flex gap-1">
-            {moviePicks.map((pick, i) => (
-              <div
-                key={pick.id}
-                className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  i < season.current_movie_index
-                    ? 'bg-primary'
-                    : i === season.current_movie_index
-                    ? 'bg-primary/60'
-                    : 'bg-muted'
-                }`}
-              />
-            ))}
+            {moviePicks
+              .filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i)
+              .sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0))
+              .map((pick) => (
+                <div
+                  key={pick.id}
+                  className={`h-1.5 flex-1 rounded-full transition-colors ${
+                    (pick.watch_order ?? 0) < season.current_movie_index
+                      ? 'bg-primary'
+                      : (pick.watch_order ?? 0) === season.current_movie_index
+                      ? 'bg-primary/60'
+                      : 'bg-muted'
+                  }`}
+                />
+              ))}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {season.current_movie_index + 1} of {moviePicks.length} movies
+            {season.current_movie_index + 1} of {moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length} movies
           </p>
         </div>
       )}
