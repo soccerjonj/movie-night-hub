@@ -93,7 +93,7 @@ const Dashboard = () => {
           )}
 
           {/* Members */}
-          <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} />
+          <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} />
 
           {/* No season yet */}
           {!season && !isAdmin && (
