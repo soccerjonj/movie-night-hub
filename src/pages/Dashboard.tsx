@@ -126,7 +126,7 @@ const Dashboard = () => {
                 <GuessingPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
               )}
               {season?.status === 'watching' && (
-                <WatchingPhase season={season} moviePicks={moviePicks} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} />
+                <WatchingPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} />
               )}
 
               {/* Scoreboard */}
