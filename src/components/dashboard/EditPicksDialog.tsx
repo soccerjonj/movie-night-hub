@@ -128,21 +128,46 @@ const EditPicksDialog = ({ group, profiles, onUpdated }: Props) => {
           return;
         }
 
-        // Delete existing picks for this slot
-        for (const pickId of slot.pickIds) {
-          await supabase.from('movie_picks').delete().eq('id', pickId);
+        const origSet = new Set(slot.originalUserIds);
+        const currSet = new Set(slot.currentUserIds);
+
+        // Update existing picks that are staying but changing user_id
+        // Keep as many existing pick rows as possible to preserve guess references
+        const keepUserIds = slot.currentUserIds.filter(id => origSet.has(id));
+        const addUserIds = slot.currentUserIds.filter(id => !origSet.has(id));
+        const removeUserIds = slot.originalUserIds.filter(id => !currSet.has(id));
+
+        // For users being removed: if there's a new user to add, update the row instead of deleting
+        const pickIdsByUser = new Map<string, string>();
+        slot.originalUserIds.forEach((uid, i) => {
+          if (slot.pickIds[i]) pickIdsByUser.set(uid, slot.pickIds[i]);
+        });
+
+        for (const removeId of removeUserIds) {
+          const pickId = pickIdsByUser.get(removeId);
+          if (!pickId) continue;
+          if (addUserIds.length > 0) {
+            // Reassign this pick row to a new user (preserves the pick ID for guesses)
+            const newUserId = addUserIds.shift()!;
+            const { error } = await supabase.from('movie_picks').update({ user_id: newUserId }).eq('id', pickId);
+            if (error) throw error;
+          } else {
+            // No one to reassign to, delete the extra row
+            await supabase.from('movie_picks').delete().eq('id', pickId);
+          }
         }
 
-        // Insert new picks
-        const newPicks = slot.currentUserIds.map(userId => ({
-          season_id: selectedSeason,
-          user_id: userId,
-          title: slot.title,
-          watch_order: slot.watchOrder,
-          revealed: true,
-        }));
-        const { error } = await supabase.from('movie_picks').insert(newPicks);
-        if (error) throw error;
+        // Any remaining new users that didn't replace an existing row — insert new picks
+        for (const newUserId of addUserIds) {
+          const { error } = await supabase.from('movie_picks').insert({
+            season_id: selectedSeason,
+            user_id: newUserId,
+            title: slot.title,
+            watch_order: slot.watchOrder,
+            revealed: true,
+          });
+          if (error) throw error;
+        }
       }
 
       toast.success(`Updated pickers for ${changedCount} movie(s)!`);
