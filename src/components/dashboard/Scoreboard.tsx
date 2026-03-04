@@ -32,7 +32,7 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
   const [picks, setPicks] = useState<{ id: string; user_id: string; season_id: string; watch_order: number | null; title: string; poster_url: string | null }[]>([]);
-  const [seasonMap, setSeasonMap] = useState<Map<string, { id: string; status: string; current_movie_index: number }>>(new Map());
+  const [seasonMap, setSeasonMap] = useState<Map<string, { id: string; status: string; current_movie_index: number; season_number: number }>>(new Map());
 
   useEffect(() => {
     fetchScores();
@@ -42,15 +42,15 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
     setLoading(true);
     try {
       // Get all seasons for the group (or just current)
-      let seasonData: { id: string; status: string; current_movie_index: number }[] = [];
+      let seasonData: { id: string; status: string; current_movie_index: number; season_number: number }[] = [];
       if (view === 'season' && season) {
-        seasonData = [{ id: season.id, status: season.status, current_movie_index: season.current_movie_index }];
+        seasonData = [{ id: season.id, status: season.status, current_movie_index: season.current_movie_index, season_number: season.season_number }];
       } else {
         const { data: seasons } = await supabase
           .from('seasons')
-          .select('id, status, current_movie_index')
+          .select('id, status, current_movie_index, season_number')
           .eq('group_id', group.id);
-        seasonData = (seasons || []) as { id: string; status: string; current_movie_index: number }[];
+        seasonData = (seasons || []) as typeof seasonData;
       }
 
       const seasonIds = seasonData.map(s => s.id);
@@ -150,7 +150,14 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
 
   const renderUserGuesses = (userId: string) => {
     const userGuesses = guesses.filter(g => g.guesser_id === userId);
-    const watchedPicks = picks.filter(p => isPickWatchedCheck(p)).sort((a, b) => (b.watch_order ?? 0) - (a.watch_order ?? 0));
+    const watchedPicks = picks.filter(p => isPickWatchedCheck(p)).sort((a, b) => {
+      const sA = seasonMap.get(a.season_id);
+      const sB = seasonMap.get(b.season_id);
+      const snA = sA?.season_number ?? 0;
+      const snB = sB?.season_number ?? 0;
+      if (snA !== snB) return snB - snA;
+      return (b.watch_order ?? 0) - (a.watch_order ?? 0);
+    });
 
     // Deduplicate by watch_order (co-picks)
     const seen = new Set<string>();
