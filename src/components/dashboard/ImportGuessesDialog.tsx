@@ -4,7 +4,7 @@ import { Group, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClipboardList, Check } from 'lucide-react';
+import { ClipboardList, Check, CheckCircle2, Circle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -34,6 +34,7 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
   const [picks, setPicks] = useState<MoviePickOption[]>([]);
   const [guesses, setGuesses] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [guessersWithData, setGuessersWithData] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!open) return;
@@ -48,18 +49,20 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
     fetchSeasons();
   }, [open, group.id]);
 
+  // Fetch picks and existing guessers when season changes
   useEffect(() => {
-    if (!selectedSeason) { setPicks([]); return; }
-    const fetchPicks = async () => {
-      const { data } = await supabase
-        .from('movie_picks')
-        .select('id, title, user_id, watch_order')
-        .eq('season_id', selectedSeason)
-        .order('watch_order', { ascending: true });
-      setPicks((data || []) as MoviePickOption[]);
+    if (!selectedSeason) { setPicks([]); setGuessersWithData(new Set()); return; }
+    const fetchData = async () => {
+      const [picksRes, guessesRes] = await Promise.all([
+        supabase.from('movie_picks').select('id, title, user_id, watch_order').eq('season_id', selectedSeason).order('watch_order', { ascending: true }),
+        supabase.from('guesses').select('guesser_id').eq('season_id', selectedSeason),
+      ]);
+      setPicks((picksRes.data || []) as MoviePickOption[]);
+      const uniqueGuessers = new Set((guessesRes.data || []).map(g => g.guesser_id));
+      setGuessersWithData(uniqueGuessers);
       setGuesses({});
     };
-    fetchPicks();
+    fetchData();
   }, [selectedSeason]);
 
   // Reset guesses when guesser changes
@@ -67,12 +70,8 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
-  // Movies the guesser didn't pick (they don't guess their own)
   const guessableMovies = picks.filter(p => p.user_id !== selectedGuesser);
-
-  // Members excluding the guesser (for guess options)
   const guessableMembers = profiles.filter(p => p.user_id !== selectedGuesser);
-
   const filledCount = Object.values(guesses).filter(Boolean).length;
 
   const handleImport = async () => {
@@ -90,6 +89,7 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
       if (error) throw error;
       toast.success(`Imported ${valid.length} guesses for ${getProfile(selectedGuesser)?.display_name}!`);
       setGuesses({});
+      setGuessersWithData(prev => new Set([...prev, selectedGuesser]));
       setSelectedGuesser('');
       onImported();
     } catch (err: unknown) {
@@ -129,26 +129,49 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
             </Select>
           </div>
 
-          {/* Member selector */}
+          {/* Member selector with status indicators */}
           {selectedSeason && (
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Member (guesser)</label>
-              <Select value={selectedGuesser} onValueChange={setSelectedGuesser}>
-                <SelectTrigger className="bg-muted/50">
-                  <SelectValue placeholder="Who is guessing?" />
-                </SelectTrigger>
-                <SelectContent>
-                  {profiles.map(p => (
-                    <SelectItem key={p.user_id} value={p.user_id}>{p.display_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1 mb-2">
+                {profiles.map(p => {
+                  const hasGuesses = guessersWithData.has(p.user_id);
+                  const isSelected = selectedGuesser === p.user_id;
+                  return (
+                    <button
+                      key={p.user_id}
+                      onClick={() => setSelectedGuesser(p.user_id)}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
+                        isSelected
+                          ? 'bg-primary/10 ring-1 ring-primary/30'
+                          : 'bg-muted/20 hover:bg-muted/40'
+                      }`}
+                    >
+                      {hasGuesses ? (
+                        <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                      ) : (
+                        <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
+                      )}
+                      <span className="flex-1">{p.display_name}</span>
+                      <span className={`text-xs ${hasGuesses ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {hasGuesses ? 'Recorded' : 'Missing'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
           {/* Movie guesses */}
           {selectedGuesser && guessableMovies.length > 0 && (
             <>
+              {guessersWithData.has(selectedGuesser) && (
+                <div className="text-xs text-primary bg-primary/5 rounded-lg p-2 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Guesses already recorded for {getProfile(selectedGuesser)?.display_name}. Importing will add duplicates.
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 For each movie, select who {getProfile(selectedGuesser)?.display_name} guessed picked it:
               </p>
