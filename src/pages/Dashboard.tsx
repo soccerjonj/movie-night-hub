@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
 import { useNavigate } from 'react-router-dom';
@@ -12,11 +13,13 @@ import GuessingPhase from '@/components/dashboard/GuessingPhase';
 import WatchingPhase from '@/components/dashboard/WatchingPhase';
 import MemberList from '@/components/dashboard/MemberList';
 import Scoreboard from '@/components/dashboard/Scoreboard';
+import History from '@/components/dashboard/History';
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup();
   const navigate = useNavigate();
+  const [tab, setTab] = useState<'current' | 'history'>('current');
 
   useEffect(() => {
     if (!loading && !group) {
@@ -47,7 +50,7 @@ const Dashboard = () => {
             </div>
             <div>
               <h1 className="font-display text-lg font-bold">{group.name}</h1>
-              {season && (
+              {season && tab === 'current' && (
                 <p className="text-xs text-muted-foreground">
                   Season {season.season_number}{season.title ? ` — ${season.title}` : ''}
                 </p>
@@ -63,51 +66,88 @@ const Dashboard = () => {
             </Button>
           </div>
         </div>
+
+        {/* Tabs */}
+        <div className="container max-w-5xl mx-auto px-4">
+          <div className="flex gap-1 -mb-px">
+            <button
+              onClick={() => setTab('current')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                tab === 'current'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Current Season
+            </button>
+            <button
+              onClick={() => setTab('history')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                tab === 'history'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              History
+            </button>
+          </div>
+        </div>
       </header>
 
       <main className="container max-w-5xl mx-auto px-4 py-8 space-y-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          {/* Admin Panel */}
-          {isAdmin && (
-            <AdminPanel
-              group={group}
-              season={season}
-              moviePicks={moviePicks}
-              members={members}
-              profiles={profiles}
-              onUpdate={refetch}
-            />
-          )}
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {tab === 'current' ? (
+            <>
+              {/* Admin Panel */}
+              {isAdmin && (
+                <AdminPanel
+                  group={group}
+                  season={season}
+                  moviePicks={moviePicks}
+                  members={members}
+                  profiles={profiles}
+                  onUpdate={refetch}
+                />
+              )}
 
-          {/* Season Status */}
-          {season && <SeasonStatus season={season} moviePicks={moviePicks} getProfile={getProfile} />}
+              {/* Season Status */}
+              {season && <SeasonStatus season={season} moviePicks={moviePicks} getProfile={getProfile} />}
 
-          {/* Phase-specific content */}
-          {season?.status === 'picking' && (
-            <MoviePickPhase season={season} moviePicks={moviePicks} members={members} onUpdate={refetch} />
-          )}
-          {season?.status === 'guessing' && (
-            <GuessingPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
-          )}
-          {season?.status === 'watching' && (
-            <WatchingPhase season={season} moviePicks={moviePicks} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} />
-          )}
+              {/* Phase-specific content */}
+              {season?.status === 'picking' && (
+                <MoviePickPhase season={season} moviePicks={moviePicks} members={members} onUpdate={refetch} />
+              )}
+              {season?.status === 'guessing' && (
+                <GuessingPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
+              )}
+              {season?.status === 'watching' && (
+                <WatchingPhase season={season} moviePicks={moviePicks} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} />
+              )}
 
-          {/* Scoreboard */}
-          {group && (
-            <Scoreboard group={group} season={season} profiles={profiles} members={members} />
-          )}
+              {/* Scoreboard */}
+              {group && (
+                <Scoreboard group={group} season={season} profiles={profiles} members={members} />
+              )}
 
-          {/* Members */}
-          <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} />
+              {/* Members */}
+              <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} />
 
-          {/* No season yet */}
-          {!season && !isAdmin && (
-            <div className="glass-card rounded-2xl p-12 text-center">
-              <Film className="w-16 h-16 text-primary/30 mx-auto mb-4" />
-              <h2 className="text-xl font-display font-bold mb-2">No Season Yet</h2>
-              <p className="text-muted-foreground">Waiting for your admin to start a new season.</p>
-            </div>
+              {/* No season yet */}
+              {!season && !isAdmin && (
+                <div className="glass-card rounded-2xl p-12 text-center">
+                  <Film className="w-16 h-16 text-primary/30 mx-auto mb-4" />
+                  <h2 className="text-xl font-display font-bold mb-2">No Season Yet</h2>
+                  <p className="text-muted-foreground">Waiting for your admin to start a new season.</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <History group={group} profiles={profiles} members={members} />
           )}
         </motion.div>
       </main>
