@@ -291,7 +291,7 @@ const History = ({ group, profiles, members }: Props) => {
       ) : (
         <>
           {/* Movies */}
-          <div className="glass-card rounded-2xl p-5">
+          <div className="glass-card rounded-2xl p-5 overflow-visible">
             <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2">
               {groupedMovies.map(({ seasonId, seasonInfo, movies }, groupIdx) => (
                 <>
@@ -329,7 +329,7 @@ const History = ({ group, profiles, members }: Props) => {
                           )}
                         </button>
                         {isExpanded && (
-                          <div className="absolute z-20 left-0 right-0 top-full mt-1 p-3 rounded-xl bg-card border border-border shadow-xl space-y-1.5 min-w-[200px] w-max max-w-[260px]">
+                          <div className="absolute z-50 bottom-full mb-1 left-1/2 -translate-x-1/2 p-3 rounded-xl bg-card border border-border shadow-xl space-y-1.5 min-w-[200px] w-max max-w-[260px]">
                             <p className="font-medium text-sm leading-tight">{movie.title}</p>
                             <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
                               {movie.year && <span>{movie.year}</span>}
