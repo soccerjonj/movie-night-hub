@@ -71,7 +71,7 @@ const History = ({ group, profiles, members }: Props) => {
         .from('seasons')
         .select('id, season_number, title, status, current_movie_index')
         .eq('group_id', group.id)
-        .order('season_number', { ascending: true });
+        .order('season_number', { ascending: false });
       setSeasons((data || []) as SeasonInfo[]);
       setLoading(false);
     };
