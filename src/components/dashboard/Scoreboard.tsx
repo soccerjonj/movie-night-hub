@@ -37,22 +37,25 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
     setLoading(true);
     try {
       // Get all seasons for the group (or just current)
-      let seasonIds: string[] = [];
+      let seasonData: { id: string; status: string; current_movie_index: number }[] = [];
       if (view === 'season' && season) {
-        seasonIds = [season.id];
+        seasonData = [{ id: season.id, status: season.status, current_movie_index: season.current_movie_index }];
       } else {
         const { data: seasons } = await supabase
           .from('seasons')
-          .select('id')
+          .select('id, status, current_movie_index')
           .eq('group_id', group.id);
-        seasonIds = seasons?.map(s => s.id) || [];
+        seasonData = (seasons || []) as { id: string; status: string; current_movie_index: number }[];
       }
 
+      const seasonIds = seasonData.map(s => s.id);
       if (seasonIds.length === 0) {
         setScores([]);
         setLoading(false);
         return;
       }
+
+      const seasonMap = new Map(seasonData.map(s => [s.id, s]));
 
       // Fetch guesses and movie picks for those seasons
       const [guessesRes, picksRes] = await Promise.all([
@@ -63,11 +66,22 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
       const guesses = (guessesRes.data || []) as GuessRow[];
       const picks = picksRes.data || [];
 
+      // Determine which picks are "watched" based on season status and current_movie_index
+      const isPickWatched = (pick: typeof picks[0]) => {
+        const s = seasonMap.get(pick.season_id);
+        if (!s) return false;
+        if (s.status === 'completed') return true;
+        if (s.status === 'watching' && pick.watch_order != null) {
+          return pick.watch_order < s.current_movie_index;
+        }
+        return false;
+      };
+
       // Build a map of movie_pick_id -> set of valid user_ids (for co-picks, any co-picker is correct)
-      // Group picks by season_id + watch_order to find co-picks
+      // Only include watched picks
       const coPickGroups = new Map<string, string[]>();
       picks.forEach(p => {
-        if (p.revealed && p.watch_order != null) {
+        if (isPickWatched(p) && p.watch_order != null) {
           const key = `${p.season_id}:${p.watch_order}`;
           if (!coPickGroups.has(key)) coPickGroups.set(key, []);
           coPickGroups.get(key)!.push(p.user_id);
@@ -77,7 +91,7 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
       // Map each pick id to the set of valid user_ids (all co-pickers)
       const pickValidUsers: Record<string, Set<string>> = {};
       picks.forEach(p => {
-        if (p.revealed && p.watch_order != null) {
+        if (isPickWatched(p) && p.watch_order != null) {
           const key = `${p.season_id}:${p.watch_order}`;
           pickValidUsers[p.id] = new Set(coPickGroups.get(key) || [p.user_id]);
         }
@@ -93,7 +107,7 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
         if (!scoreMap[g.guesser_id]) {
           scoreMap[g.guesser_id] = { correct: 0, total: 0 };
         }
-        // Only count guesses for revealed movies
+        // Only count guesses for watched movies
         if (pickValidUsers[g.movie_pick_id]) {
           scoreMap[g.guesser_id].total += 1;
           if (pickValidUsers[g.movie_pick_id].has(g.guessed_user_id)) {
