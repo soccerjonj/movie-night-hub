@@ -63,17 +63,17 @@ const CountdownTimer = ({ targetDate, isAdmin, onEdit, onDelete }: {
   const target = new Date(targetDate);
 
   return (
-    <div className="glass-card rounded-2xl p-5 mt-6">
-      <div className="flex items-start gap-4">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isPast ? 'bg-destructive/10' : 'bg-primary/10'}`}>
-          <CalendarClock className={`w-5 h-5 ${isPast ? 'text-destructive' : 'text-primary'}`} />
+    <div className="glass-card rounded-2xl p-3 sm:p-5 mt-4 sm:mt-6">
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 ${isPast ? 'bg-destructive/10' : 'bg-primary/10'}`}>
+          <CalendarClock className={`w-4 h-4 sm:w-5 sm:h-5 ${isPast ? 'text-destructive' : 'text-primary'}`} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs text-muted-foreground">Next call / Watch by</p>
-          <p className={`font-display text-2xl font-bold tracking-wide ${isPast ? 'text-destructive' : 'text-primary'}`}>
+          <p className={`font-display text-xl sm:text-2xl font-bold tracking-wide ${isPast ? 'text-destructive' : 'text-primary'}`}>
             {timeLeft}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             {target.toLocaleDateString(undefined, {
               weekday: 'long',
               month: 'long',
@@ -260,7 +260,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
     return (
       <div
         key={pick.id}
-        className={`flex items-center gap-4 rounded-xl p-3 transition-colors ${
+        className={`flex items-center gap-2 sm:gap-4 rounded-xl p-2 sm:p-3 transition-colors ${
           isCurrent
             ? 'bg-primary/10 ring-1 ring-primary/30'
             : isWatched
@@ -268,17 +268,17 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
             : 'bg-muted/20'
         }`}
       >
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${
           isCurrent ? 'bg-primary text-primary-foreground' : isWatched ? 'bg-muted text-muted-foreground' : 'bg-muted/50 text-muted-foreground'
         }`}>
           {i + 1}
         </div>
 
         {(pick.poster_url || posterOverrides[pick.id]) ? (
-          <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className="w-10 rounded-lg object-cover" />
+          <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className="w-8 sm:w-10 rounded-lg object-cover shrink-0" />
         ) : (
-          <div className="w-10 h-14 rounded-lg bg-muted flex items-center justify-center">
-            <Film className="w-4 h-4 text-muted-foreground" />
+          <div className="w-8 sm:w-10 h-11 sm:h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <Film className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
           </div>
         )}
 
@@ -374,10 +374,10 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
         </div>
       ) : null}
 
-      <div className="glass-card rounded-2xl p-6 mt-6">
-        <h2 className="font-display text-xl font-bold mb-4">Watch Schedule</h2>
+      <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
+        <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">Watch Schedule</h2>
 
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {watchedPicks.length > 0 && (
             <>
               <Button

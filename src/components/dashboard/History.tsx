@@ -305,8 +305,8 @@ const History = ({ group, profiles, members }: Props) => {
       ) : (
         <>
           {/* Movies */}
-          <div className="glass-card rounded-2xl p-5 overflow-visible">
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2">
+          <div className="glass-card rounded-2xl p-3 sm:p-5 overflow-visible">
+            <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-1.5 sm:gap-2">
               {groupedMovies.map(({ seasonId, seasonInfo, movies }, groupIdx) => (
                 <>
                   {selectedSeasonId === 'all' && seasonInfo && groupIdx > 0 && (
@@ -370,7 +370,7 @@ const History = ({ group, profiles, members }: Props) => {
           </div>
 
           {/* Scoreboard */}
-          <div className="glass-card rounded-2xl p-6">
+          <div className="glass-card rounded-2xl p-4 sm:p-6">
             <div className="flex items-center gap-2 mb-4">
               <Trophy className="w-5 h-5 text-primary" />
               <h2 className="font-display text-xl font-bold">
