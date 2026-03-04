@@ -32,6 +32,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const [callDate, setCallDate] = useState('');
   const [callTime, setCallTime] = useState('');
   const [callTimezone, setCallTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const getProfileName = (userId: string) => profiles.find((p) => p.user_id === userId)?.display_name || 'Unknown';
 
   const copyJoinCode = () => {
     navigator.clipboard.writeText(group.join_code);
@@ -272,6 +273,71 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     }
   };
 
+  const removeMember = async (memberUserId: string) => {
+    if (memberUserId === group.admin_user_id) {
+      toast.error('You cannot remove the group admin');
+      return;
+    }
+
+    const memberName = getProfileName(memberUserId);
+    const confirmed = window.confirm(`Remove ${memberName} from this group?`);
+    if (!confirmed) return;
+
+    let hasHistory = false;
+    try {
+      const { data: seasonsData, error: seasonsError } = await supabase
+        .from('seasons')
+        .select('id')
+        .eq('group_id', group.id);
+      if (seasonsError) throw seasonsError;
+
+      const seasonIds = (seasonsData || []).map((s) => s.id);
+      if (seasonIds.length > 0) {
+        const [{ count: pickCount, error: picksError }, { count: guessCount, error: guessesError }] = await Promise.all([
+          supabase
+            .from('movie_picks')
+            .select('id', { count: 'exact', head: true })
+            .in('season_id', seasonIds)
+            .eq('user_id', memberUserId),
+          supabase
+            .from('guesses')
+            .select('id', { count: 'exact', head: true })
+            .in('season_id', seasonIds)
+            .or(`guesser_id.eq.${memberUserId},guessed_user_id.eq.${memberUserId}`),
+        ]);
+        if (picksError) throw picksError;
+        if (guessesError) throw guessesError;
+        hasHistory = (pickCount || 0) > 0 || (guessCount || 0) > 0;
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to verify member history');
+      return;
+    }
+
+    if (hasHistory) {
+      const secondConfirm = window.confirm(
+        `${memberName} already has movie picks/guesses. Deleting this member may remove historical links. Are you absolutely sure?`,
+      );
+      if (!secondConfirm) return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', group.id)
+        .eq('user_id', memberUserId);
+      if (error) throw error;
+      toast.success(`${memberName} removed`);
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove member');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       {showPanel && (
@@ -481,6 +547,36 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 </AlertDialogContent>
               </AlertDialog>
             )}
+          </div>
+
+          {/* Member Management */}
+          <div className="pt-2 border-t border-border/40">
+            <p className="text-sm text-muted-foreground mb-2">Member Management</p>
+            <div className="space-y-2">
+              {members.map((member) => {
+                const isGroupAdmin = member.user_id === group.admin_user_id;
+                const name = getProfileName(member.user_id);
+                return (
+                  <div key={member.id} className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2">
+                    <span className="text-sm">
+                      {name}
+                      {isGroupAdmin ? ' (Admin)' : ''}
+                    </span>
+                    {!isGroupAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => removeMember(member.user_id)}
+                        disabled={loading}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" /> Delete Member
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

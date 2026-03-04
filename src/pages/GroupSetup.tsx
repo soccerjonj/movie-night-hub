@@ -97,14 +97,16 @@ const GroupSetup = () => {
           .eq('is_placeholder', true);
 
         if (profiles && profiles.length > 0) {
-          setPlaceholders(profiles as PlaceholderProfile[]);
+          const sorted = [...(profiles as PlaceholderProfile[])].sort((a, b) =>
+            a.display_name.localeCompare(b.display_name),
+          );
+          setPlaceholders(sorted);
           setMode('claim');
           return;
         }
       }
 
-      // No placeholders — join directly
-      await joinGroup(groupId, null);
+      throw new Error('No available member names. Ask your admin to add you first.');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to find group');
     } finally {
@@ -112,27 +114,18 @@ const GroupSetup = () => {
     }
   };
 
-  const joinGroup = async (groupId: string, placeholderUserId: string | null) => {
+  const joinGroup = async (groupId: string, placeholderUserId: string) => {
     if (!user) return;
     setLoading(true);
     try {
-      if (placeholderUserId) {
-        // Claim the placeholder
-        const { error } = await supabase.rpc('claim_placeholder', {
-          _placeholder_user_id: placeholderUserId,
-          _real_user_id: user.id,
-          _group_id: groupId,
-        });
-        if (error) throw error;
-        toast.success('Joined the group!');
-      } else {
-        // Join normally
-        const { error: joinError } = await supabase
-          .from('group_members')
-          .insert({ group_id: groupId, user_id: user.id });
-        if (joinError) throw joinError;
-        toast.success('Joined the group!');
-      }
+      // Claim the placeholder assigned by admin
+      const { error } = await supabase.rpc('claim_placeholder', {
+        _placeholder_user_id: placeholderUserId,
+        _real_user_id: user.id,
+        _group_id: groupId,
+      });
+      if (error) throw error;
+      toast.success('Joined the group!');
       navigate('/dashboard');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to join group');
@@ -231,7 +224,7 @@ const GroupSetup = () => {
               </div>
               <h2 className="text-2xl font-display font-bold">Who are you?</h2>
               <p className="text-muted-foreground mt-2">
-                Select your name if you see it below, or join as a new member
+                Select your name from the unclaimed member list below
               </p>
             </div>
 
