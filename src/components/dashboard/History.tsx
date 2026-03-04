@@ -292,30 +292,33 @@ const History = ({ group, profiles, members }: Props) => {
         <>
           {/* Movies */}
           {groupedMovies.map(({ seasonId, seasonInfo, movies }) => (
-            <div key={seasonId} className="glass-card rounded-2xl p-6">
+            <div key={seasonId} className="glass-card rounded-2xl p-5">
               {selectedSeasonId === 'all' && seasonInfo && (
-                <h3 className="font-display text-lg font-bold mb-4">
+                <h3 className="font-display text-lg font-bold mb-3">
                   Season {seasonInfo.season_number}{seasonInfo.title ? ` — ${seasonInfo.title}` : ''}
                 </h3>
               )}
-              <div className="space-y-2">
+              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2">
                 {movies.map((movie) => {
                   const isExpanded = expandedMovie === movie.pickId;
                   return (
-                    <div key={movie.pickId}>
+                    <div key={movie.pickId} className="relative group">
                       <button
                         onClick={() => setExpandedMovie(isExpanded ? null : movie.pickId)}
-                        className="w-full flex items-center gap-4 rounded-xl p-3 bg-muted/20 hover:bg-muted/30 transition-colors text-left"
+                        className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-muted transition-transform hover:scale-105 hover:ring-2 hover:ring-primary/40 focus:ring-2 focus:ring-primary/40"
                       >
                         {movie.posterUrl ? (
-                          <img src={movie.posterUrl} alt={movie.title} className="w-10 h-[60px] rounded-lg object-cover shrink-0" />
+                          <img src={movie.posterUrl} alt={movie.title} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-10 h-[60px] rounded-lg bg-muted flex items-center justify-center shrink-0">
-                            <Film className="w-4 h-4 text-muted-foreground" />
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-1">
+                            <Film className="w-5 h-5 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-3">{movie.title}</span>
                           </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{movie.title}</p>
+                      </button>
+                      {isExpanded && (
+                        <div className="absolute z-20 left-0 right-0 top-full mt-1 p-3 rounded-xl bg-card border border-border shadow-xl space-y-1.5 min-w-[200px] w-max max-w-[260px]">
+                          <p className="font-medium text-sm leading-tight">{movie.title}</p>
                           <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
                             {movie.year && <span>{movie.year}</span>}
                             {directors[movie.pickId] && (
@@ -325,29 +328,11 @@ const History = ({ group, profiles, members }: Props) => {
                               </>
                             )}
                           </div>
-                        </div>
-                        {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
-                      </button>
-                      {isExpanded && (
-                        <div className="ml-14 mt-1 mb-2 p-3 rounded-xl bg-muted/10 space-y-2">
-                          <div className="flex items-center gap-2 text-sm">
-                            <User className="w-3.5 h-3.5 text-primary" />
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <User className="w-3 h-3 text-primary" />
                             <span className="text-muted-foreground">Picked by</span>
                             <span className="font-medium">{movie.pickerNames}</span>
                           </div>
-                          {directors[movie.pickId] && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Film className="w-3.5 h-3.5 text-primary" />
-                              <span className="text-muted-foreground">Director</span>
-                              <span className="font-medium">{directors[movie.pickId]}</span>
-                            </div>
-                          )}
-                          {movie.year && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <span className="text-muted-foreground ml-5">Released</span>
-                              <span className="font-medium">{movie.year}</span>
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
