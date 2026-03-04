@@ -26,7 +26,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
         {members.map((member) => {
           const profile = getProfile(member.user_id);
           const isGroupAdmin = member.user_id === group.admin_user_id;
-          const isPlaceholder = (profile as any)?.is_placeholder;
+          const isPlaceholder = profile?.is_placeholder === true;
           return (
             <div
               key={member.id}

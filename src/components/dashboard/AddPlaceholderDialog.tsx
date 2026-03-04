@@ -17,6 +17,15 @@ const AddPlaceholderDialog = ({ group, onAdded }: Props) => {
   const [displayName, setDisplayName] = useState('');
   const [adding, setAdding] = useState(false);
 
+  const getErrorMessage = (err: unknown) => {
+    if (err instanceof Error) return err.message;
+    if (typeof err === 'object' && err !== null && 'message' in err) {
+      const maybeMessage = (err as { message?: unknown }).message;
+      if (typeof maybeMessage === 'string' && maybeMessage.trim()) return maybeMessage;
+    }
+    return 'Failed to add placeholder';
+  };
+
   const handleAdd = async () => {
     const name = displayName.trim();
     if (!name) {
@@ -53,7 +62,7 @@ const AddPlaceholderDialog = ({ group, onAdded }: Props) => {
       setOpen(false);
       onAdded();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add placeholder');
+      toast.error(getErrorMessage(err));
     } finally {
       setAdding(false);
     }
