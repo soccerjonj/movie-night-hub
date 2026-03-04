@@ -175,7 +175,7 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
           const validUserIds = new Set(siblingPicks.map(sp => sp.user_id));
           const guessedName = actualGuess ? getProfile(actualGuess.guessed_user_id)?.display_name || '?' : null;
           const isCorrect = actualGuess ? validUserIds.has(actualGuess.guessed_user_id) : false;
-          const pickerNames = siblingPicks.map(sp => getProfile(sp.user_id)?.display_name || '?').join(' & ');
+          const isOwnPick = validUserIds.has(userId);
 
           return (
             <div
@@ -199,6 +199,8 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
                   </span>
                   {isCorrect ? <Check className="w-2.5 h-2.5 text-green-400" /> : <X className="w-2.5 h-2.5 text-destructive" />}
                 </div>
+              ) : isOwnPick ? (
+                <span className="text-primary/70 italic shrink-0">their pick</span>
               ) : (
                 <span className="text-muted-foreground italic shrink-0">no guess</span>
               )}
