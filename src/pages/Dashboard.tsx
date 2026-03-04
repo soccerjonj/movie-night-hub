@@ -4,7 +4,7 @@ import { useGroup } from '@/hooks/useGroup';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Film, LogOut } from 'lucide-react';
+import { Film, LogOut, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SeasonStatus from '@/components/dashboard/SeasonStatus';
 import AdminPanel from '@/components/dashboard/AdminPanel';
@@ -20,6 +20,7 @@ const Dashboard = () => {
   const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup();
   const navigate = useNavigate();
   const [tab, setTab] = useState<'current' | 'history'>('current');
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   useEffect(() => {
     if (!loading && !group) {
@@ -58,6 +59,16 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowAdminPanel(!showAdminPanel)}
+                className="h-8 w-8 text-primary/70 hover:text-primary"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </Button>
+            )}
             <span className="text-sm text-muted-foreground hidden sm:block">
               {getProfile(user!.id)?.display_name}
             </span>
@@ -104,7 +115,7 @@ const Dashboard = () => {
           {tab === 'current' ? (
             <>
               {/* Admin Panel */}
-              {isAdmin && (
+              {isAdmin && showAdminPanel && (
                 <AdminPanel
                   group={group}
                   season={season}
@@ -112,6 +123,8 @@ const Dashboard = () => {
                   members={members}
                   profiles={profiles}
                   onUpdate={refetch}
+                  showPanel={showAdminPanel}
+                  setShowPanel={setShowAdminPanel}
                 />
               )}
 
