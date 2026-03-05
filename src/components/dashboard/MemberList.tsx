@@ -304,13 +304,14 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{profile?.display_name || 'Unknown'}</p>
-                  {isGroupAdmin && (
+                  {isGroupAdmin ? (
                     <span className="flex items-center gap-1 text-xs text-primary">
                       <Crown className="w-3 h-3" /> Admin
                     </span>
-                  )}
-                  {isPlaceholder && (
-                    <span className="text-xs text-muted-foreground">Member</span>
+                  ) : isPlaceholder ? (
+                    <span className="text-xs text-muted-foreground">Unclaimed</span>
+                  ) : (
+                    <span className="text-xs text-green-400">Claimed</span>
                   )}
                 </div>
               </button>
