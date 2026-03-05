@@ -309,9 +309,9 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
                       <Crown className="w-3 h-3" /> Admin
                     </span>
                   ) : isPlaceholder ? (
-                    <span className="text-xs text-muted-foreground">Unclaimed</span>
+                    <span className="text-xs text-muted-foreground">Unregistered member</span>
                   ) : (
-                    <span className="text-xs text-green-400">Claimed</span>
+                    <span className="text-xs text-green-400">Member</span>
                   )}
                 </div>
               </button>
