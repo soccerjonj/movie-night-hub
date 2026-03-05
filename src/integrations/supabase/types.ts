@@ -252,6 +252,13 @@ export type Database = {
           id: string
         }[]
       }
+      list_available_placeholders: {
+        Args: { _group_id: string }
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
+      }
       is_group_admin: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean

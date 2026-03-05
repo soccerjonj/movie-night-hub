@@ -82,28 +82,18 @@ const GroupSetup = () => {
       const groupId = groups[0].id;
       setFoundGroupId(groupId);
 
-      // Fetch placeholder members in this group
-      const { data: members } = await supabase
-        .from('group_members')
-        .select('user_id')
-        .eq('group_id', groupId);
+      // Fetch placeholder members through a security definer RPC so non-members can see claimable names.
+      const { data: claimableNames, error: placeholdersError } = await supabase
+        .rpc('list_available_placeholders', { _group_id: groupId });
+      if (placeholdersError) throw placeholdersError;
 
-      if (members && members.length > 0) {
-        const memberUserIds = members.map(m => m.user_id);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, is_placeholder')
-          .in('user_id', memberUserIds)
-          .eq('is_placeholder', true);
-
-        if (profiles && profiles.length > 0) {
-          const sorted = [...(profiles as PlaceholderProfile[])].sort((a, b) =>
-            a.display_name.localeCompare(b.display_name),
-          );
-          setPlaceholders(sorted);
-          setMode('claim');
-          return;
-        }
+      if (claimableNames && claimableNames.length > 0) {
+        const sorted = [...(claimableNames as PlaceholderProfile[])].sort((a, b) =>
+          a.display_name.localeCompare(b.display_name),
+        );
+        setPlaceholders(sorted);
+        setMode('claim');
+        return;
       }
 
       throw new Error('No available member names. Ask your admin to add you first.');
