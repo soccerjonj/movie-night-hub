@@ -41,6 +41,13 @@ export type Database = {
             referencedRelation: "groups"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       groups: {
@@ -93,6 +100,20 @@ export type Database = {
           season_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "guesses_guessed_user_id_fkey"
+            columns: ["guessed_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "guesses_guesser_id_fkey"
+            columns: ["guesser_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "guesses_movie_pick_id_fkey"
             columns: ["movie_pick_id"]
@@ -156,6 +177,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "seasons"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movie_picks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -252,13 +280,6 @@ export type Database = {
           id: string
         }[]
       }
-      list_available_placeholders: {
-        Args: { _group_id: string }
-        Returns: {
-          display_name: string
-          user_id: string
-        }[]
-      }
       is_group_admin: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
@@ -266,6 +287,13 @@ export type Database = {
       is_group_member: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
+      }
+      list_available_placeholders: {
+        Args: { _group_id: string }
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
       }
     }
     Enums: {
