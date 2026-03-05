@@ -364,10 +364,23 @@ const History = ({ group, profiles, members }: Props) => {
                         </PopoverTrigger>
                         <PopoverContent side="top" align="center" sideOffset={4} collisionPadding={8} className="p-3 space-y-1.5 min-w-[220px] w-max max-w-[280px]">
                           {(() => {
+                            // Find all sibling picks for co-picks (same season + watch_order)
                             const pick = picks.find(p => p.id === movie.pickId);
                             const watched = pick ? isPickWatched(pick) : false;
-                            const guesses = allGuesses.filter(g => g.movie_pick_id === movie.pickId);
-                            const correctCount = watched ? guesses.filter(g => g.guessed_user_id === movie.pickUserId).length : 0;
+                            const siblingPicks = pick
+                              ? picks.filter(p => p.season_id === pick.season_id && p.watch_order === pick.watch_order)
+                              : [pick].filter(Boolean);
+                            const siblingPickIds = new Set(siblingPicks.map(p => p!.id));
+                            const validPickerIds = new Set(siblingPicks.map(p => p!.user_id));
+                            // Collect guesses across all sibling pick IDs, dedupe by guesser
+                            const guessMap = new Map<string, GuessRow>();
+                            allGuesses.forEach(g => {
+                              if (siblingPickIds.has(g.movie_pick_id) && !guessMap.has(g.guesser_id)) {
+                                guessMap.set(g.guesser_id, g);
+                              }
+                            });
+                            const guesses = Array.from(guessMap.values());
+                            const correctCount = watched ? guesses.filter(g => validPickerIds.has(g.guessed_user_id)).length : 0;
                             const pct = watched && guesses.length > 0 ? Math.round((correctCount / guesses.length) * 100) : 0;
 
                             return (
@@ -401,8 +414,8 @@ const History = ({ group, profiles, members }: Props) => {
                                       {guesses.map(g => {
                                         const guesserName = getProfile(g.guesser_id)?.display_name || '?';
                                         const guessedName = getProfile(g.guessed_user_id)?.display_name || '?';
-                                        const isCorrect = watched && g.guessed_user_id === movie.pickUserId;
-                                        const isWrong = watched && g.guessed_user_id !== movie.pickUserId;
+                                        const isCorrect = watched && validPickerIds.has(g.guessed_user_id);
+                                        const isWrong = watched && !validPickerIds.has(g.guessed_user_id);
 
                                         return (
                                           <div
