@@ -413,7 +413,10 @@ const History = ({ group, profiles, members }: Props) => {
                                     <div className="space-y-1">
                                       {guesses.map(g => {
                                         const guesserName = getProfile(g.guesser_id)?.display_name || '?';
-                                        const guessedName = getProfile(g.guessed_user_id)?.display_name || '?';
+                                        // For co-picks, show the group name if they guessed any valid picker
+                                        const guessedName = validPickerIds.size > 1 && validPickerIds.has(g.guessed_user_id)
+                                          ? Array.from(validPickerIds).map(id => getProfile(id)?.display_name || '?').join(' & ')
+                                          : getProfile(g.guessed_user_id)?.display_name || '?';
                                         const isCorrect = watched && validPickerIds.has(g.guessed_user_id);
                                         const isWrong = watched && !validPickerIds.has(g.guessed_user_id);
 
