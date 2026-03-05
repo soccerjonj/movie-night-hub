@@ -88,7 +88,9 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
   };
 
   const isPickRevealed = (pick: PickRow) => {
-    return isPickWatched(pick) || pick.revealed;
+    // Only reveal picks that have actually been watched — ignore the DB 'revealed' flag
+    // to prevent leaking who picked an unwatched movie in member profiles
+    return isPickWatched(pick);
   };
 
   const renderMemberProfile = () => {
