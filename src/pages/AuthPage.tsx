@@ -12,7 +12,6 @@ const AuthPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
@@ -22,7 +21,7 @@ const AuthPage = () => {
     setLoading(true);
     try {
       if (isSignUp) {
-        await signUp(email, password, displayName);
+        await signUp(email, password);
         toast.success('Account created! Check your email to confirm.');
       } else {
         await signIn(email, password);
@@ -58,19 +57,6 @@ const AuthPage = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isSignUp && (
-            <div className="space-y-2">
-              <Label htmlFor="displayName">Display Name</Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="How your friends know you"
-                required
-                className="bg-muted/50 border-border"
-              />
-            </div>
-          )}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
