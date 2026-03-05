@@ -95,9 +95,9 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
     if (!selectedUserId) return null;
     const profile = getProfile(selectedUserId);
 
-    // Movies this member picked (revealed only)
+    // Movies this member picked
     const memberPicks = picks
-      .filter(p => p.user_id === selectedUserId && isPickRevealed(p))
+      .filter(p => p.user_id === selectedUserId)
       .sort((a, b) => {
         const sA = seasons.find(s => s.id === a.season_id)?.season_number ?? 0;
         const sB = seasons.find(s => s.id === b.season_id)?.season_number ?? 0;
@@ -194,20 +194,29 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
             Their Picks
           </h4>
           {memberPicks.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">No revealed picks yet</p>
+            <p className="text-xs text-muted-foreground italic">No picks yet</p>
           ) : (
             <div className="grid grid-cols-5 gap-1.5">
-              {memberPicks.map(pick => (
-                <div key={pick.id} className="aspect-[2/3] rounded-lg overflow-hidden bg-muted">
-                  {pick.poster_url ? (
-                    <img src={pick.poster_url} alt={pick.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center p-1">
-                      <span className="text-[9px] text-muted-foreground text-center leading-tight line-clamp-3">{pick.title}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+              {memberPicks.map(pick => {
+                const revealed = isPickRevealed(pick);
+                return (
+                  <div key={pick.id} className="aspect-[2/3] rounded-lg overflow-hidden bg-muted">
+                    {revealed ? (
+                      pick.poster_url ? (
+                        <img src={pick.poster_url} alt={pick.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center p-1">
+                          <span className="text-[9px] text-muted-foreground text-center leading-tight line-clamp-3">{pick.title}</span>
+                        </div>
+                      )
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-muted/60">
+                        <span className="text-lg text-muted-foreground font-bold">?</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
