@@ -14,6 +14,15 @@ interface PlaceholderProfile {
   display_name: string;
 }
 
+const getErrorMessage = (err: unknown, fallback: string) => {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const maybeMessage = (err as { message?: unknown }).message;
+    if (typeof maybeMessage === 'string' && maybeMessage.trim()) return maybeMessage;
+  }
+  return fallback;
+};
+
 const GroupSetup = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -61,7 +70,7 @@ const GroupSetup = () => {
       toast.success('Group created!');
       navigate('/dashboard');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create group');
+      toast.error(getErrorMessage(err, 'Failed to create group'));
     } finally {
       setLoading(false);
     }
@@ -98,7 +107,7 @@ const GroupSetup = () => {
 
       throw new Error('No available member names. Ask your admin to add you first.');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to find group');
+      toast.error(getErrorMessage(err, 'Failed to find group'));
     } finally {
       setLoading(false);
     }
@@ -118,7 +127,7 @@ const GroupSetup = () => {
       toast.success('Joined the group!');
       navigate('/dashboard');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to join group');
+      toast.error(getErrorMessage(err, 'Failed to join group'));
     } finally {
       setLoading(false);
     }
