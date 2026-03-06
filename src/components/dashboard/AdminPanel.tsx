@@ -339,6 +339,39 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     }
   };
 
+  const startReview = async () => {
+    if (!season) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('seasons').update({
+        status: 'reviewing',
+        next_call_date: null,
+      }).eq('id', season.id);
+      if (error) throw error;
+      toast.success('Season review started! Members can now rank movies.');
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to start review');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completeSeason = async () => {
+    if (!season) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('seasons').update({ status: 'completed' }).eq('id', season.id);
+      if (error) throw error;
+      toast.success('Season completed! 🎉');
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to complete season');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       {showPanel && (
