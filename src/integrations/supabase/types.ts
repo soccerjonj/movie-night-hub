@@ -187,6 +187,48 @@ export type Database = {
           },
         ]
       }
+      movie_rankings: {
+        Row: {
+          created_at: string
+          id: string
+          movie_pick_id: string
+          rank: number
+          season_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          movie_pick_id: string
+          rank: number
+          season_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          movie_pick_id?: string
+          rank?: number
+          season_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movie_rankings_movie_pick_id_fkey"
+            columns: ["movie_pick_id"]
+            isOneToOne: false
+            referencedRelation: "movie_picks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movie_rankings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
