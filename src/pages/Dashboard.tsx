@@ -11,6 +11,7 @@ import AdminPanel from '@/components/dashboard/AdminPanel';
 import MoviePickPhase from '@/components/dashboard/MoviePickPhase';
 import GuessingPhase from '@/components/dashboard/GuessingPhase';
 import WatchingPhase from '@/components/dashboard/WatchingPhase';
+import ReviewPhase from '@/components/dashboard/ReviewPhase';
 import MemberList from '@/components/dashboard/MemberList';
 import Scoreboard from '@/components/dashboard/Scoreboard';
 import History from '@/components/dashboard/History';
@@ -140,6 +141,10 @@ const Dashboard = () => {
               )}
               {season?.status === 'watching' && (
                 <WatchingPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} />
+              )}
+              {season?.status === 'reviewing' && (
+                <ReviewPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} onUpdate={refetch} />
+              )}
               )}
 
               {/* Scoreboard */}
