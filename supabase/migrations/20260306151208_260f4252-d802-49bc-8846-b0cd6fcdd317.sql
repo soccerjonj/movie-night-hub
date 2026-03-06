@@ -1,0 +1,1 @@
+ALTER TYPE public.season_status ADD VALUE IF NOT EXISTS 'reviewing' BEFORE 'completed';
