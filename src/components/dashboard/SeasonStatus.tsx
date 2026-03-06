@@ -14,6 +14,7 @@ const statusLabels: Record<string, string> = {
   picking: '🎬 Picking Movies',
   guessing: '🔮 Guessing Round',
   watching: '🍿 Watching Season',
+  reviewing: '⭐ Season Review',
   completed: '✅ Season Complete',
 };
 

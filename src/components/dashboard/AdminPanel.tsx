@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Play, SkipForward, Clock, Eye, Shuffle, Settings, Trash2, Pencil, Check, X, CalendarClock } from 'lucide-react';
+import { Copy, Play, SkipForward, Clock, Eye, Shuffle, Settings, Trash2, Pencil, Check, X, CalendarClock, Star } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
@@ -113,9 +113,10 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
       const callDate = getNextMondayCallDate();
 
       if (nextIndex >= moviePicks.length) {
-        const { error } = await supabase.from('seasons').update({ status: 'completed' }).eq('id', season.id);
-        if (error) throw error;
-        toast.success('Season completed! 🎉');
+        // All movies watched - stay on watching, admin will manually start review
+        toast.info('All movies watched! Start the season review when ready.');
+        setLoading(false);
+        return;
       } else {
         const { error } = await supabase.from('seasons').update({
           current_movie_index: nextIndex,
@@ -338,6 +339,39 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     }
   };
 
+  const startReview = async () => {
+    if (!season) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('seasons').update({
+        status: 'reviewing',
+        next_call_date: null,
+      }).eq('id', season.id);
+      if (error) throw error;
+      toast.success('Season review started! Members can now rank movies.');
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to start review');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completeSeason = async () => {
+    if (!season) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('seasons').update({ status: 'completed' }).eq('id', season.id);
+      if (error) throw error;
+      toast.success('Season completed! 🎉');
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to complete season');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       {showPanel && (
@@ -435,9 +469,16 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'watching' && (
               <>
-                <Button variant="gold" size="sm" onClick={advanceMovie} disabled={loading}>
-                  <SkipForward className="w-4 h-4 mr-1" /> Next Movie
-                </Button>
+                {season.current_movie_index < moviePicks.length - 1 && (
+                  <Button variant="gold" size="sm" onClick={advanceMovie} disabled={loading}>
+                    <SkipForward className="w-4 h-4 mr-1" /> Next Movie
+                  </Button>
+                )}
+                {season.current_movie_index >= moviePicks.length - 1 && (
+                  <Button variant="gold" size="sm" onClick={startReview} disabled={loading}>
+                    <Star className="w-4 h-4 mr-1" /> Start Season Review
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={revealCurrentPicker} disabled={loading}>
                   <Eye className="w-4 h-4 mr-1" /> Reveal Picker
                 </Button>
@@ -450,6 +491,12 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                   </Button>
                 )}
               </>
+            )}
+
+            {season?.status === 'reviewing' && (
+              <Button variant="gold" size="sm" onClick={completeSeason} disabled={loading}>
+                <Check className="w-4 h-4 mr-1" /> Complete Season
+              </Button>
             )}
           </div>
 
