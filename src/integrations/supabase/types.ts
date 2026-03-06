@@ -297,7 +297,12 @@ export type Database = {
       }
     }
     Enums: {
-      season_status: "picking" | "guessing" | "watching" | "completed"
+      season_status:
+        | "picking"
+        | "guessing"
+        | "watching"
+        | "reviewing"
+        | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -425,7 +430,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      season_status: ["picking", "guessing", "watching", "completed"],
+      season_status: [
+        "picking",
+        "guessing",
+        "watching",
+        "reviewing",
+        "completed",
+      ],
     },
   },
 } as const
