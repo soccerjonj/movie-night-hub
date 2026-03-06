@@ -145,7 +145,6 @@ const Dashboard = () => {
               {season?.status === 'reviewing' && (
                 <ReviewPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} onUpdate={refetch} />
               )}
-              )}
 
               {/* Scoreboard */}
               {group && (
