@@ -492,6 +492,12 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 )}
               </>
             )}
+
+            {season?.status === 'reviewing' && (
+              <Button variant="gold" size="sm" onClick={completeSeason} disabled={loading}>
+                <Check className="w-4 h-4 mr-1" /> Complete Season
+              </Button>
+            )}
           </div>
 
           {/* Call Date Editor */}
