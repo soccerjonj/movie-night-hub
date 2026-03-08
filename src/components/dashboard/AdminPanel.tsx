@@ -149,6 +149,23 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     }
   };
 
+  const goBackMovie = async () => {
+    if (!season || season.current_movie_index <= 0) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('seasons').update({
+        current_movie_index: season.current_movie_index - 1,
+      }).eq('id', season.id);
+      if (error) throw error;
+      toast.success('Went back to previous movie!');
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to go back');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const revealCurrentPicker = async () => {
     if (!season) return;
     const currentPick = moviePicks.find((_, i) => i === season.current_movie_index);
@@ -161,6 +178,23 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to reveal picker');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const unrevealCurrentPicker = async () => {
+    if (!season) return;
+    const currentPick = moviePicks.find((_, i) => i === season.current_movie_index);
+    if (!currentPick) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('movie_picks').update({ revealed: false }).eq('id', currentPick.id);
+      if (error) throw error;
+      toast.success('Picker hidden again!');
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to hide picker');
     } finally {
       setLoading(false);
     }
