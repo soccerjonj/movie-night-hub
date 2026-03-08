@@ -91,12 +91,6 @@ const ClubSelect = () => {
         groupInfos.push({ id: g.id, name: g.name, member_count: count ?? 0, season_status: status });
       }
 
-      // If only one group, go directly to dashboard
-      if (groupInfos.length === 1) {
-        navigate(`/dashboard/${groupInfos[0].id}`, { replace: true });
-        return;
-      }
-
       setGroups(groupInfos);
       setLoading(false);
     };
