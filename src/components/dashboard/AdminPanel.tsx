@@ -532,7 +532,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 )}
 
                 {(() => {
-                  const currentPick = moviePicks.find((_, i) => i === season.current_movie_index);
+                  const currentPick = moviePicks.find(p => p.watch_order === season.current_movie_index);
                   const isRevealed = currentPick?.revealed;
                   return isRevealed ? (
                     <Button variant="outline" size="sm" onClick={unrevealCurrentPicker} disabled={loading}>
