@@ -12,6 +12,7 @@ interface GroupInfo {
   id: string;
   name: string;
   member_count: number;
+  season_status: string | null;
 }
 
 const ClubSelect = () => {
