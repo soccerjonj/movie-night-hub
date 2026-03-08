@@ -479,6 +479,11 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'watching' && (
               <>
+                {season.current_movie_index > 0 && (
+                  <Button variant="outline" size="sm" onClick={goBackMovie} disabled={loading}>
+                    <SkipBack className="w-4 h-4 mr-1" /> Previous Movie
+                  </Button>
+                )}
                 {season.current_movie_index < moviePicks.length - 1 && (
                   <Button variant="gold" size="sm" onClick={advanceMovie} disabled={loading}>
                     <SkipForward className="w-4 h-4 mr-1" /> Next Movie
@@ -489,9 +494,19 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                     <Star className="w-4 h-4 mr-1" /> Start Season Review
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={revealCurrentPicker} disabled={loading}>
-                  <Eye className="w-4 h-4 mr-1" /> Reveal Picker
-                </Button>
+                {(() => {
+                  const currentPick = moviePicks.find((_, i) => i === season.current_movie_index);
+                  const isRevealed = currentPick?.revealed;
+                  return isRevealed ? (
+                    <Button variant="outline" size="sm" onClick={unrevealCurrentPicker} disabled={loading}>
+                      <EyeOff className="w-4 h-4 mr-1" /> Unreveal Picker
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={revealCurrentPicker} disabled={loading}>
+                      <Eye className="w-4 h-4 mr-1" /> Reveal Picker
+                    </Button>
+                  );
+                })()}
                 <Button variant="outline" size="sm" onClick={startEditingCallDate} disabled={loading}>
                   <CalendarClock className="w-4 h-4 mr-1" /> {season.next_call_date ? 'Change Call Date' : 'Set Call Date'}
                 </Button>
