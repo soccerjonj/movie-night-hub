@@ -426,15 +426,13 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
           {/* Season Actions */}
           <div className="flex flex-wrap gap-2 items-end">
             {(!season || season.status === 'completed') && (
-              <div className="flex items-end gap-2">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Season Title (optional)</label>
-                  <Input value={newSeasonTitle} onChange={(e) => setNewSeasonTitle(e.target.value)} placeholder="e.g. Horror Month" className="bg-muted/50 w-48" />
-                </div>
-                <Button variant="gold" size="sm" onClick={() => { startNewSeason(newSeasonTitle); setNewSeasonTitle(''); }} disabled={loading}>
-                  <Play className="w-4 h-4 mr-1" /> Start New Season
-                </Button>
-              </div>
+              <CreateSeasonDialog
+                group={group}
+                members={members}
+                profiles={profiles}
+                currentSeasonNumber={season?.season_number ?? 0}
+                onCreated={onUpdate}
+              />
             )}
 
             {season?.status === 'picking' && (
