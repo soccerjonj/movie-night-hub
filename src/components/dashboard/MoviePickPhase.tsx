@@ -5,6 +5,7 @@ import { Season, MoviePick, GroupMember } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Check, Film, Star, ExternalLink, X } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
 interface Props {
@@ -171,9 +172,23 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
             <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
               Change
             </Button>
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={removePick} disabled={submitting}>
-              Remove
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={submitting}>
+                  Remove
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove your pick?</AlertDialogTitle>
+                  <AlertDialogDescription>This will remove "{userPick.title}" as your pick. You can search and pick a new movie after.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={removePick} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Remove</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       ) : (
