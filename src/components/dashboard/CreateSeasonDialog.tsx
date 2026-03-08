@@ -33,6 +33,8 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
   const [moviesPerMember, setMoviesPerMember] = useState(1);
   const [watchIntervalDays, setWatchIntervalDays] = useState(7);
   const [guessingEnabled, setGuessingEnabled] = useState(true);
+  const [watchDeadlineDay, setWatchDeadlineDay] = useState('monday'); // day of week or day of month
+  const [watchDeadlineTime, setWatchDeadlineTime] = useState('19:30');
   const [participants, setParticipants] = useState<ParticipantConfig[]>([]);
   const [nextGroupId, setNextGroupId] = useState(1);
 
