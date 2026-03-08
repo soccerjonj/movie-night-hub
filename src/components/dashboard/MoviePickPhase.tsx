@@ -25,6 +25,7 @@ interface TMDBMovie {
   vote_average: number;
   vote_count: number;
   genre_ids: number[];
+  popularity: number;
 }
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
@@ -49,6 +50,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const [selected, setSelected] = useState<TMDBMovie | null>(null);
   const [director, setDirector] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [directorsMap, setDirectorsMap] = useState<Record<number, string>>({});
 
   const userPick = moviePicks.find(p => p.user_id === user?.id);
   const pickedCount = moviePicks.length;
@@ -71,6 +73,29 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     fetchDirector();
   }, [selected]);
 
+  const fetchDirectorsForMovies = async (movies: TMDBMovie[]) => {
+    const idsToFetch = movies.filter(m => !directorsMap[m.id]).map(m => m.id);
+    if (idsToFetch.length === 0) return;
+    const entries = await Promise.all(
+      idsToFetch.map(async (id) => {
+        try {
+          const res = await fetch(
+            `https://api.themoviedb.org/3/movie/${id}/credits?language=en-US`,
+            { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
+          );
+          const data = await res.json();
+          const dir = data.crew?.find((c: { job: string; name: string }) => c.job === 'Director');
+          return [id, dir?.name || ''] as const;
+        } catch { return [id, ''] as const; }
+      })
+    );
+    setDirectorsMap(prev => {
+      const updated = { ...prev };
+      entries.forEach(([id, name]) => { updated[id] = name; });
+      return updated;
+    });
+  };
+
   const searchMovies = async (q?: string, page = 1) => {
     const term = q ?? query;
     if (!term.trim()) { setResults([]); setHasMoreResults(false); return; }
@@ -87,7 +112,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
         }
       );
       const data = await res.json();
-      const newResults = data.results || [];
+      const newResults = ((data.results || []) as TMDBMovie[]).sort((a, b) => b.popularity - a.popularity);
       if (page === 1) {
         setResults(newResults);
       } else {
@@ -96,6 +121,8 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       setSearchPage(page);
       setLastSearchTerm(term);
       setHasMoreResults(page < (data.total_pages || 1));
+      // Fetch directors in background
+      fetchDirectorsForMovies(newResults);
     } catch {
       toast.error('Failed to search movies');
     } finally {
@@ -338,8 +365,11 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{movie.title}</p>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs text-muted-foreground">{movie.release_date?.split('-')[0]}</span>
+                      {directorsMap[movie.id] && (
+                        <span className="text-xs text-muted-foreground">· {directorsMap[movie.id]}</span>
+                      )}
                       {movie.vote_average > 0 && (
                         <div className="flex items-center gap-0.5">
                           <Star className="w-2.5 h-2.5 text-primary fill-primary" />
