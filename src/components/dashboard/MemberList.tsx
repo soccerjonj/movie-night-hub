@@ -43,7 +43,16 @@ interface GuessRow {
   season_id: string;
 }
 
+function centerAspectCrop(mediaWidth: number, mediaHeight: number) {
+  return centerCrop(
+    makeAspectCrop({ unit: '%', width: 90 }, 1, mediaWidth, mediaHeight),
+    mediaWidth,
+    mediaHeight
+  );
+}
+
 const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
+  const { user } = useAuth();
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -51,6 +60,91 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
   const [picks, setPicks] = useState<PickRow[]>([]);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Crop state
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState<CropType>();
+  const [uploading, setUploading] = useState(false);
+  const cropImgRef = useRef<HTMLImageElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const onCropImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    setCrop(centerAspectCrop(naturalWidth, naturalHeight));
+  }, []);
+
+  const openCropWithFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const openCropWithUrl = (url: string) => {
+    setCropImageSrc(url.split('?')[0] + '?t=' + Date.now());
+    setCropDialogOpen(true);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
+    openCropWithFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const getCroppedBlob = (): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const image = cropImgRef.current;
+      if (!image || !crop) { resolve(null); return; }
+      const canvas = document.createElement('canvas');
+      const scaleX = image.naturalWidth / image.width;
+      const scaleY = image.naturalHeight / image.height;
+      const pixelCrop = {
+        x: (crop.unit === '%' ? (crop.x / 100) * image.width : crop.x) * scaleX,
+        y: (crop.unit === '%' ? (crop.y / 100) * image.height : crop.y) * scaleY,
+        width: (crop.unit === '%' ? (crop.width / 100) * image.width : crop.width) * scaleX,
+        height: (crop.unit === '%' ? (crop.height / 100) * image.height : crop.height) * scaleY,
+      };
+      const size = Math.min(pixelCrop.width, pixelCrop.height, 512);
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(null); return; }
+      ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, size, size);
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.9);
+    });
+  };
+
+  const handleSaveCrop = async () => {
+    if (!user) return;
+    setUploading(true);
+    try {
+      const blob = await getCroppedBlob();
+      if (!blob) throw new Error('Failed to crop image');
+      const filePath = `${user.id}/avatar.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, blob, { upsert: true, contentType: 'image/jpeg' });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('user_id', user.id);
+      if (updateError) throw updateError;
+      toast.success('Profile picture updated!');
+      onUpdate();
+      setCropDialogOpen(false);
+      setCropImageSrc(null);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Fetch data when a member is selected
   useEffect(() => {
