@@ -497,9 +497,11 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                   </PopoverContent>
                 </Popover>
 
-                <Button variant="gold" size="sm" onClick={startReview} disabled={loading}>
-                  <Star className="w-4 h-4 mr-1" /> Start Season Review
-                </Button>
+                {season.current_movie_index >= moviePicks.length - 1 && (
+                  <Button variant="gold" size="sm" onClick={startReview} disabled={loading}>
+                    <Star className="w-4 h-4 mr-1" /> Start Season Review
+                  </Button>
+                )}
 
                 {/* End season early with confirmation */}
                 {season.current_movie_index < moviePicks.length - 1 && (
