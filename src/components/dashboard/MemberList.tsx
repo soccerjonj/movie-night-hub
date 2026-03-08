@@ -58,6 +58,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string | null>(null);
 
   // Handle external selection
   useEffect(() => {
@@ -275,7 +276,10 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         {/* Header */}
         <div className="flex items-center gap-3">
           <div className="relative group">
-            <div className="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+            <div
+              className={`w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center text-lg font-bold text-primary ${!isOwnProfile && profile?.avatar_url ? 'cursor-pointer' : ''}`}
+              onClick={() => { if (!isOwnProfile && profile?.avatar_url) setPreviewAvatarUrl(profile.avatar_url); }}
+            >
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
               ) : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
