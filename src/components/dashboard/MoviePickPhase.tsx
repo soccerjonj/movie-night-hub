@@ -220,32 +220,32 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
 
           {/* Grid results */}
           {results.length > 0 && !selected && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="space-y-1 max-h-[300px] overflow-y-auto rounded-xl border border-border bg-card/50 p-1">
               {results.map((movie) => (
                 <button
                   key={movie.id}
                   onClick={() => setSelected(movie)}
-                  className="text-left bg-muted/30 rounded-xl overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all group"
+                  className="w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-primary/10 transition-colors"
                 >
                   {movie.poster_path ? (
                     <img
                       src={`${TMDB_IMAGE_BASE}${movie.poster_path}`}
                       alt={movie.title}
-                      className="w-full aspect-[2/3] object-cover"
+                      className="w-8 h-12 rounded object-cover shrink-0"
                     />
                   ) : (
-                    <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center">
-                      <Film className="w-8 h-8 text-muted-foreground" />
+                    <div className="w-8 h-12 rounded bg-muted flex items-center justify-center shrink-0">
+                      <Film className="w-3 h-3 text-muted-foreground" />
                     </div>
                   )}
-                  <div className="p-2">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{movie.title}</p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">{movie.release_date?.split('-')[0]}</p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">{movie.release_date?.split('-')[0]}</span>
                       {movie.vote_average > 0 && (
                         <div className="flex items-center gap-0.5">
-                          <Star className="w-3 h-3 text-primary fill-primary" />
-                          <span className="text-xs font-medium">{movie.vote_average.toFixed(1)}</span>
+                          <Star className="w-2.5 h-2.5 text-primary fill-primary" />
+                          <span className="text-[11px] text-muted-foreground">{movie.vote_average.toFixed(1)}</span>
                         </div>
                       )}
                     </div>
