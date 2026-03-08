@@ -12,32 +12,23 @@ import ImportGuessesDialog from './ImportGuessesDialog';
 import EditGuessesDialog from './EditGuessesDialog';
 import EditPicksDialog from './EditPicksDialog';
 import AddPlaceholderDialog from './AddPlaceholderDialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 // Collapsible dropdown panel for grouping admin actions
 function DropdownPanel({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
 
   return (
-    <div className="relative" ref={ref}>
-      <Button variant="outline" size="sm" onClick={() => setOpen(!open)}>
-        {icon} {label} <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </Button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 min-w-[280px] rounded-xl border border-border bg-card p-3 shadow-lg">
-          {children}
-        </div>
-      )}
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm">
+          {icon} {label} <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="min-w-[280px] p-3">
+        {children}
+      </PopoverContent>
+    </Popover>
   );
 }
 
