@@ -511,6 +511,22 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Photo preview lightbox */}
+      <Dialog open={!!previewAvatarUrl} onOpenChange={(open) => !open && setPreviewAvatarUrl(null)}>
+        <DialogContent className="sm:max-w-sm p-2 bg-transparent border-none shadow-none">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Profile Photo</DialogTitle>
+          </DialogHeader>
+          {previewAvatarUrl && (
+            <img
+              src={previewAvatarUrl}
+              alt="Profile photo"
+              className="w-full rounded-2xl object-cover"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
