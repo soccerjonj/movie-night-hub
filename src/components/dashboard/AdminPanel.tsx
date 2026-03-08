@@ -386,6 +386,18 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
               <Copy className="w-4 h-4" />
             </Button>
           </div>
+      {showPanel && (
+        <div className="glass-card rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
+          {/* Join Code */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Join Code:</span>
+            <code className="font-mono text-primary bg-primary/10 px-3 py-1 rounded-lg tracking-widest">
+              {group.join_code}
+            </code>
+            <Button variant="ghost" size="icon" onClick={copyJoinCode}>
+              <Copy className="w-4 h-4" />
+            </Button>
+          </div>
 
           {/* Edit Season */}
           {season && !editingSeason && (
