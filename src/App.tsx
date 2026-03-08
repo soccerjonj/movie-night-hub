@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import AuthPage from "./pages/AuthPage";
 import GroupSetup from "./pages/GroupSetup";
+import ClubSelect from "./pages/ClubSelect";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
@@ -21,7 +22,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to="/clubs" replace />;
   return <>{children}</>;
 }
 
@@ -35,8 +36,10 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/auth" replace />} />
             <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
+            <Route path="/clubs" element={<ProtectedRoute><ClubSelect /></ProtectedRoute>} />
             <Route path="/setup" element={<ProtectedRoute><GroupSetup /></ProtectedRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/:groupId" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Navigate to="/clubs" replace /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

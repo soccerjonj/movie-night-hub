@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
-import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Film, LogOut, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,8 +16,9 @@ import Scoreboard from '@/components/dashboard/Scoreboard';
 import History from '@/components/dashboard/History';
 
 const Dashboard = () => {
+  const { groupId } = useParams<{ groupId: string }>();
   const { user, signOut } = useAuth();
-  const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup();
+  const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup(groupId);
   const navigate = useNavigate();
   const [tab, setTab] = useState<'current' | 'history'>('current');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
