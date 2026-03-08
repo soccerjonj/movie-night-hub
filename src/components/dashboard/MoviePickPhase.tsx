@@ -43,6 +43,7 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
   const [submitting, setSubmitting] = useState(false);
   const [selected, setSelected] = useState<TMDBMovie | null>(null);
   const [director, setDirector] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const userPick = moviePicks.find(p => p.user_id === user?.id);
   const pickedCount = moviePicks.length;
@@ -100,23 +101,53 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
     if (!user) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('movie_picks').insert({
-        season_id: season.id,
-        user_id: user.id,
-        tmdb_id: movie.id,
-        title: movie.title,
-        poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
-        year: movie.release_date?.split('-')[0] || null,
-        overview: movie.overview || null,
-      });
-      if (error) throw error;
-      toast.success(`"${movie.title}" picked!`);
+      if (userPick) {
+        // Update existing pick
+        const { error } = await supabase.from('movie_picks').update({
+          tmdb_id: movie.id,
+          title: movie.title,
+          poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
+          year: movie.release_date?.split('-')[0] || null,
+          overview: movie.overview || null,
+        }).eq('id', userPick.id);
+        if (error) throw error;
+        toast.success(`Pick changed to "${movie.title}"!`);
+      } else {
+        const { error } = await supabase.from('movie_picks').insert({
+          season_id: season.id,
+          user_id: user.id,
+          tmdb_id: movie.id,
+          title: movie.title,
+          poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
+          year: movie.release_date?.split('-')[0] || null,
+          overview: movie.overview || null,
+        });
+        if (error) throw error;
+        toast.success(`"${movie.title}" picked!`);
+      }
       setResults([]);
       setQuery('');
       setSelected(null);
+      setEditing(false);
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to save movie pick');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const removePick = async () => {
+    if (!userPick || !user) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('movie_picks').delete().eq('id', userPick.id);
+      if (error) throw error;
+      toast.success('Pick removed');
+      setEditing(false);
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove pick');
     } finally {
       setSubmitting(false);
     }
@@ -129,12 +160,20 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
         {pickedCount} of {totalMembers} members have picked
       </p>
 
-      {userPick ? (
+      {userPick && !editing ? (
         <div className="flex items-center gap-3 bg-primary/5 rounded-xl p-4">
-          <Check className="w-5 h-5 text-primary" />
-          <div>
+          <Check className="w-5 h-5 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
             <p className="font-medium">You picked: {userPick.title}</p>
             <p className="text-xs text-muted-foreground">Your pick is secret until revealed!</p>
+          </div>
+          <div className="flex gap-1.5 shrink-0">
+            <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+              Change
+            </Button>
+            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={removePick} disabled={submitting}>
+              Remove
+            </Button>
           </div>
         </div>
       ) : (
