@@ -64,25 +64,6 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     return setMinutes(setHours(next, 19), 30);
   };
 
-  const startNewSeason = async (title?: string) => {
-    setLoading(true);
-    try {
-      const seasonNumber = season ? season.season_number + 1 : 1;
-      const { error } = await supabase.from('seasons').insert({
-        group_id: group.id,
-        season_number: seasonNumber,
-        title: title?.trim() || null,
-        status: 'picking',
-      });
-      if (error) throw error;
-      toast.success(`Season ${seasonNumber} started!`);
-      onUpdate();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to start new season');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const startGuessingRound = async () => {
     if (!season) return;
