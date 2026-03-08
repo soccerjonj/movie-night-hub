@@ -307,11 +307,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                 <Crown className="w-3 h-3" /> Admin
               </span>
             )}
-            {isOwnProfile && (
-              <button onClick={() => fileInputRef.current?.click()} className="text-xs text-primary hover:underline">
-                Change photo
-              </button>
-            )}
           </div>
         </div>
 
