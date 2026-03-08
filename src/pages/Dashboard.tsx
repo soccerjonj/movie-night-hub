@@ -28,6 +28,7 @@ const Dashboard = () => {
   const [tab, setTab] = useState<'current' | 'history'>('current');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [hasEverGuessed, setHasEverGuessed] = useState(false);
+  const [openProfileUserId, setOpenProfileUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!groupId) return;
@@ -109,11 +110,20 @@ const Dashboard = () => {
               </Button>
             )}
             {user && (
-              <AvatarUpload
-                currentAvatarUrl={getProfile(user.id)?.avatar_url || null}
-                displayName={getProfile(user.id)?.display_name || ''}
-                onUploaded={refetch}
-              />
+              <button
+                onClick={() => setOpenProfileUserId(user.id)}
+                className="relative group shrink-0"
+              >
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
+                  {getProfile(user.id)?.avatar_url ? (
+                    <img src={getProfile(user.id)?.avatar_url!} alt={getProfile(user.id)?.display_name || ''} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs sm:text-sm font-bold text-primary">
+                      {getProfile(user.id)?.display_name?.charAt(0).toUpperCase() || '?'}
+                    </span>
+                  )}
+                </div>
+              </button>
             )}
             <span className="text-sm text-muted-foreground hidden sm:block">
               {getProfile(user!.id)?.display_name}
