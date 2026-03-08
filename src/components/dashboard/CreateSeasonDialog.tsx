@@ -33,6 +33,8 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
   const [moviesPerMember, setMoviesPerMember] = useState(1);
   const [watchIntervalDays, setWatchIntervalDays] = useState(7);
   const [guessingEnabled, setGuessingEnabled] = useState(true);
+  const [watchDeadlineDay, setWatchDeadlineDay] = useState('monday'); // day of week or day of month
+  const [watchDeadlineTime, setWatchDeadlineTime] = useState('19:30');
   const [participants, setParticipants] = useState<ParticipantConfig[]>([]);
   const [nextGroupId, setNextGroupId] = useState(1);
 
@@ -43,6 +45,8 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
     setMoviesPerMember(1);
     setWatchIntervalDays(7);
     setGuessingEnabled(true);
+    setWatchDeadlineDay('monday');
+    setWatchDeadlineTime('19:30');
     setNextGroupId(1);
     // Initialize all members as selected, no groups
     setParticipants(
@@ -260,10 +264,9 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
             </div>
           </div>
 
-          {/* Watch Schedule */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label className="text-sm font-semibold">Watch Schedule</Label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm text-muted-foreground">Watch 1 movie every</span>
               <Select value={String(watchIntervalDays)} onValueChange={(v) => setWatchIntervalDays(Number(v))}>
                 <SelectTrigger className="w-32">
@@ -284,9 +287,48 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          {/* Guessing Toggle */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-muted-foreground">Due by</span>
+              {watchIntervalDays >= 7 ? (
+                <Select value={watchDeadlineDay} onValueChange={setWatchDeadlineDay}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {watchIntervalDays >= 28 ? (
+                      <>
+                        {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                          <SelectItem key={d} value={String(d)}>
+                            {d === 1 ? '1st' : d === 2 ? '2nd' : d === 3 ? '3rd' : `${d}th`} of month
+                          </SelectItem>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="monday">Monday</SelectItem>
+                        <SelectItem value="tuesday">Tuesday</SelectItem>
+                        <SelectItem value="wednesday">Wednesday</SelectItem>
+                        <SelectItem value="thursday">Thursday</SelectItem>
+                        <SelectItem value="friday">Friday</SelectItem>
+                        <SelectItem value="saturday">Saturday</SelectItem>
+                        <SelectItem value="sunday">Sunday</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <span className="text-sm text-muted-foreground">end of day</span>
+              )}
+              <span className="text-sm text-muted-foreground">at</span>
+              <Input
+                type="time"
+                value={watchDeadlineTime}
+                onChange={(e) => setWatchDeadlineTime(e.target.value)}
+                className="w-28 bg-muted/50"
+              />
+            </div>
+          </div>
           <div className="flex items-center justify-between rounded-lg bg-muted/10 px-4 py-3">
             <div>
               <Label className="text-sm font-semibold">Guessing Round</Label>
@@ -300,7 +342,10 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
             <div className="text-sm text-muted-foreground space-y-1">
               <p><strong>{selectedParticipants.length}</strong> member{selectedParticipants.length !== 1 ? 's' : ''} picking{uniqueGroups.length > 0 ? ` (${uniqueGroups.length} co-pick group${uniqueGroups.length !== 1 ? 's' : ''})` : ''}</p>
               <p><strong>{totalPickSlots}</strong> total movie{totalPickSlots !== 1 ? 's' : ''} to watch</p>
-              <p>1 movie every <strong>{watchIntervalDays === 1 ? 'day' : watchIntervalDays === 7 ? 'week' : watchIntervalDays === 14 ? '2 weeks' : watchIntervalDays === 21 ? '3 weeks' : watchIntervalDays === 30 ? 'month' : `${watchIntervalDays} days`}</strong></p>
+              <p>1 movie every <strong>{watchIntervalDays === 1 ? 'day' : watchIntervalDays === 7 ? 'week' : watchIntervalDays === 14 ? '2 weeks' : watchIntervalDays === 21 ? '3 weeks' : watchIntervalDays === 30 ? 'month' : `${watchIntervalDays} days`}</strong>
+                {watchIntervalDays >= 7 && <>, due by <strong>{watchIntervalDays >= 28 ? `the ${watchDeadlineDay}${watchDeadlineDay === '1' ? 'st' : watchDeadlineDay === '2' ? 'nd' : watchDeadlineDay === '3' ? 'rd' : 'th'}` : watchDeadlineDay.charAt(0).toUpperCase() + watchDeadlineDay.slice(1)}</strong></>}
+                {' '}at <strong>{watchDeadlineTime}</strong>
+              </p>
               {!guessingEnabled && <p className="text-amber-500">Guessing round disabled</p>}
             </div>
             <Button
