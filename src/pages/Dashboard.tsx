@@ -226,7 +226,7 @@ const Dashboard = () => {
               )}
 
               {/* Members */}
-              <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} />
+              <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} externalSelectedUserId={openProfileUserId} onExternalSelectedClear={() => setOpenProfileUserId(null)} />
 
               {/* No season yet */}
               {!season && !isAdmin && (
