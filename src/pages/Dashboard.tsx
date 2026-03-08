@@ -183,7 +183,7 @@ const Dashboard = () => {
 
               {/* Phase-specific content */}
               {season?.status === 'picking' && (
-                <MoviePickPhase season={season} moviePicks={moviePicks} members={members} onUpdate={refetch} />
+                <MoviePickPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
               )}
               {season?.status === 'guessing' && (
                 <GuessingPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
