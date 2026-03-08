@@ -145,9 +145,16 @@ const ClubSelect = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{g.name}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Users className="w-3 h-3" /> {g.member_count} members
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Users className="w-3 h-3" /> {g.member_count} members
+                      </p>
+                      {g.season_status && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
+                          {g.season_status === 'completed' ? 'Completed' : g.season_status}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground" />
                 </button>
