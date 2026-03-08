@@ -15,6 +15,8 @@ interface Props {
   group: Group;
   isAdmin: boolean;
   onUpdate: () => void;
+  externalSelectedUserId?: string | null;
+  onExternalSelectedClear?: () => void;
 }
 
 interface SeasonInfo {
@@ -51,11 +53,23 @@ function centerAspectCrop(mediaWidth: number, mediaHeight: number) {
   );
 }
 
-const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
+const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelectedUserId, onExternalSelectedClear }: Props) => {
   const { user } = useAuth();
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  // Handle external selection
+  useEffect(() => {
+    if (externalSelectedUserId) {
+      setSelectedUserId(externalSelectedUserId);
+    }
+  }, [externalSelectedUserId]);
+
+  const handleClose = () => {
+    setSelectedUserId(null);
+    onExternalSelectedClear?.();
+  };
   const [seasons, setSeasons] = useState<SeasonInfo[]>([]);
   const [picks, setPicks] = useState<PickRow[]>([]);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
