@@ -243,9 +243,9 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for a movie..."
               className="bg-muted/50 border-border"
-              onKeyDown={(e) => e.key === 'Enter' && searchMovies()}
+              onKeyDown={(e) => e.key === 'Enter' && searchMovies(undefined, 1)}
             />
-            <Button variant="gold" onClick={() => searchMovies()} disabled={searching}>
+            <Button variant="gold" onClick={() => searchMovies(undefined, 1)} disabled={searching}>
               <Search className="w-4 h-4" />
             </Button>
           </div>
