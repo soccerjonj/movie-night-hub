@@ -147,7 +147,7 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
               className="bg-muted/50 border-border"
               onKeyDown={(e) => e.key === 'Enter' && searchMovies()}
             />
-            <Button variant="gold" onClick={searchMovies} disabled={searching}>
+            <Button variant="gold" onClick={() => searchMovies()} disabled={searching}>
               <Search className="w-4 h-4" />
             </Button>
           </div>
