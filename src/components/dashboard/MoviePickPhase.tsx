@@ -104,7 +104,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     setSelected(null);
     try {
       const res = await fetch(
-        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(term)}&include_adult=false&language=en-US&page=${page}`,
+        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(term)}&include_adult=false&language=en-US&page=${page}${yearFilter ? `&year=${yearFilter}` : ''}`,
         {
           headers: {
             'Authorization': `Bearer ${TMDB_API_TOKEN}`,
