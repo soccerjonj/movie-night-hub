@@ -10,6 +10,7 @@ interface Props {
   season: Season | null;
   profiles: Profile[];
   members: { user_id: string }[];
+  collapsed?: boolean;
 }
 
 interface GuessRow {
@@ -25,7 +26,7 @@ interface ScoreEntry {
   total: number;
 }
 
-const Scoreboard = ({ group, season, profiles, members }: Props) => {
+const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Props) => {
   const [view, setView] = useState<'season' | 'alltime'>('season');
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +34,7 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
   const [picks, setPicks] = useState<{ id: string; user_id: string; season_id: string; watch_order: number | null; title: string; poster_url: string | null }[]>([]);
   const [seasonMap, setSeasonMap] = useState<Map<string, { id: string; status: string; current_movie_index: number; season_number: number }>>(new Map());
+  const [isOpen, setIsOpen] = useState(!collapsed);
 
   useEffect(() => {
     fetchScores();
@@ -220,85 +222,109 @@ const Scoreboard = ({ group, season, profiles, members }: Props) => {
 
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
-      <div className="flex items-center justify-between mb-4">
+      <button
+        onClick={() => collapsed && setIsOpen(!isOpen)}
+        className={`flex items-center justify-between w-full mb-${isOpen ? '4' : '0'} ${collapsed ? 'cursor-pointer' : 'cursor-default'}`}
+      >
         <div className="flex items-center gap-2">
           <Trophy className="w-5 h-5 text-primary" />
           <h2 className="font-display text-lg sm:text-xl font-bold">Scoreboard</h2>
+          {collapsed && !isOpen && (
+            <span className="text-xs text-muted-foreground ml-2">(from past seasons)</span>
+          )}
         </div>
-        <div className="flex gap-1 bg-muted/30 rounded-lg p-1">
-          <Button
-            variant={view === 'season' ? 'gold' : 'ghost'}
-            size="sm"
-            className="text-xs h-7 px-3"
-            onClick={() => setView('season')}
-          >
-            Season
-          </Button>
-          <Button
-            variant={view === 'alltime' ? 'gold' : 'ghost'}
-            size="sm"
-            className="text-xs h-7 px-3"
-            onClick={() => setView('alltime')}
-          >
-            All-Time
-          </Button>
-        </div>
-      </div>
+        {collapsed && (
+          <ChevronUp className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? '' : 'rotate-180'}`} />
+        )}
+      </button>
 
-      {loading ? (
-        <div className="text-center text-muted-foreground py-8">Loading scores...</div>
-      ) : scores.every(s => s.total === 0) ? (
-        <div className="text-center text-muted-foreground py-8">
-          <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p>No guesses scored yet</p>
-          <p className="text-xs mt-1">Scores update as movie pickers are revealed</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {scores.map((entry, i) => {
-            const profile = getProfile(entry.user_id);
-            const pct = entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
-            const isExpanded = expandedUser === entry.user_id;
-            return (
-              <div key={entry.user_id}>
-                <button
-                  onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
-                  className={`w-full flex items-center gap-3 rounded-xl p-3 transition-colors text-left ${
-                    i === 0 && entry.correct > 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20 hover:bg-muted/30'
-                  }`}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={collapsed ? { height: 0, opacity: 0 } : false}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="flex justify-end mb-4">
+              <div className="flex gap-1 bg-muted/30 rounded-lg p-1">
+                <Button
+                  variant={view === 'season' ? 'gold' : 'ghost'}
+                  size="sm"
+                  className="text-xs h-7 px-3"
+                  onClick={() => setView('season')}
                 >
-                  <span className="text-lg w-8 text-center">{getMedal(i)}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {entry.correct}/{entry.total} correct ({pct}%)
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-display text-lg font-bold text-primary">{entry.correct}</p>
-                    <p className="text-xs text-muted-foreground">pts</p>
-                  </div>
-                </button>
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="ml-10 pl-3 border-l-2 border-border/30 mt-1 mb-2">
-                        {renderUserGuesses(entry.user_id)}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                  Season
+                </Button>
+                <Button
+                  variant={view === 'alltime' ? 'gold' : 'ghost'}
+                  size="sm"
+                  className="text-xs h-7 px-3"
+                  onClick={() => setView('alltime')}
+                >
+                  All-Time
+                </Button>
               </div>
-            );
-          })}
-        </div>
-      )}
+            </div>
+
+            {loading ? (
+              <div className="text-center text-muted-foreground py-8">Loading scores...</div>
+            ) : scores.every(s => s.total === 0) ? (
+              <div className="text-center text-muted-foreground py-8">
+                <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p>No guesses scored yet</p>
+                <p className="text-xs mt-1">Scores update as movie pickers are revealed</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {scores.map((entry, i) => {
+                  const profile = getProfile(entry.user_id);
+                  const pct = entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
+                  const isExpanded = expandedUser === entry.user_id;
+                  return (
+                    <div key={entry.user_id}>
+                      <button
+                        onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
+                        className={`w-full flex items-center gap-3 rounded-xl p-3 transition-colors text-left ${
+                          i === 0 && entry.correct > 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20 hover:bg-muted/30'
+                        }`}
+                      >
+                        <span className="text-lg w-8 text-center">{getMedal(i)}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {entry.correct}/{entry.total} correct ({pct}%)
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-display text-lg font-bold text-primary">{entry.correct}</p>
+                          <p className="text-xs text-muted-foreground">pts</p>
+                        </div>
+                      </button>
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="ml-10 pl-3 border-l-2 border-border/30 mt-1 mb-2">
+                              {renderUserGuesses(entry.user_id)}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
