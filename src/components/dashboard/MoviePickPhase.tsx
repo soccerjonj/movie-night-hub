@@ -112,7 +112,12 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
         }
       );
       const data = await res.json();
-      const newResults = ((data.results || []) as TMDBMovie[]).sort((a, b) => b.popularity - a.popularity);
+      const newResults = ((data.results || []) as TMDBMovie[]).sort((a, b) => {
+        // Weight by vote_count (well-known films) and popularity
+        const scoreA = (a.vote_count || 0) * 0.5 + (a.popularity || 0);
+        const scoreB = (b.vote_count || 0) * 0.5 + (b.popularity || 0);
+        return scoreB - scoreA;
+      });
       if (page === 1) {
         setResults(newResults);
       } else {
