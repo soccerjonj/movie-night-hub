@@ -50,6 +50,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const [selected, setSelected] = useState<TMDBMovie | null>(null);
   const [director, setDirector] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [directorsMap, setDirectorsMap] = useState<Record<number, string>>({});
 
   const userPick = moviePicks.find(p => p.user_id === user?.id);
   const pickedCount = moviePicks.length;
