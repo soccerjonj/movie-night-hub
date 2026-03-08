@@ -27,6 +27,21 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [tab, setTab] = useState<'current' | 'history'>('current');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [hasEverGuessed, setHasEverGuessed] = useState(false);
+
+  useEffect(() => {
+    if (!groupId) return;
+    const checkPastGuessing = async () => {
+      const { data } = await supabase
+        .from('seasons')
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('guessing_enabled', true)
+        .limit(1);
+      setHasEverGuessed((data?.length ?? 0) > 0);
+    };
+    checkPastGuessing();
+  }, [groupId]);
 
   const handleLeaveGroup = async () => {
     if (!user || !groupId) return;
@@ -196,8 +211,8 @@ const Dashboard = () => {
               )}
 
               {/* Scoreboard */}
-              {group && season?.guessing_enabled && (
-                <Scoreboard group={group} season={season} profiles={profiles} members={members} />
+              {group && (season?.guessing_enabled || hasEverGuessed) && (
+                <Scoreboard group={group} season={season} profiles={profiles} members={members} collapsed={!season?.guessing_enabled} />
               )}
 
               {/* Members */}
