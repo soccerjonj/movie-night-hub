@@ -124,7 +124,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
   const revealCurrentPicker = async () => {
     if (!season) return;
-    const currentPick = moviePicks.find((_, i) => i === season.current_movie_index);
+    const currentPick = moviePicks.find(p => p.watch_order === season.current_movie_index);
     if (!currentPick) return;
     setLoading(true);
     try {
@@ -141,7 +141,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
   const unrevealCurrentPicker = async () => {
     if (!season) return;
-    const currentPick = moviePicks.find((_, i) => i === season.current_movie_index);
+    const currentPick = moviePicks.find(p => p.watch_order === season.current_movie_index);
     if (!currentPick) return;
     setLoading(true);
     try {
