@@ -4,7 +4,7 @@ import { useGroup } from '@/hooks/useGroup';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Film, LogOut, Settings, ArrowLeft, DoorOpen } from 'lucide-react';
-import AvatarUpload from '@/components/dashboard/AvatarUpload';
+
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
