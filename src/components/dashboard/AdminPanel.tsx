@@ -627,7 +627,14 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <div className="flex flex-wrap gap-2">
                   <EditGuessesDialog group={group} profiles={profiles} onUpdated={onUpdate} />
                   <EditPicksDialog group={group} profiles={profiles} onUpdated={onUpdate} />
+                </div>
+              </DropdownPanel>
+            )}
 
+            {/* Edit Season Setup — reset/revert controls */}
+            {season && (season.status === 'picking' || season.status === 'guessing') && (
+              <DropdownPanel label="Edit Season Setup" icon={<SkipBack className="w-4 h-4 mr-1" />}>
+                <div className="flex flex-wrap gap-2">
                   {/* Reset All Picks */}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -663,37 +670,39 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                   </AlertDialog>
 
                   {/* Reset All Guesses */}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={loading}>
-                        <Trash2 className="w-3 h-3 mr-1" /> Reset All Guesses
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Reset all guesses?</AlertDialogTitle>
-                        <AlertDialogDescription>This will delete every guess for this season. Movie picks will be kept. This cannot be undone.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          onClick={async () => {
-                            setLoading(true);
-                            try {
-                              await supabase.from('guesses').delete().eq('season_id', season.id);
-                              toast.success('All guesses reset!');
-                              onUpdate();
-                            } catch (err: unknown) {
-                              toast.error(err instanceof Error ? err.message : 'Failed to reset guesses');
-                            } finally {
-                              setLoading(false);
-                            }
-                          }}
-                        >Reset Guesses</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {season.status === 'guessing' && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={loading}>
+                          <Trash2 className="w-3 h-3 mr-1" /> Reset All Guesses
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Reset all guesses?</AlertDialogTitle>
+                          <AlertDialogDescription>This will delete every guess for this season. Movie picks will be kept. This cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={async () => {
+                              setLoading(true);
+                              try {
+                                await supabase.from('guesses').delete().eq('season_id', season.id);
+                                toast.success('All guesses reset!');
+                                onUpdate();
+                              } catch (err: unknown) {
+                                toast.error(err instanceof Error ? err.message : 'Failed to reset guesses');
+                              } finally {
+                                setLoading(false);
+                              }
+                            }}
+                          >Reset Guesses</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
 
                   {/* Go Back to Picking (only from guessing phase) */}
                   {season.status === 'guessing' && (
