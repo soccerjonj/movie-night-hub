@@ -436,12 +436,47 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             )}
 
             {season?.status === 'picking' && (
-              <Button variant="gold" size="sm" onClick={startGuessingRound} disabled={loading || moviePicks.length < members.length}>
-                <Shuffle className="w-4 h-4 mr-1" /> Start Guessing Round
-                {moviePicks.length < members.length && (
-                  <span className="ml-1 text-xs">({moviePicks.length}/{members.length} picks)</span>
+              <>
+                {(season as any).guessing_enabled !== false ? (
+                  <Button variant="gold" size="sm" onClick={startGuessingRound} disabled={loading || moviePicks.length < members.length}>
+                    <Shuffle className="w-4 h-4 mr-1" /> Start Guessing Round
+                    {moviePicks.length < members.length && (
+                      <span className="ml-1 text-xs">({moviePicks.length}/{members.length} picks)</span>
+                    )}
+                  </Button>
+                ) : (
+                  <Button variant="gold" size="sm" onClick={async () => {
+                    // Skip guessing, shuffle and go straight to watching
+                    if (!season) return;
+                    setLoading(true);
+                    try {
+                      const shuffled = [...moviePicks].sort(() => Math.random() - 0.5);
+                      for (let i = 0; i < shuffled.length; i++) {
+                        const { error: pickError } = await supabase.from('movie_picks').update({ watch_order: i }).eq('id', shuffled[i].id);
+                        if (pickError) throw pickError;
+                      }
+                      const callDate = getNextMondayCallDate();
+                      const { error } = await supabase.from('seasons').update({
+                        status: 'watching',
+                        current_movie_index: 0,
+                        next_call_date: callDate.toISOString(),
+                      }).eq('id', season.id);
+                      if (error) throw error;
+                      toast.success('Watching season started!');
+                      onUpdate();
+                    } catch (err: unknown) {
+                      toast.error(err instanceof Error ? err.message : 'Failed');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }} disabled={loading || moviePicks.length < members.length}>
+                    <Play className="w-4 h-4 mr-1" /> Start Watching
+                    {moviePicks.length < members.length && (
+                      <span className="ml-1 text-xs">({moviePicks.length}/{members.length} picks)</span>
+                    )}
+                  </Button>
                 )}
-              </Button>
+              </>
             )}
 
             {season?.status === 'guessing' && (
