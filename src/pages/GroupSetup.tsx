@@ -34,7 +34,7 @@ const GroupSetup = () => {
   const [placeholders, setPlaceholders] = useState<PlaceholderProfile[]>([]);
   const [selectedPlaceholder, setSelectedPlaceholder] = useState<string | null>(null);
 
-  // Check if user already has a group
+  // Check if user already has groups — redirect to club select
   useEffect(() => {
     const checkGroup = async () => {
       if (!user) return;
@@ -43,9 +43,7 @@ const GroupSetup = () => {
         .select('group_id')
         .eq('user_id', user.id)
         .limit(1);
-      if (data && data.length > 0) {
-        navigate('/dashboard');
-      }
+      // Don't auto-redirect — user may want to join another club
     };
     checkGroup();
   }, [user, navigate]);
@@ -68,7 +66,7 @@ const GroupSetup = () => {
       if (memberError) throw memberError;
 
       toast.success('Group created!');
-      navigate('/dashboard');
+      navigate('/clubs');
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to create group'));
     } finally {
@@ -125,7 +123,7 @@ const GroupSetup = () => {
       });
       if (error) throw error;
       toast.success('Joined the group!');
-      navigate('/dashboard');
+      navigate('/clubs');
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to join group'));
     } finally {

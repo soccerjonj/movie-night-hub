@@ -25,7 +25,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!loading && !group) {
-      navigate('/setup');
+      navigate('/clubs');
     }
   }, [loading, group, navigate]);
 
