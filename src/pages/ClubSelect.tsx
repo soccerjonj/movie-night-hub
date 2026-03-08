@@ -72,14 +72,23 @@ const ClubSelect = () => {
         return;
       }
 
-      // Get member counts
+      // Get member counts and current season status
       const groupInfos: GroupInfo[] = [];
       for (const g of groupsData) {
-        const { count } = await supabase
-          .from('group_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('group_id', g.id);
-        groupInfos.push({ id: g.id, name: g.name, member_count: count ?? 0 });
+        const [{ count }, { data: latestSeason }] = await Promise.all([
+          supabase
+            .from('group_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('group_id', g.id),
+          supabase
+            .from('seasons')
+            .select('status')
+            .eq('group_id', g.id)
+            .order('season_number', { ascending: false })
+            .limit(1),
+        ]);
+        const status = latestSeason && latestSeason.length > 0 ? latestSeason[0].status : null;
+        groupInfos.push({ id: g.id, name: g.name, member_count: count ?? 0, season_status: status });
       }
 
       // If only one group, go directly to dashboard
