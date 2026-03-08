@@ -104,6 +104,10 @@ export function useGroup(groupId?: string) {
           .eq('season_id', s.id)
           .order('watch_order', { ascending: true });
         if (picks) setMoviePicks(picks as MoviePick[]);
+        else setMoviePicks([]);
+      } else {
+        setSeason(null);
+        setMoviePicks([]);
       }
     } catch (err) {
       console.error('Error fetching group data:', err);
