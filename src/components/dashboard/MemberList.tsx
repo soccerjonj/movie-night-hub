@@ -160,8 +160,10 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
       <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
-            {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+          <div className="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
+            ) : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
           </div>
           <div>
             <h3 className="font-display text-lg font-bold">{profile?.display_name || 'Unknown'}</h3>
@@ -299,8 +301,10 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
                 onClick={() => setSelectedUserId(member.user_id)}
                 className={`flex items-center gap-2 rounded-xl p-2 sm:p-3 text-left transition-colors hover:ring-1 hover:ring-primary/30 ${isPlaceholder ? 'bg-muted/10 border border-dashed border-border' : 'bg-muted/20 hover:bg-muted/30'}`}
               >
-                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold shrink-0 ${isPlaceholder ? 'bg-muted/30 text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
-                  {isPlaceholder ? <Ghost className="w-3 h-3 sm:w-4 sm:h-4" /> : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex items-center justify-center text-[10px] sm:text-xs font-bold shrink-0 ${isPlaceholder ? 'bg-muted/30 text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                  {isPlaceholder ? <Ghost className="w-3 h-3 sm:w-4 sm:h-4" /> : profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
+                  ) : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{profile?.display_name || 'Unknown'}</p>
