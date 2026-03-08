@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown } from 'lucide-react';
+import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown, ListOrdered } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
@@ -123,44 +123,18 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     }
   };
 
-  const advanceMovie = async () => {
+  const jumpToMovie = async (index: number) => {
     if (!season) return;
     setLoading(true);
     try {
-      const nextIndex = season.current_movie_index + 1;
-      const callDate = getNextMondayCallDate();
-      if (nextIndex >= moviePicks.length) {
-        toast.info('All movies watched! Start the season review when ready.');
-        setLoading(false);
-        return;
-      } else {
-        const { error } = await supabase.from('seasons').update({
-          current_movie_index: nextIndex,
-          next_call_date: callDate.toISOString(),
-        }).eq('id', season.id);
-        if (error) throw error;
-        toast.success('Advanced to next movie!');
-      }
-      onUpdate();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to advance movie');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const goBackMovie = async () => {
-    if (!season || season.current_movie_index <= 0) return;
-    setLoading(true);
-    try {
       const { error } = await supabase.from('seasons').update({
-        current_movie_index: season.current_movie_index - 1,
+        current_movie_index: index,
       }).eq('id', season.id);
       if (error) throw error;
-      toast.success('Went back to previous movie!');
+      toast.success(`Jumped to movie ${index + 1}!`);
       onUpdate();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to go back');
+      toast.error(err instanceof Error ? err.message : 'Failed to jump to movie');
     } finally {
       setLoading(false);
     }
@@ -479,21 +453,67 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'watching' && (
               <>
-                {season.current_movie_index > 0 && (
-                  <Button variant="outline" size="sm" onClick={goBackMovie} disabled={loading}>
-                    <SkipBack className="w-4 h-4 mr-1" /> Previous Movie
-                  </Button>
-                )}
+                {/* Jump to movie selector */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <ListOrdered className="w-4 h-4 mr-1" /> Movie {season.current_movie_index + 1}/{moviePicks.length}
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-64 p-2 max-h-[300px] overflow-y-auto">
+                    <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Jump to movie:</p>
+                    {[...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0)).map((pick, i) => (
+                      <button
+                        key={pick.id}
+                        onClick={() => jumpToMovie(i)}
+                        disabled={loading}
+                        className={`w-full text-left text-sm px-2 py-1.5 rounded-lg transition-colors flex items-center gap-2 ${
+                          i === season.current_movie_index
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'hover:bg-muted/30 text-foreground'
+                        }`}
+                      >
+                        <span className="w-5 text-center text-xs text-muted-foreground">{i + 1}</span>
+                        <span className="truncate">{pick.title}</span>
+                        {i === season.current_movie_index && <span className="text-[10px] text-primary ml-auto shrink-0">current</span>}
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+
+                <Button variant="gold" size="sm" onClick={startReview} disabled={loading}>
+                  <Star className="w-4 h-4 mr-1" /> Start Season Review
+                </Button>
+
+                {/* End season early with confirmation */}
                 {season.current_movie_index < moviePicks.length - 1 && (
-                  <Button variant="gold" size="sm" onClick={advanceMovie} disabled={loading}>
-                    <SkipForward className="w-4 h-4 mr-1" /> Next Movie
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={loading}>
+                        <X className="w-4 h-4 mr-1" /> End Season Early
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>End season early?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          There {moviePicks.length - 1 - season.current_movie_index === 1 ? 'is' : 'are'} still{' '}
+                          <strong>{moviePicks.length - 1 - season.current_movie_index}</strong>{' '}
+                          unwatched movie{moviePicks.length - 1 - season.current_movie_index === 1 ? '' : 's'} remaining.
+                          This will skip them and move directly to the season review phase.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={startReview} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          End Season &amp; Start Review
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
-                {season.current_movie_index >= moviePicks.length - 1 && (
-                  <Button variant="gold" size="sm" onClick={startReview} disabled={loading}>
-                    <Star className="w-4 h-4 mr-1" /> Start Season Review
-                  </Button>
-                )}
+
                 {(() => {
                   const currentPick = moviePicks.find((_, i) => i === season.current_movie_index);
                   const isRevealed = currentPick?.revealed;
