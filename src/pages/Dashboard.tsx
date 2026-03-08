@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
-import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Film, LogOut, Settings } from 'lucide-react';
+import { Film, LogOut, Settings, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SeasonStatus from '@/components/dashboard/SeasonStatus';
 import AdminPanel from '@/components/dashboard/AdminPanel';
@@ -17,15 +16,16 @@ import Scoreboard from '@/components/dashboard/Scoreboard';
 import History from '@/components/dashboard/History';
 
 const Dashboard = () => {
+  const { groupId } = useParams<{ groupId: string }>();
   const { user, signOut } = useAuth();
-  const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup();
+  const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup(groupId);
   const navigate = useNavigate();
   const [tab, setTab] = useState<'current' | 'history'>('current');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   useEffect(() => {
     if (!loading && !group) {
-      navigate('/setup');
+      navigate('/clubs');
     }
   }, [loading, group, navigate]);
 
@@ -47,6 +47,9 @@ const Dashboard = () => {
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate('/clubs')}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Film className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
