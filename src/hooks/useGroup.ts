@@ -47,7 +47,7 @@ export interface GroupMember {
   profile?: Profile;
 }
 
-export function useGroup() {
+export function useGroup(groupId?: string) {
   const { user } = useAuth();
   const [group, setGroup] = useState<Group | null>(null);
   const [season, setSeason] = useState<Season | null>(null);
@@ -62,21 +62,14 @@ export function useGroup() {
       setLoading(false);
       return;
     }
+    
+    if (!groupId) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Get user's group
-      const { data: memberData } = await supabase
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', user.id)
-        .limit(1);
-      
-      if (!memberData || memberData.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      const groupId = memberData[0].group_id;
 
       // Fetch group, members, profiles in parallel
       const [groupRes, membersRes, profilesRes] = await Promise.all([
