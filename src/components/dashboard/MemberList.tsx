@@ -259,10 +259,31 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
       <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
-            ) : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
+          <div className="relative group">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
+              ) : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
+            </div>
+            {isOwnProfile && (
+              <>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                >
+                  <Camera className="w-4 h-4 text-white" />
+                </button>
+                {profile?.avatar_url && (
+                  <button
+                    onClick={() => openCropWithUrl(profile.avatar_url!)}
+                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Crop photo"
+                  >
+                    <Crop className="w-3 h-3 text-primary-foreground" />
+                  </button>
+                )}
+              </>
+            )}
           </div>
           <div>
             <h3 className="font-display text-lg font-bold">{profile?.display_name || 'Unknown'}</h3>
@@ -270,6 +291,11 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
               <span className="flex items-center gap-1 text-xs text-primary">
                 <Crown className="w-3 h-3" /> Admin
               </span>
+            )}
+            {isOwnProfile && (
+              <button onClick={() => fileInputRef.current?.click()} className="text-xs text-primary hover:underline">
+                Change photo
+              </button>
             )}
           </div>
         </div>
