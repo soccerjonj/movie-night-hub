@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Play, SkipForward, Eye, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown } from 'lucide-react';
+import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
