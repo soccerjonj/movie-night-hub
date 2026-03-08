@@ -17,6 +17,10 @@ export interface Season {
   status: 'picking' | 'guessing' | 'watching' | 'reviewing' | 'completed';
   current_movie_index: number;
   next_call_date: string | null;
+  movies_per_member: number;
+  watch_interval_days: number;
+  guessing_enabled: boolean;
+  watch_start_date: string | null;
 }
 
 export interface MoviePick {

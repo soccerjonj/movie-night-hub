@@ -157,6 +157,13 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
 
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
+      {/* Prominent Season Theme */}
+      {season.title && (
+        <div className="mb-4 p-3 rounded-xl bg-primary/5 border border-primary/10 text-center">
+          <p className="text-xs uppercase tracking-wider text-primary/70 mb-0.5">Season Theme</p>
+          <h3 className="font-display text-lg sm:text-xl font-bold text-primary">{season.title}</h3>
+        </div>
+      )}
       <h2 className="font-display text-lg sm:text-xl font-bold mb-1">Pick Your Movie</h2>
       <p className="text-sm text-muted-foreground mb-3">
         {pickedCount} of {totalMembers} members have picked
