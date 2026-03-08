@@ -3,7 +3,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Film, LogOut, Settings, ArrowLeft } from 'lucide-react';
+import { Film, LogOut, Settings, ArrowLeft, DoorOpen } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import SeasonStatus from '@/components/dashboard/SeasonStatus';
 import AdminPanel from '@/components/dashboard/AdminPanel';
@@ -20,8 +23,24 @@ const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup(groupId);
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [tab, setTab] = useState<'current' | 'history'>('current');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+
+  const handleLeaveGroup = async () => {
+    if (!user || !groupId) return;
+    const { error } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', user.id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Left club', description: 'You have left this club.' });
+      navigate('/clubs', { replace: true });
+    }
+  };
 
   useEffect(() => {
     if (!loading && !group) {
@@ -76,6 +95,25 @@ const Dashboard = () => {
             <span className="text-sm text-muted-foreground hidden sm:block">
               {getProfile(user!.id)?.display_name}
             </span>
+            {!isAdmin && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/70 hover:text-destructive">
+                    <DoorOpen className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Leave {group.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>You'll lose access to this club. You can rejoin later with the invite code.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleLeaveGroup} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Leave</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => { signOut(); navigate('/'); }}>
               <LogOut className="w-4 h-4" />
             </Button>

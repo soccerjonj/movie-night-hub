@@ -1,0 +1,1 @@
+CREATE POLICY "Members can leave group" ON public.group_members FOR DELETE TO authenticated USING (auth.uid() = user_id);
