@@ -147,7 +147,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     if (!query.trim()) { setResults([]); setHasMoreResults(false); return; }
     const timer = setTimeout(() => searchMovies(query, 1), 350);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, yearFilter]);
 
   const pickMovie = async (movie: TMDBMovie) => {
     if (!user) return;
