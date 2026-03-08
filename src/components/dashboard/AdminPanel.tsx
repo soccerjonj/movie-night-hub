@@ -627,6 +627,109 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <div className="flex flex-wrap gap-2">
                   <EditGuessesDialog group={group} profiles={profiles} onUpdated={onUpdate} />
                   <EditPicksDialog group={group} profiles={profiles} onUpdated={onUpdate} />
+
+                  {/* Reset All Picks */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={loading}>
+                        <Trash2 className="w-3 h-3 mr-1" /> Reset All Picks
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reset all picks?</AlertDialogTitle>
+                        <AlertDialogDescription>This will delete every movie pick for this season. All guesses will also be removed. This cannot be undone.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={async () => {
+                            setLoading(true);
+                            try {
+                              await supabase.from('guesses').delete().eq('season_id', season.id);
+                              await supabase.from('movie_picks').delete().eq('season_id', season.id);
+                              toast.success('All picks and guesses reset!');
+                              onUpdate();
+                            } catch (err: unknown) {
+                              toast.error(err instanceof Error ? err.message : 'Failed to reset picks');
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                        >Reset Picks</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  {/* Reset All Guesses */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={loading}>
+                        <Trash2 className="w-3 h-3 mr-1" /> Reset All Guesses
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reset all guesses?</AlertDialogTitle>
+                        <AlertDialogDescription>This will delete every guess for this season. Movie picks will be kept. This cannot be undone.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={async () => {
+                            setLoading(true);
+                            try {
+                              await supabase.from('guesses').delete().eq('season_id', season.id);
+                              toast.success('All guesses reset!');
+                              onUpdate();
+                            } catch (err: unknown) {
+                              toast.error(err instanceof Error ? err.message : 'Failed to reset guesses');
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                        >Reset Guesses</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  {/* Go Back to Picking (only from guessing phase) */}
+                  {season.status === 'guessing' && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" disabled={loading}>
+                          <SkipBack className="w-3 h-3 mr-1" /> Back to Picking
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Go back to picking phase?</AlertDialogTitle>
+                          <AlertDialogDescription>This will move the season back to the picking phase. All guesses will be deleted. Movie picks will be kept.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={async () => {
+                              setLoading(true);
+                              try {
+                                await supabase.from('guesses').delete().eq('season_id', season.id);
+                                const { error } = await supabase.from('seasons').update({ status: 'picking' }).eq('id', season.id);
+                                if (error) throw error;
+                                toast.success('Back to picking phase!');
+                                onUpdate();
+                              } catch (err: unknown) {
+                                toast.error(err instanceof Error ? err.message : 'Failed to go back to picking');
+                              } finally {
+                                setLoading(false);
+                              }
+                            }}
+                          >Go Back</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </DropdownPanel>
             )}
