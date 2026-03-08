@@ -270,7 +270,14 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="1">1 day</SelectItem>
+                  <SelectItem value="2">2 days</SelectItem>
+                  <SelectItem value="3">3 days</SelectItem>
+                  <SelectItem value="4">4 days</SelectItem>
+                  <SelectItem value="5">5 days</SelectItem>
+                  <SelectItem value="6">6 days</SelectItem>
                   <SelectItem value="7">1 week</SelectItem>
+                  <SelectItem value="10">10 days</SelectItem>
                   <SelectItem value="14">2 weeks</SelectItem>
                   <SelectItem value="21">3 weeks</SelectItem>
                   <SelectItem value="30">1 month</SelectItem>
@@ -293,7 +300,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
             <div className="text-sm text-muted-foreground space-y-1">
               <p><strong>{selectedParticipants.length}</strong> member{selectedParticipants.length !== 1 ? 's' : ''} picking{uniqueGroups.length > 0 ? ` (${uniqueGroups.length} co-pick group${uniqueGroups.length !== 1 ? 's' : ''})` : ''}</p>
               <p><strong>{totalPickSlots}</strong> total movie{totalPickSlots !== 1 ? 's' : ''} to watch</p>
-              <p>1 movie every <strong>{watchIntervalDays === 7 ? 'week' : watchIntervalDays === 14 ? '2 weeks' : watchIntervalDays === 21 ? '3 weeks' : 'month'}</strong></p>
+              <p>1 movie every <strong>{watchIntervalDays === 1 ? 'day' : watchIntervalDays === 7 ? 'week' : watchIntervalDays === 14 ? '2 weeks' : watchIntervalDays === 21 ? '3 weeks' : watchIntervalDays === 30 ? 'month' : `${watchIntervalDays} days`}</strong></p>
               {!guessingEnabled && <p className="text-amber-500">Guessing round disabled</p>}
             </div>
             <Button
