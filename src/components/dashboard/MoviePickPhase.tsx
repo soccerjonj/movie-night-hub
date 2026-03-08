@@ -73,6 +73,29 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     fetchDirector();
   }, [selected]);
 
+  const fetchDirectorsForMovies = async (movies: TMDBMovie[]) => {
+    const idsToFetch = movies.filter(m => !directorsMap[m.id]).map(m => m.id);
+    if (idsToFetch.length === 0) return;
+    const entries = await Promise.all(
+      idsToFetch.map(async (id) => {
+        try {
+          const res = await fetch(
+            `https://api.themoviedb.org/3/movie/${id}/credits?language=en-US`,
+            { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
+          );
+          const data = await res.json();
+          const dir = data.crew?.find((c: { job: string; name: string }) => c.job === 'Director');
+          return [id, dir?.name || ''] as const;
+        } catch { return [id, ''] as const; }
+      })
+    );
+    setDirectorsMap(prev => {
+      const updated = { ...prev };
+      entries.forEach(([id, name]) => { updated[id] = name; });
+      return updated;
+    });
+  };
+
   const searchMovies = async (q?: string, page = 1) => {
     const term = q ?? query;
     if (!term.trim()) { setResults([]); setHasMoreResults(false); return; }
@@ -89,7 +112,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
         }
       );
       const data = await res.json();
-      const newResults = data.results || [];
+      const newResults = ((data.results || []) as TMDBMovie[]).sort((a, b) => b.popularity - a.popularity);
       if (page === 1) {
         setResults(newResults);
       } else {
@@ -98,6 +121,8 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       setSearchPage(page);
       setLastSearchTerm(term);
       setHasMoreResults(page < (data.total_pages || 1));
+      // Fetch directors in background
+      fetchDirectorsForMovies(newResults);
     } catch {
       toast.error('Failed to search movies');
     } finally {
