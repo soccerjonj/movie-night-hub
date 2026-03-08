@@ -275,8 +275,14 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for a movie..."
-              className="bg-muted/50 border-border"
+              className="bg-muted/50 border-border flex-1"
               onKeyDown={(e) => e.key === 'Enter' && searchMovies(undefined, 1)}
+            />
+            <Input
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder="Year"
+              className="bg-muted/50 border-border w-20"
             />
             <Button variant="gold" onClick={() => searchMovies(undefined, 1)} disabled={searching}>
               <Search className="w-4 h-4" />
