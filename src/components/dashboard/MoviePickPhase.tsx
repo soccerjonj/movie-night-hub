@@ -65,13 +65,14 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
     fetchDirector();
   }, [selected]);
 
-  const searchMovies = async () => {
-    if (!query.trim()) return;
+  const searchMovies = async (q?: string) => {
+    const term = q ?? query;
+    if (!term.trim()) { setResults([]); return; }
     setSearching(true);
     setSelected(null);
     try {
       const res = await fetch(
-        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=1`,
+        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(term)}&include_adult=false&language=en-US&page=1`,
         {
           headers: {
             'Authorization': `Bearer ${TMDB_API_TOKEN}`,
@@ -87,6 +88,13 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
       setSearching(false);
     }
   };
+
+  // Auto-search as user types (debounced)
+  useEffect(() => {
+    if (!query.trim()) { setResults([]); return; }
+    const timer = setTimeout(() => searchMovies(query), 350);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const pickMovie = async (movie: TMDBMovie) => {
     if (!user) return;
@@ -139,7 +147,7 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
               className="bg-muted/50 border-border"
               onKeyDown={(e) => e.key === 'Enter' && searchMovies()}
             />
-            <Button variant="gold" onClick={searchMovies} disabled={searching}>
+            <Button variant="gold" onClick={() => searchMovies()} disabled={searching}>
               <Search className="w-4 h-4" />
             </Button>
           </div>
