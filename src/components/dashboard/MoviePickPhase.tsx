@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Season, MoviePick, GroupMember } from '@/hooks/useGroup';
+import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Check, Film, Star, ExternalLink, X } from 'lucide-react';
@@ -12,6 +12,7 @@ interface Props {
   season: Season;
   moviePicks: MoviePick[];
   members: GroupMember[];
+  profiles: Profile[];
   onUpdate: () => void;
 }
 
@@ -36,7 +37,7 @@ const getLetterboxdUrl = (title: string, year?: string) => {
 
 const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 
-const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
+const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Props) => {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<TMDBMovie[]>([]);
@@ -157,9 +158,28 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
       <h2 className="font-display text-lg sm:text-xl font-bold mb-1">Pick Your Movie</h2>
-      <p className="text-sm text-muted-foreground mb-4">
+      <p className="text-sm text-muted-foreground mb-3">
         {pickedCount} of {totalMembers} members have picked
       </p>
+
+      {/* Member pick status */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        {members.map((member) => {
+          const profile = profiles.find(p => p.user_id === member.user_id);
+          const hasPicked = moviePicks.some(p => p.user_id === member.user_id);
+          return (
+            <div
+              key={member.id}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${
+                hasPicked ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground'
+              }`}
+            >
+              {hasPicked ? <Check className="w-3 h-3" /> : <span className="w-3 h-3 rounded-full border border-current opacity-40" />}
+              {profile?.display_name || 'Unknown'}
+            </div>
+          );
+        })}
+      </div>
 
       {userPick && !editing ? (
         <div className="flex items-center gap-3 bg-primary/5 rounded-xl p-4">
