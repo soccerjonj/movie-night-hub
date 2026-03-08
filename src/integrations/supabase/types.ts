@@ -259,39 +259,83 @@ export type Database = {
         }
         Relationships: []
       }
+      season_participants: {
+        Row: {
+          created_at: string
+          id: string
+          pick_group: number | null
+          season_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pick_group?: number | null
+          season_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pick_group?: number | null
+          season_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_participants_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seasons: {
         Row: {
           created_at: string
           current_movie_index: number
           group_id: string
+          guessing_enabled: boolean
           id: string
+          movies_per_member: number
           next_call_date: string | null
           season_number: number
           status: Database["public"]["Enums"]["season_status"]
           title: string | null
           updated_at: string
+          watch_interval_days: number
+          watch_start_date: string | null
         }
         Insert: {
           created_at?: string
           current_movie_index?: number
           group_id: string
+          guessing_enabled?: boolean
           id?: string
+          movies_per_member?: number
           next_call_date?: string | null
           season_number: number
           status?: Database["public"]["Enums"]["season_status"]
           title?: string | null
           updated_at?: string
+          watch_interval_days?: number
+          watch_start_date?: string | null
         }
         Update: {
           created_at?: string
           current_movie_index?: number
           group_id?: string
+          guessing_enabled?: boolean
           id?: string
+          movies_per_member?: number
           next_call_date?: string | null
           season_number?: number
           status?: Database["public"]["Enums"]["season_status"]
           title?: string | null
           updated_at?: string
+          watch_interval_days?: number
+          watch_start_date?: string | null
         }
         Relationships: [
           {
