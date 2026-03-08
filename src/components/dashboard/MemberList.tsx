@@ -464,7 +464,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         </div>
       </div>
 
-      <Dialog open={!!selectedUserId} onOpenChange={(open) => !open && setSelectedUserId(null)}>
+      <Dialog open={!!selectedUserId} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="sr-only">Member Profile</DialogTitle>
