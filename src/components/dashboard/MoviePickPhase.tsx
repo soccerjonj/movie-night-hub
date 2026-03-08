@@ -41,6 +41,9 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<TMDBMovie[]>([]);
+  const [searchPage, setSearchPage] = useState(1);
+  const [hasMoreResults, setHasMoreResults] = useState(false);
+  const [lastSearchTerm, setLastSearchTerm] = useState('');
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selected, setSelected] = useState<TMDBMovie | null>(null);
@@ -68,14 +71,14 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     fetchDirector();
   }, [selected]);
 
-  const searchMovies = async (q?: string) => {
+  const searchMovies = async (q?: string, page = 1) => {
     const term = q ?? query;
-    if (!term.trim()) { setResults([]); return; }
+    if (!term.trim()) { setResults([]); setHasMoreResults(false); return; }
     setSearching(true);
     setSelected(null);
     try {
       const res = await fetch(
-        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(term)}&include_adult=false&language=en-US&page=1`,
+        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(term)}&include_adult=false&language=en-US&page=${page}`,
         {
           headers: {
             'Authorization': `Bearer ${TMDB_API_TOKEN}`,
@@ -84,7 +87,15 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
         }
       );
       const data = await res.json();
-      setResults(data.results?.slice(0, 8) || []);
+      const newResults = data.results || [];
+      if (page === 1) {
+        setResults(newResults);
+      } else {
+        setResults(prev => [...prev, ...newResults]);
+      }
+      setSearchPage(page);
+      setLastSearchTerm(term);
+      setHasMoreResults(page < (data.total_pages || 1));
     } catch {
       toast.error('Failed to search movies');
     } finally {
@@ -92,10 +103,16 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     }
   };
 
+  const loadMoreResults = () => {
+    if (hasMoreResults && !searching) {
+      searchMovies(lastSearchTerm, searchPage + 1);
+    }
+  };
+
   // Auto-search as user types (debounced)
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
-    const timer = setTimeout(() => searchMovies(query), 350);
+    if (!query.trim()) { setResults([]); setHasMoreResults(false); return; }
+    const timer = setTimeout(() => searchMovies(query, 1), 350);
     return () => clearTimeout(timer);
   }, [query]);
 
@@ -226,9 +243,9 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for a movie..."
               className="bg-muted/50 border-border"
-              onKeyDown={(e) => e.key === 'Enter' && searchMovies()}
+              onKeyDown={(e) => e.key === 'Enter' && searchMovies(undefined, 1)}
             />
-            <Button variant="gold" onClick={() => searchMovies()} disabled={searching}>
+            <Button variant="gold" onClick={() => searchMovies(undefined, 1)} disabled={searching}>
               <Search className="w-4 h-4" />
             </Button>
           </div>
@@ -301,10 +318,10 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
 
           {/* Grid results */}
           {results.length > 0 && !selected && (
-            <div className="space-y-1 max-h-[300px] overflow-y-auto rounded-xl border border-border bg-card/50 p-1">
-              {results.map((movie) => (
+            <div className="space-y-1 max-h-[400px] overflow-y-auto rounded-xl border border-border bg-card/50 p-1">
+              {results.map((movie, idx) => (
                 <button
-                  key={movie.id}
+                  key={`${movie.id}-${idx}`}
                   onClick={() => setSelected(movie)}
                   className="w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-primary/10 transition-colors"
                 >
@@ -333,6 +350,15 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   </div>
                 </button>
               ))}
+              {hasMoreResults && (
+                <button
+                  onClick={loadMoreResults}
+                  disabled={searching}
+                  className="w-full text-center text-sm text-primary hover:text-primary/80 py-2 font-medium"
+                >
+                  {searching ? 'Loading...' : 'Load more results'}
+                </button>
+              )}
             </div>
           )}
         </div>
