@@ -25,6 +25,7 @@ interface TMDBMovie {
   vote_average: number;
   vote_count: number;
   genre_ids: number[];
+  popularity: number;
 }
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
