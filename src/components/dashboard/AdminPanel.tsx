@@ -44,7 +44,7 @@ interface Props {
 
 const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, showPanel, setShowPanel }: Props & { showPanel: boolean; setShowPanel: (v: boolean) => void }) => {
   const [loading, setLoading] = useState(false);
-  const [newSeasonTitle, setNewSeasonTitle] = useState('');
+  
   const [editingSeason, setEditingSeason] = useState(false);
   const [editSeasonNumber, setEditSeasonNumber] = useState('');
   const [editSeasonTitle, setEditSeasonTitle] = useState('');
