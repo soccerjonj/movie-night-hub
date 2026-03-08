@@ -41,6 +41,7 @@ const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y
 const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Props) => {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
   const [results, setResults] = useState<TMDBMovie[]>([]);
   const [searchPage, setSearchPage] = useState(1);
   const [hasMoreResults, setHasMoreResults] = useState(false);
@@ -103,7 +104,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     setSelected(null);
     try {
       const res = await fetch(
-        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(term)}&include_adult=false&language=en-US&page=${page}`,
+        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(term)}&include_adult=false&language=en-US&page=${page}${yearFilter ? `&year=${yearFilter}` : ''}`,
         {
           headers: {
             'Authorization': `Bearer ${TMDB_API_TOKEN}`,
@@ -146,7 +147,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     if (!query.trim()) { setResults([]); setHasMoreResults(false); return; }
     const timer = setTimeout(() => searchMovies(query, 1), 350);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, yearFilter]);
 
   const pickMovie = async (movie: TMDBMovie) => {
     if (!user) return;
@@ -274,8 +275,14 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for a movie..."
-              className="bg-muted/50 border-border"
+              className="bg-muted/50 border-border flex-1"
               onKeyDown={(e) => e.key === 'Enter' && searchMovies(undefined, 1)}
+            />
+            <Input
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder="Year"
+              className="bg-muted/50 border-border w-20"
             />
             <Button variant="gold" onClick={() => searchMovies(undefined, 1)} disabled={searching}>
               <Search className="w-4 h-4" />
