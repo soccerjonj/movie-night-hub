@@ -365,8 +365,11 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{movie.title}</p>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs text-muted-foreground">{movie.release_date?.split('-')[0]}</span>
+                      {directorsMap[movie.id] && (
+                        <span className="text-xs text-muted-foreground">· {directorsMap[movie.id]}</span>
+                      )}
                       {movie.vote_average > 0 && (
                         <div className="flex items-center gap-0.5">
                           <Star className="w-2.5 h-2.5 text-primary fill-primary" />
