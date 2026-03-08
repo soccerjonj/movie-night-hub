@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
 import ImportSeasonDialog from './ImportSeasonDialog';
+import CreateSeasonDialog from './CreateSeasonDialog';
 import ImportGuessesDialog from './ImportGuessesDialog';
 import EditGuessesDialog from './EditGuessesDialog';
 import EditPicksDialog from './EditPicksDialog';
@@ -43,7 +44,7 @@ interface Props {
 
 const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, showPanel, setShowPanel }: Props & { showPanel: boolean; setShowPanel: (v: boolean) => void }) => {
   const [loading, setLoading] = useState(false);
-  const [newSeasonTitle, setNewSeasonTitle] = useState('');
+  
   const [editingSeason, setEditingSeason] = useState(false);
   const [editSeasonNumber, setEditSeasonNumber] = useState('');
   const [editSeasonTitle, setEditSeasonTitle] = useState('');
@@ -63,25 +64,6 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     return setMinutes(setHours(next, 19), 30);
   };
 
-  const startNewSeason = async (title?: string) => {
-    setLoading(true);
-    try {
-      const seasonNumber = season ? season.season_number + 1 : 1;
-      const { error } = await supabase.from('seasons').insert({
-        group_id: group.id,
-        season_number: seasonNumber,
-        title: title?.trim() || null,
-        status: 'picking',
-      });
-      if (error) throw error;
-      toast.success(`Season ${seasonNumber} started!`);
-      onUpdate();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to start new season');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const startGuessingRound = async () => {
     if (!season) return;
@@ -425,24 +407,57 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
           {/* Season Actions */}
           <div className="flex flex-wrap gap-2 items-end">
             {(!season || season.status === 'completed') && (
-              <div className="flex items-end gap-2">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Season Title (optional)</label>
-                  <Input value={newSeasonTitle} onChange={(e) => setNewSeasonTitle(e.target.value)} placeholder="e.g. Horror Month" className="bg-muted/50 w-48" />
-                </div>
-                <Button variant="gold" size="sm" onClick={() => { startNewSeason(newSeasonTitle); setNewSeasonTitle(''); }} disabled={loading}>
-                  <Play className="w-4 h-4 mr-1" /> Start New Season
-                </Button>
-              </div>
+              <CreateSeasonDialog
+                group={group}
+                members={members}
+                profiles={profiles}
+                currentSeasonNumber={season?.season_number ?? 0}
+                onCreated={onUpdate}
+              />
             )}
 
             {season?.status === 'picking' && (
-              <Button variant="gold" size="sm" onClick={startGuessingRound} disabled={loading || moviePicks.length < members.length}>
-                <Shuffle className="w-4 h-4 mr-1" /> Start Guessing Round
-                {moviePicks.length < members.length && (
-                  <span className="ml-1 text-xs">({moviePicks.length}/{members.length} picks)</span>
+              <>
+                {(season as any).guessing_enabled !== false ? (
+                  <Button variant="gold" size="sm" onClick={startGuessingRound} disabled={loading || moviePicks.length < members.length}>
+                    <Shuffle className="w-4 h-4 mr-1" /> Start Guessing Round
+                    {moviePicks.length < members.length && (
+                      <span className="ml-1 text-xs">({moviePicks.length}/{members.length} picks)</span>
+                    )}
+                  </Button>
+                ) : (
+                  <Button variant="gold" size="sm" onClick={async () => {
+                    // Skip guessing, shuffle and go straight to watching
+                    if (!season) return;
+                    setLoading(true);
+                    try {
+                      const shuffled = [...moviePicks].sort(() => Math.random() - 0.5);
+                      for (let i = 0; i < shuffled.length; i++) {
+                        const { error: pickError } = await supabase.from('movie_picks').update({ watch_order: i }).eq('id', shuffled[i].id);
+                        if (pickError) throw pickError;
+                      }
+                      const callDate = getNextMondayCallDate();
+                      const { error } = await supabase.from('seasons').update({
+                        status: 'watching',
+                        current_movie_index: 0,
+                        next_call_date: callDate.toISOString(),
+                      }).eq('id', season.id);
+                      if (error) throw error;
+                      toast.success('Watching season started!');
+                      onUpdate();
+                    } catch (err: unknown) {
+                      toast.error(err instanceof Error ? err.message : 'Failed');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }} disabled={loading || moviePicks.length < members.length}>
+                    <Play className="w-4 h-4 mr-1" /> Start Watching
+                    {moviePicks.length < members.length && (
+                      <span className="ml-1 text-xs">({moviePicks.length}/{members.length} picks)</span>
+                    )}
+                  </Button>
                 )}
-              </Button>
+              </>
             )}
 
             {season?.status === 'guessing' && (
