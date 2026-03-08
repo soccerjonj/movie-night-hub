@@ -196,7 +196,7 @@ const Dashboard = () => {
               )}
 
               {/* Scoreboard */}
-              {group && (
+              {group && season?.guessing_enabled && (
                 <Scoreboard group={group} season={season} profiles={profiles} members={members} />
               )}
 
