@@ -12,6 +12,7 @@ interface GroupInfo {
   id: string;
   name: string;
   member_count: number;
+  season_status: string | null;
 }
 
 const ClubSelect = () => {
@@ -71,14 +72,23 @@ const ClubSelect = () => {
         return;
       }
 
-      // Get member counts
+      // Get member counts and current season status
       const groupInfos: GroupInfo[] = [];
       for (const g of groupsData) {
-        const { count } = await supabase
-          .from('group_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('group_id', g.id);
-        groupInfos.push({ id: g.id, name: g.name, member_count: count ?? 0 });
+        const [{ count }, { data: latestSeason }] = await Promise.all([
+          supabase
+            .from('group_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('group_id', g.id),
+          supabase
+            .from('seasons')
+            .select('status')
+            .eq('group_id', g.id)
+            .order('season_number', { ascending: false })
+            .limit(1),
+        ]);
+        const status = latestSeason && latestSeason.length > 0 ? latestSeason[0].status : null;
+        groupInfos.push({ id: g.id, name: g.name, member_count: count ?? 0, season_status: status });
       }
 
       // If only one group, go directly to dashboard
@@ -135,9 +145,16 @@ const ClubSelect = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{g.name}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Users className="w-3 h-3" /> {g.member_count} members
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Users className="w-3 h-3" /> {g.member_count} members
+                      </p>
+                      {g.season_status && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
+                          {g.season_status === 'completed' ? 'Completed' : g.season_status}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground" />
                 </button>
