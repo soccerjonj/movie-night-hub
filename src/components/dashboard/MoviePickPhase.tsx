@@ -41,6 +41,7 @@ const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y
 const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Props) => {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
   const [results, setResults] = useState<TMDBMovie[]>([]);
   const [searchPage, setSearchPage] = useState(1);
   const [hasMoreResults, setHasMoreResults] = useState(false);
