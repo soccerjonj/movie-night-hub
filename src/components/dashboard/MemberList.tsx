@@ -1,8 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, Check, X, Trophy } from 'lucide-react';
+import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+import ReactCrop, { type Crop as CropType, centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 interface Props {
   members: GroupMember[];
@@ -38,7 +43,16 @@ interface GuessRow {
   season_id: string;
 }
 
+function centerAspectCrop(mediaWidth: number, mediaHeight: number) {
+  return centerCrop(
+    makeAspectCrop({ unit: '%', width: 90 }, 1, mediaWidth, mediaHeight),
+    mediaWidth,
+    mediaHeight
+  );
+}
+
 const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
+  const { user } = useAuth();
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -46,6 +60,91 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
   const [picks, setPicks] = useState<PickRow[]>([]);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Crop state
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState<CropType>();
+  const [uploading, setUploading] = useState(false);
+  const cropImgRef = useRef<HTMLImageElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const onCropImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    setCrop(centerAspectCrop(naturalWidth, naturalHeight));
+  }, []);
+
+  const openCropWithFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const openCropWithUrl = (url: string) => {
+    setCropImageSrc(url.split('?')[0] + '?t=' + Date.now());
+    setCropDialogOpen(true);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
+    openCropWithFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const getCroppedBlob = (): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const image = cropImgRef.current;
+      if (!image || !crop) { resolve(null); return; }
+      const canvas = document.createElement('canvas');
+      const scaleX = image.naturalWidth / image.width;
+      const scaleY = image.naturalHeight / image.height;
+      const pixelCrop = {
+        x: (crop.unit === '%' ? (crop.x / 100) * image.width : crop.x) * scaleX,
+        y: (crop.unit === '%' ? (crop.y / 100) * image.height : crop.y) * scaleY,
+        width: (crop.unit === '%' ? (crop.width / 100) * image.width : crop.width) * scaleX,
+        height: (crop.unit === '%' ? (crop.height / 100) * image.height : crop.height) * scaleY,
+      };
+      const size = Math.min(pixelCrop.width, pixelCrop.height, 512);
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(null); return; }
+      ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, size, size);
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.9);
+    });
+  };
+
+  const handleSaveCrop = async () => {
+    if (!user) return;
+    setUploading(true);
+    try {
+      const blob = await getCroppedBlob();
+      if (!blob) throw new Error('Failed to crop image');
+      const filePath = `${user.id}/avatar.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, blob, { upsert: true, contentType: 'image/jpeg' });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('user_id', user.id);
+      if (updateError) throw updateError;
+      toast.success('Profile picture updated!');
+      onUpdate();
+      setCropDialogOpen(false);
+      setCropImageSrc(null);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Fetch data when a member is selected
   useEffect(() => {
@@ -96,6 +195,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
   const renderMemberProfile = () => {
     if (!selectedUserId) return null;
     const profile = getProfile(selectedUserId);
+    const isOwnProfile = user?.id === selectedUserId;
 
     // Movies this member picked
     const memberPicks = picks
@@ -160,10 +260,31 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
       <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
-            ) : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
+          <div className="relative group">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
+              ) : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
+            </div>
+            {isOwnProfile && (
+              <>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                >
+                  <Camera className="w-4 h-4 text-white" />
+                </button>
+                {profile?.avatar_url && (
+                  <button
+                    onClick={() => openCropWithUrl(profile.avatar_url!)}
+                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Crop photo"
+                  >
+                    <Crop className="w-3 h-3 text-primary-foreground" />
+                  </button>
+                )}
+              </>
+            )}
           </div>
           <div>
             <h3 className="font-display text-lg font-bold">{profile?.display_name || 'Unknown'}</h3>
@@ -171,6 +292,11 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
               <span className="flex items-center gap-1 text-xs text-primary">
                 <Crown className="w-3 h-3" /> Admin
               </span>
+            )}
+            {isOwnProfile && (
+              <button onClick={() => fileInputRef.current?.click()} className="text-xs text-primary hover:underline">
+                Change photo
+              </button>
             )}
           </div>
         </div>
@@ -334,6 +460,42 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
           ) : (
             renderMemberProfile()
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
+      {/* Crop dialog */}
+      <Dialog open={cropDialogOpen} onOpenChange={(open) => { if (!uploading) { setCropDialogOpen(open); if (!open) setCropImageSrc(null); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Crop Profile Photo</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center max-h-[60vh] overflow-auto">
+            {cropImageSrc && (
+              <ReactCrop crop={crop} onChange={(c) => setCrop(c)} aspect={1} circularCrop>
+                <img
+                  ref={cropImgRef}
+                  src={cropImageSrc}
+                  alt="Crop preview"
+                  onLoad={onCropImageLoad}
+                  crossOrigin="anonymous"
+                  className="max-h-[55vh] object-contain"
+                />
+              </ReactCrop>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setCropDialogOpen(false); setCropImageSrc(null); }} disabled={uploading}>Cancel</Button>
+            <Button onClick={handleSaveCrop} disabled={uploading}>{uploading ? 'Saving...' : 'Save'}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
