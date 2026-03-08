@@ -110,7 +110,7 @@ export function useGroup(groupId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, groupId]);
 
   useEffect(() => {
     fetchData();
