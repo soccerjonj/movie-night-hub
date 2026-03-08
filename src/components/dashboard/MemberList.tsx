@@ -195,6 +195,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
   const renderMemberProfile = () => {
     if (!selectedUserId) return null;
     const profile = getProfile(selectedUserId);
+    const isOwnProfile = user?.id === selectedUserId;
 
     // Movies this member picked
     const memberPicks = picks
@@ -459,6 +460,42 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate }: Props) => {
           ) : (
             renderMemberProfile()
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
+      {/* Crop dialog */}
+      <Dialog open={cropDialogOpen} onOpenChange={(open) => { if (!uploading) { setCropDialogOpen(open); if (!open) setCropImageSrc(null); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Crop Profile Photo</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center max-h-[60vh] overflow-auto">
+            {cropImageSrc && (
+              <ReactCrop crop={crop} onChange={(c) => setCrop(c)} aspect={1} circularCrop>
+                <img
+                  ref={cropImgRef}
+                  src={cropImageSrc}
+                  alt="Crop preview"
+                  onLoad={onCropImageLoad}
+                  crossOrigin="anonymous"
+                  className="max-h-[55vh] object-contain"
+                />
+              </ReactCrop>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setCropDialogOpen(false); setCropImageSrc(null); }} disabled={uploading}>Cancel</Button>
+            <Button onClick={handleSaveCrop} disabled={uploading}>{uploading ? 'Saving...' : 'Save'}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
