@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, GroupMember } from '@/hooks/useGroup';
@@ -33,6 +33,8 @@ const getLetterboxdUrl = (title: string, year?: string) => {
   return `https://letterboxd.com/search/${q}/`;
 };
 
+const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
+
 const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
@@ -40,10 +42,28 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selected, setSelected] = useState<TMDBMovie | null>(null);
+  const [director, setDirector] = useState<string | null>(null);
 
   const userPick = moviePicks.find(p => p.user_id === user?.id);
   const pickedCount = moviePicks.length;
   const totalMembers = members.length;
+
+  // Fetch director when a movie is selected
+  useEffect(() => {
+    if (!selected) { setDirector(null); return; }
+    const fetchDirector = async () => {
+      try {
+        const res = await fetch(
+          `https://api.themoviedb.org/3/movie/${selected.id}/credits?language=en-US`,
+          { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
+        );
+        const data = await res.json();
+        const dir = data.crew?.find((c: { job: string; name: string }) => c.job === 'Director');
+        setDirector(dir?.name || null);
+      } catch { setDirector(null); }
+    };
+    fetchDirector();
+  }, [selected]);
 
   const searchMovies = async () => {
     if (!query.trim()) return;
@@ -54,7 +74,7 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
         `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=1`,
         {
           headers: {
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo',
+            'Authorization': `Bearer ${TMDB_API_TOKEN}`,
             'Accept': 'application/json',
           },
         }
@@ -143,7 +163,15 @@ const MoviePickPhase = ({ season, moviePicks, members, onUpdate }: Props) => {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h3 className="font-display text-lg font-bold">{selected.title}</h3>
-                      <p className="text-sm text-muted-foreground">{selected.release_date?.split('-')[0]}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm text-muted-foreground">{selected.release_date?.split('-')[0]}</p>
+                        {director && (
+                          <>
+                            <span className="text-sm text-muted-foreground">·</span>
+                            <p className="text-sm text-muted-foreground">Dir. {director}</p>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground">
                       <X className="w-4 h-4" />
