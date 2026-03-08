@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Film, Plus, Users, ArrowRight } from 'lucide-react';
+import { Film, Plus, Users, ArrowRight, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface GroupInfo {
   id: string;
@@ -15,8 +17,29 @@ interface GroupInfo {
 const ClubSelect = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleLeave = async (groupId: string, groupName: string) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', user.id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Left club', description: `You left ${groupName}.` });
+    const remaining = groups.filter(g => g.id !== groupId);
+    if (remaining.length === 0) {
+      navigate('/setup', { replace: true });
+    } else {
+      setGroups(remaining);
+    }
+  };
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -102,22 +125,40 @@ const ClubSelect = () => {
 
           <div className="space-y-3">
             {groups.map((g) => (
-              <button
-                key={g.id}
-                onClick={() => navigate(`/dashboard/${g.id}`)}
-                className="w-full flex items-center gap-4 rounded-xl p-4 border border-border bg-muted/10 hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
-              >
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <Film className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{g.name}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Users className="w-3 h-3" /> {g.member_count} members
-                  </p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              </button>
+              <div key={g.id} className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate(`/dashboard/${g.id}`)}
+                  className="flex-1 flex items-center gap-4 rounded-xl p-4 border border-border bg-muted/10 hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Film className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{g.name}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Users className="w-3 h-3" /> {g.member_count} members
+                    </p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive">
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Leave {g.name}?</AlertDialogTitle>
+                      <AlertDialogDescription>You'll lose access to this club. You can rejoin later with the invite code.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleLeave(g.id, g.name)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Leave</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             ))}
           </div>
 
