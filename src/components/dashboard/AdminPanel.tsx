@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Play, SkipForward, Eye, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown } from 'lucide-react';
+import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
@@ -149,6 +149,23 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     }
   };
 
+  const goBackMovie = async () => {
+    if (!season || season.current_movie_index <= 0) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('seasons').update({
+        current_movie_index: season.current_movie_index - 1,
+      }).eq('id', season.id);
+      if (error) throw error;
+      toast.success('Went back to previous movie!');
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to go back');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const revealCurrentPicker = async () => {
     if (!season) return;
     const currentPick = moviePicks.find((_, i) => i === season.current_movie_index);
@@ -161,6 +178,23 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to reveal picker');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const unrevealCurrentPicker = async () => {
+    if (!season) return;
+    const currentPick = moviePicks.find((_, i) => i === season.current_movie_index);
+    if (!currentPick) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('movie_picks').update({ revealed: false }).eq('id', currentPick.id);
+      if (error) throw error;
+      toast.success('Picker hidden again!');
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to hide picker');
     } finally {
       setLoading(false);
     }
@@ -445,6 +479,11 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'watching' && (
               <>
+                {season.current_movie_index > 0 && (
+                  <Button variant="outline" size="sm" onClick={goBackMovie} disabled={loading}>
+                    <SkipBack className="w-4 h-4 mr-1" /> Previous Movie
+                  </Button>
+                )}
                 {season.current_movie_index < moviePicks.length - 1 && (
                   <Button variant="gold" size="sm" onClick={advanceMovie} disabled={loading}>
                     <SkipForward className="w-4 h-4 mr-1" /> Next Movie
@@ -455,9 +494,19 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                     <Star className="w-4 h-4 mr-1" /> Start Season Review
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={revealCurrentPicker} disabled={loading}>
-                  <Eye className="w-4 h-4 mr-1" /> Reveal Picker
-                </Button>
+                {(() => {
+                  const currentPick = moviePicks.find((_, i) => i === season.current_movie_index);
+                  const isRevealed = currentPick?.revealed;
+                  return isRevealed ? (
+                    <Button variant="outline" size="sm" onClick={unrevealCurrentPicker} disabled={loading}>
+                      <EyeOff className="w-4 h-4 mr-1" /> Unreveal Picker
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={revealCurrentPicker} disabled={loading}>
+                      <Eye className="w-4 h-4 mr-1" /> Reveal Picker
+                    </Button>
+                  );
+                })()}
                 <Button variant="outline" size="sm" onClick={startEditingCallDate} disabled={loading}>
                   <CalendarClock className="w-4 h-4 mr-1" /> {season.next_call_date ? 'Change Call Date' : 'Set Call Date'}
                 </Button>
