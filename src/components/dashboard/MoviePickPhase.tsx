@@ -318,10 +318,10 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
 
           {/* Grid results */}
           {results.length > 0 && !selected && (
-            <div className="space-y-1 max-h-[300px] overflow-y-auto rounded-xl border border-border bg-card/50 p-1">
-              {results.map((movie) => (
+            <div className="space-y-1 max-h-[400px] overflow-y-auto rounded-xl border border-border bg-card/50 p-1">
+              {results.map((movie, idx) => (
                 <button
-                  key={movie.id}
+                  key={`${movie.id}-${idx}`}
                   onClick={() => setSelected(movie)}
                   className="w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-primary/10 transition-colors"
                 >
@@ -350,6 +350,15 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   </div>
                 </button>
               ))}
+              {hasMoreResults && (
+                <button
+                  onClick={loadMoreResults}
+                  disabled={searching}
+                  className="w-full text-center text-sm text-primary hover:text-primary/80 py-2 font-medium"
+                >
+                  {searching ? 'Loading...' : 'Load more results'}
+                </button>
+              )}
             </div>
           )}
         </div>
