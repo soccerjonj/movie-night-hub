@@ -197,7 +197,7 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
             </div>
 
             {/* Compact scrollable ranking list */}
-            <div className="flex-1 overflow-y-auto px-4 py-1 space-y-0.5 min-h-0">
+            <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-1 space-y-0.5 min-h-0">
               {rankings.map((movieId, index) => {
                 const movie = getMovieById(movieId);
                 if (!movie) return null;
