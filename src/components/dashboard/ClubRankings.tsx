@@ -43,7 +43,7 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
       const [rankingsRes, picksRes] = await Promise.all([
         supabase
           .from('movie_rankings')
-          .select('movie_pick_id, rank')
+          .select('movie_pick_id, rank, user_id')
           .in('season_id', seasonIds),
         supabase
           .from('movie_picks')
