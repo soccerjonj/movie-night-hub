@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useGroup';
 import { Film, ChevronDown, ChevronUp, Trophy, TrendingUp, User, Users, Check, X } from 'lucide-react';
+import ClubRankings from './ClubRankings';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -453,6 +454,13 @@ const History = ({ group, profiles, members }: Props) => {
               ))}
             </div>
           </div>
+
+          {/* Club Rankings */}
+          <ClubRankings
+            seasonIds={selectedSeasonId === 'all' ? seasons.filter(s => s.status === 'completed' || s.status === 'reviewing').map(s => s.id) : [selectedSeasonId]}
+            profiles={profiles}
+            label={selectedSeasonId === 'all' ? 'All-Time Club Rankings' : `Season ${seasons.find(s => s.id === selectedSeasonId)?.season_number} Rankings`}
+          />
 
           {/* Scoreboard */}
           <div className="glass-card rounded-2xl p-4 sm:p-6">
