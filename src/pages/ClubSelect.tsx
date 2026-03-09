@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Film, Plus, Users, ArrowRight, X } from 'lucide-react';
+import { Plus, Users, ArrowRight, X } from 'lucide-react';
+import logo from '@/assets/logo.png';
 import { motion } from 'framer-motion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -101,9 +102,7 @@ const ClubSelect = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-primary">
-          <Film className="w-12 h-12" />
-        </div>
+        <img src={logo} alt="Loading" className="w-12 h-12 rounded-xl animate-pulse" />
       </div>
     );
   }
@@ -120,9 +119,7 @@ const ClubSelect = () => {
       >
         <div className="space-y-6">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-              <Film className="w-8 h-8 text-primary" />
-            </div>
+            <img src={logo} alt="Movie Club" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
             <h1 className="text-2xl font-display font-bold">Your Clubs</h1>
             <p className="text-muted-foreground mt-2">Choose a club to enter</p>
           </div>
@@ -134,9 +131,7 @@ const ClubSelect = () => {
                   onClick={() => navigate(`/dashboard/${g.id}`)}
                   className="flex-1 flex items-center gap-4 rounded-xl p-4 border border-border bg-muted/10 hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Film className="w-5 h-5 text-primary" />
-                  </div>
+                  <img src={logo} alt="" className="w-10 h-10 rounded-xl shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{g.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
