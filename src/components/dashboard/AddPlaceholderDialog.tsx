@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { displayNameSchema, getSafeErrorMessage } from '@/lib/security';
 
 interface Props {
   group: Group;
@@ -17,21 +18,13 @@ const AddPlaceholderDialog = ({ group, onAdded }: Props) => {
   const [displayName, setDisplayName] = useState('');
   const [adding, setAdding] = useState(false);
 
-  const getErrorMessage = (err: unknown) => {
-    if (err instanceof Error) return err.message;
-    if (typeof err === 'object' && err !== null && 'message' in err) {
-      const maybeMessage = (err as { message?: unknown }).message;
-      if (typeof maybeMessage === 'string' && maybeMessage.trim()) return maybeMessage;
-    }
-    return 'Failed to add placeholder';
-  };
-
   const handleAdd = async () => {
-    const name = displayName.trim();
-    if (!name) {
-      toast.error('Enter a display name');
+    const parsed = displayNameSchema.safeParse({ displayName: displayName });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
       return;
     }
+    const name = parsed.data.displayName;
 
     setAdding(true);
     try {
@@ -62,7 +55,7 @@ const AddPlaceholderDialog = ({ group, onAdded }: Props) => {
       setOpen(false);
       onAdded();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err));
+      toast.error(getSafeErrorMessage(err, 'Failed to add member'));
     } finally {
       setAdding(false);
     }

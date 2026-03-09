@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import ReactCrop, { type Crop as CropType, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { validateImageFile, getSafeErrorMessage } from '@/lib/security';
 
 interface Props {
   currentAvatarUrl: string | null;
@@ -34,12 +35,9 @@ const AvatarUpload = ({ currentAvatarUrl, displayName, onUploaded }: Props) => {
   const onFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be under 5MB');
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error);
       return;
     }
     const reader = new FileReader();
@@ -126,7 +124,7 @@ const AvatarUpload = ({ currentAvatarUrl, displayName, onUploaded }: Props) => {
       setCropDialogOpen(false);
       setImageSrc(null);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to upload');
+      toast.error(getSafeErrorMessage(err, 'Failed to upload'));
     } finally {
       setUploading(false);
     }
