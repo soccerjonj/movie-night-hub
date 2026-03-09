@@ -53,8 +53,8 @@ const FavoritesBar = ({ seasonIds, profiles }: Props) => {
   if (!favorite) return null;
 
   return (
-    <div className="flex gap-2">
-      <div className="flex-1 flex items-center gap-2 rounded-xl bg-primary/10 ring-1 ring-primary/20 px-2.5 py-1.5">
+    <div className="grid grid-cols-2 gap-2">
+      <div className="flex items-center gap-2 rounded-xl bg-primary/10 ring-1 ring-primary/20 px-2.5 py-1.5 min-w-0">
         {favorite.posterUrl ? (
           <img src={favorite.posterUrl} alt={favorite.title} className="w-7 h-10 rounded object-cover shrink-0" />
         ) : (
@@ -68,11 +68,12 @@ const FavoritesBar = ({ seasonIds, profiles }: Props) => {
             <span className="text-[10px] font-medium text-primary uppercase tracking-wide">Favorite</span>
           </div>
           <p className="font-medium text-xs truncate">{favorite.title}</p>
+          <p className="text-[10px] text-muted-foreground">Avg: {favorite.avgRank.toFixed(1)}</p>
         </div>
       </div>
 
       {leastFavorite && (
-        <div className="flex-1 flex items-center gap-2 rounded-xl bg-muted/30 ring-1 ring-border/20 px-2.5 py-1.5">
+        <div className="flex items-center gap-2 rounded-xl bg-muted/30 ring-1 ring-border/20 px-2.5 py-1.5 min-w-0">
           {leastFavorite.posterUrl ? (
             <img src={leastFavorite.posterUrl} alt={leastFavorite.title} className="w-7 h-10 rounded object-cover shrink-0" />
           ) : (
@@ -86,6 +87,7 @@ const FavoritesBar = ({ seasonIds, profiles }: Props) => {
               <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Least Fav</span>
             </div>
             <p className="font-medium text-xs truncate">{leastFavorite.title}</p>
+            <p className="text-[10px] text-muted-foreground">Avg: {leastFavorite.avgRank.toFixed(1)}</p>
           </div>
         </div>
       )}
