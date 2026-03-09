@@ -176,6 +176,7 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
           </div>
         )}
       </div>
+      </>)}
 
       {/* Full ranked list */}
       <div className="space-y-1.5">
