@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import ReactCrop, { type Crop as CropType, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import PastRankingsDialog from './PastRankingsDialog';
+import RankingInsights from './RankingInsights';
 
 interface Props {
   members: GroupMember[];
@@ -373,6 +374,9 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             Add Past Rankings
           </Button>
         )}
+
+        {/* Ranking Insights */}
+        <RankingInsights userId={selectedUserId} groupId={group.id} profiles={profiles} />
 
         {/* Their picks */}
         <div>
