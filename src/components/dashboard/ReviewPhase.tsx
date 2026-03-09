@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile, GroupMember } from '@/hooks/useGroup';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Film, GripVertical, Check, Trophy, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTouchDragReorder } from '@/hooks/useTouchDragReorder';
 
 interface Props {
   season: Season;
@@ -29,6 +30,8 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props)
   const [submittedCount, setSubmittedCount] = useState(0);
   const [dragItem, setDragItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useTouchDragReorder(rankings, setRankings, listRef);
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
@@ -173,7 +176,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props)
 
       {/* Ranking UI */}
       {!everyoneSubmitted && (
-        <div className="space-y-1.5">
+        <div ref={listRef} className="space-y-1.5">
           {rankings.map((movieId, index) => {
             const movie = getMovieById(movieId);
             if (!movie) return null;
@@ -194,6 +197,9 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props)
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={() => handleDrop(index)}
                 onDragEnd={handleDragEnd}
+                onTouchStart={(e) => !submitted && handleTouchStart(index, e)}
+                onTouchMove={(e) => !submitted && handleTouchMove(e)}
+                onTouchEnd={() => !submitted && handleTouchEnd()}
               >
                 {!submitted && (
                   <div className="flex flex-col gap-0.5 shrink-0">

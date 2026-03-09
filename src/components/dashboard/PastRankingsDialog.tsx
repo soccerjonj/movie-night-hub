@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Profile } from '@/hooks/useGroup';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Film, GripVertical, Check, Star, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { useTouchDragReorder } from '@/hooks/useTouchDragReorder';
 
 interface SeasonOption {
   id: string;
@@ -41,6 +42,8 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
   const [submitting, setSubmitting] = useState(false);
   const [dragItem, setDragItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useTouchDragReorder(rankings, setRankings, listRef);
 
   // Fetch unranked completed/reviewing seasons
   useEffect(() => {
@@ -194,7 +197,7 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
             </div>
 
             {/* Compact scrollable ranking list */}
-            <div className="flex-1 overflow-y-auto px-4 py-1 space-y-0.5 min-h-0">
+            <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-1 space-y-0.5 min-h-0">
               {rankings.map((movieId, index) => {
                 const movie = getMovieById(movieId);
                 if (!movie) return null;
@@ -215,6 +218,9 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDrop={() => handleDrop(index)}
                     onDragEnd={handleDragEnd}
+                    onTouchStart={(e) => handleTouchStart(index, e)}
+                    onTouchMove={(e) => handleTouchMove(e)}
+                    onTouchEnd={() => handleTouchEnd()}
                   >
                     <div className="flex flex-col shrink-0">
                       <button onClick={() => moveItem(index, index - 1)} className="text-muted-foreground hover:text-foreground text-[9px] leading-none px-0.5" disabled={index === 0}>▲</button>
