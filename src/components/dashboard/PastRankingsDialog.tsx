@@ -42,6 +42,8 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
   const [submitting, setSubmitting] = useState(false);
   const [dragItem, setDragItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useTouchDragReorder(rankings, setRankings, listRef);
 
   // Fetch unranked completed/reviewing seasons
   useEffect(() => {
