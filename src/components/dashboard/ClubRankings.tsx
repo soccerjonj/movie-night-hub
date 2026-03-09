@@ -53,6 +53,7 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
 
       const rankings = rankingsRes.data || [];
       const picks = picksRes.data || [];
+      setAllRankings(rankings);
 
       if (rankings.length === 0) {
         setRankedMovies([]);
