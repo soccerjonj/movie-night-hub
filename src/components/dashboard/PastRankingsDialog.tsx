@@ -160,42 +160,46 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[85vh] flex flex-col overflow-hidden p-0">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-primary" />
-            Add Past Rankings
-          </DialogTitle>
-        </DialogHeader>
+        {/* Fixed header */}
+        <div className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-primary" />
+              Add Past Rankings
+            </DialogTitle>
+          </DialogHeader>
+        </div>
 
         {loading ? (
           <div className="text-center text-muted-foreground py-8">Loading...</div>
         ) : unrankedSeasons.length === 0 ? (
-          <div className="text-center py-8">
+          <div className="text-center py-8 px-6">
             <Trophy className="w-10 h-10 mx-auto mb-3 text-primary/30" />
             <p className="text-sm text-muted-foreground">You've ranked all completed seasons!</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Season selector */}
-            <Select value={selectedSeasonId || ''} onValueChange={setSelectedSeasonId}>
-              <SelectTrigger className="bg-muted/50">
-                <SelectValue placeholder="Select a season" />
-              </SelectTrigger>
-              <SelectContent>
-                {unrankedSeasons.map(s => (
-                  <SelectItem key={s.id} value={s.id}>
-                    Season {s.season_number}{s.title ? ` — ${s.title}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <>
+            {/* Fixed controls below header */}
+            <div className="px-6 pt-4 pb-2 shrink-0 space-y-3">
+              <Select value={selectedSeasonId || ''} onValueChange={setSelectedSeasonId}>
+                <SelectTrigger className="bg-muted/50">
+                  <SelectValue placeholder="Select a season" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unrankedSeasons.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      Season {s.season_number}{s.title ? ` — ${s.title}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Drag to rank from favorite (#1) to least favorite.
+              </p>
+            </div>
 
-            <p className="text-xs text-muted-foreground">
-              Drag to rank movies from your favorite (#1) to least favorite.
-            </p>
-
-            {/* Ranking list */}
-            <div className="space-y-1.5">
+            {/* Scrollable ranking list */}
+            <div className="flex-1 overflow-y-auto px-6 py-2 space-y-1.5 min-h-0">
               {rankings.map((movieId, index) => {
                 const movie = getMovieById(movieId);
                 if (!movie) return null;
@@ -206,7 +210,7 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                   <motion.div
                     key={movieId}
                     layout
-                    className={`flex items-center gap-2 sm:gap-3 rounded-xl p-2 sm:p-3 transition-colors ${
+                    className={`flex items-center gap-2 rounded-xl p-2 transition-colors ${
                       isDragging ? 'opacity-50 bg-primary/10' :
                       isDragOver ? 'bg-primary/5 ring-1 ring-primary/30' :
                       'bg-muted/20 hover:bg-muted/30'
@@ -222,7 +226,7 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                       <button onClick={() => moveItem(index, index + 1)} className="text-muted-foreground hover:text-foreground text-xs p-0.5" disabled={index === rankings.length - 1}>▼</button>
                     </div>
 
-                    <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                       index === 0 ? 'bg-primary text-primary-foreground' :
                       index === 1 ? 'bg-primary/60 text-primary-foreground' :
                       index === 2 ? 'bg-primary/30 text-foreground' :
@@ -234,10 +238,10 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                     <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
 
                     {movie.poster_url ? (
-                      <img src={movie.poster_url} alt={movie.title} className="w-8 sm:w-10 rounded-lg object-cover shrink-0" />
+                      <img src={movie.poster_url} alt={movie.title} className="w-8 rounded-lg object-cover shrink-0" />
                     ) : (
-                      <div className="w-8 sm:w-10 h-11 sm:h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <Film className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+                      <div className="w-8 h-11 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <Film className="w-3 h-3 text-muted-foreground" />
                       </div>
                     )}
 
@@ -252,16 +256,19 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
               })}
             </div>
 
-            <Button
-              variant="gold"
-              className="w-full"
-              onClick={handleSubmit}
-              disabled={submitting || rankings.length === 0}
-            >
-              <Check className="w-4 h-4 mr-2" />
-              {submitting ? 'Submitting...' : 'Submit Rankings'}
-            </Button>
-          </div>
+            {/* Fixed submit footer */}
+            <div className="px-6 py-4 border-t border-border/40 shrink-0">
+              <Button
+                variant="gold"
+                className="w-full"
+                onClick={handleSubmit}
+                disabled={submitting || rankings.length === 0}
+              >
+                <Check className="w-4 h-4 mr-2" />
+                {submitting ? 'Submitting...' : 'Submit Rankings'}
+              </Button>
+            </div>
+          </>
         )}
       </DialogContent>
     </Dialog>
@@ -269,3 +276,4 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
 };
 
 export default PastRankingsDialog;
+
