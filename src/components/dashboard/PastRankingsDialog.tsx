@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Film, GripVertical, Check, Star, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { useTouchDragReorder } from '@/hooks/useTouchDragReorder';
 
 interface SeasonOption {
   id: string;
