@@ -16,14 +16,6 @@ interface PlaceholderProfile {
   display_name: string;
 }
 
-const getErrorMessage = (err: unknown, fallback: string) => {
-  if (err instanceof Error) return err.message;
-  if (typeof err === 'object' && err !== null && 'message' in err) {
-    const maybeMessage = (err as { message?: unknown }).message;
-    if (typeof maybeMessage === 'string' && maybeMessage.trim()) return maybeMessage;
-  }
-  return fallback;
-};
 
 const GroupSetup = () => {
   const { user } = useAuth();
