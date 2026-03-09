@@ -84,6 +84,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const [uploading, setUploading] = useState(false);
   const cropImgRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pastRankingsOpen, setPastRankingsOpen] = useState(false);
 
   const onCropImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = e.currentTarget;
