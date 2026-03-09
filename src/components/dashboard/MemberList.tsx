@@ -361,8 +361,8 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           </div>
         </div>
 
-        {/* Add Past Rankings button - own profile only */}
-        {isOwnProfile && (
+        {/* Add Past Rankings button - own profile only, if there are unranked seasons */}
+        {isOwnProfile && hasUnrankedSeasons && (
           <Button
             variant="outline"
             size="sm"
