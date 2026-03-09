@@ -102,7 +102,7 @@ const ClubSelect = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <img src={logo} alt="Loading" className="h-30 object-contain rounded-xl animate-pulse" />
+        <img src={logo} alt="Loading" className="h-12 object-contain rounded-xl animate-pulse" />
       </div>
     );
   }
