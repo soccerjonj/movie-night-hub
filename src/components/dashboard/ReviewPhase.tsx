@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile, GroupMember } from '@/hooks/useGroup';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Film, GripVertical, Check, Trophy, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTouchDragReorder } from '@/hooks/useTouchDragReorder';
 
 interface Props {
   season: Season;
