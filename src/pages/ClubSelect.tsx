@@ -102,7 +102,7 @@ const ClubSelect = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <img src={logo} alt="Loading" className="w-12 h-12 rounded-xl animate-pulse" />
+        <img src={logo} alt="Loading" className="h-12 object-contain rounded-xl animate-pulse" />
       </div>
     );
   }
@@ -119,7 +119,7 @@ const ClubSelect = () => {
       >
         <div className="space-y-6">
           <div className="text-center">
-            <img src={logo} alt="Movie Club" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
+            <img src={logo} alt="Movie Club" className="h-16 object-contain rounded-2xl mx-auto mb-4" />
             <h1 className="text-2xl font-display font-bold">Your Clubs</h1>
             <p className="text-muted-foreground mt-2">Choose a club to enter</p>
           </div>
@@ -131,7 +131,7 @@ const ClubSelect = () => {
                   onClick={() => navigate(`/dashboard/${g.id}`)}
                   className="flex-1 flex items-center gap-4 rounded-xl p-4 border border-border bg-muted/10 hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
                 >
-                  <img src={logo} alt="" className="w-10 h-10 rounded-xl shrink-0" />
+                  <img src={logo} alt="" className="h-10 object-contain rounded-xl shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{g.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
