@@ -7,6 +7,7 @@ interface Props {
   seasonIds: string[];
   profiles: Profile[];
   label?: string;
+  hideFavorites?: boolean;
 }
 
 interface RankedMovie {
@@ -19,7 +20,9 @@ interface RankedMovie {
   pickerName: string;
 }
 
-const ClubRankings = ({ seasonIds, profiles, label }: Props) => {
+export { type RankedMovie };
+
+const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
   const [rankedMovies, setRankedMovies] = useState<RankedMovie[]>([]);
   const [loading, setLoading] = useState(true);
 
