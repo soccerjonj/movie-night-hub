@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useGroup';
 import { Trophy, Film, Star, Crown } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Props {
   seasonIds: string[];
@@ -24,7 +25,9 @@ export { type RankedMovie };
 
 const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
   const [rankedMovies, setRankedMovies] = useState<RankedMovie[]>([]);
+  const [allRankings, setAllRankings] = useState<{ movie_pick_id: string; user_id: string; rank: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMovie, setSelectedMovie] = useState<RankedMovie | null>(null);
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
@@ -40,7 +43,7 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
       const [rankingsRes, picksRes] = await Promise.all([
         supabase
           .from('movie_rankings')
-          .select('movie_pick_id, rank')
+          .select('movie_pick_id, rank, user_id')
           .in('season_id', seasonIds),
         supabase
           .from('movie_picks')
@@ -50,6 +53,7 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
 
       const rankings = rankingsRes.data || [];
       const picks = picksRes.data || [];
+      setAllRankings(rankings);
 
       if (rankings.length === 0) {
         setRankedMovies([]);
@@ -181,9 +185,10 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
       {/* Full ranked list */}
       <div className="space-y-1.5">
         {rankedMovies.map((movie, index) => (
-          <div
+          <button
             key={movie.moviePickId}
-            className={`flex items-center gap-2 sm:gap-3 rounded-xl p-2 sm:p-3 ${
+            onClick={() => setSelectedMovie(movie)}
+            className={`w-full flex items-center gap-2 sm:gap-3 rounded-xl p-2 sm:p-3 text-left transition-colors hover:ring-1 hover:ring-primary/30 ${
               index === 0 ? 'bg-primary/5' : 'bg-muted/10'
             }`}
           >
@@ -217,9 +222,51 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
               </p>
               <p className="text-[10px] text-muted-foreground/60">avg</p>
             </div>
-          </div>
+          </button>
         ))}
       </div>
+
+      {/* Individual rankings dialog */}
+      <Dialog open={!!selectedMovie} onOpenChange={(open) => { if (!open) setSelectedMovie(null); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="font-display text-base truncate">
+              {selectedMovie?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedMovie && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground mb-2">
+                Avg rank: {selectedMovie.avgRank.toFixed(1)} · {selectedMovie.rankCount} votes
+              </p>
+              {allRankings
+                .filter(r => r.movie_pick_id === selectedMovie.moviePickId)
+                .sort((a, b) => a.rank - b.rank)
+                .map(r => {
+                  const profile = getProfile(r.user_id);
+                  return (
+                    <div key={r.user_id} className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-bold text-primary">{profile?.display_name?.charAt(0).toUpperCase() || '?'}</span>
+                          </div>
+                        )}
+                        <span className="text-sm truncate">{profile?.display_name || 'Unknown'}</span>
+                      </div>
+                      <span className="font-mono text-sm font-medium text-muted-foreground shrink-0 ml-2">#{r.rank}</span>
+                    </div>
+                  );
+                })}
+              {allRankings.filter(r => r.movie_pick_id === selectedMovie.moviePickId).length === 0 && (
+                <p className="text-sm text-muted-foreground italic text-center py-4">No rankings yet</p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
