@@ -176,7 +176,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props)
 
       {/* Ranking UI */}
       {!everyoneSubmitted && (
-        <div className="space-y-1.5">
+        <div ref={listRef} className="space-y-1.5">
           {rankings.map((movieId, index) => {
             const movie = getMovieById(movieId);
             if (!movie) return null;
