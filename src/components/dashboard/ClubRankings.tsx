@@ -25,7 +25,9 @@ export { type RankedMovie };
 
 const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
   const [rankedMovies, setRankedMovies] = useState<RankedMovie[]>([]);
+  const [allRankings, setAllRankings] = useState<{ movie_pick_id: string; user_id: string; rank: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMovie, setSelectedMovie] = useState<RankedMovie | null>(null);
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
