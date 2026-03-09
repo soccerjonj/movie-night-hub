@@ -332,6 +332,19 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           </div>
         </div>
 
+        {/* Add Past Rankings button - own profile only */}
+        {isOwnProfile && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => setPastRankingsOpen(true)}
+          >
+            <ListOrdered className="w-4 h-4 mr-2" />
+            Add Past Rankings
+          </Button>
+        )}
+
         {/* Their picks */}
         <div>
           <h4 className="font-display text-sm font-bold mb-2 flex items-center gap-1.5">
