@@ -75,7 +75,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const [seasons, setSeasons] = useState<SeasonInfo[]>([]);
   const [picks, setPicks] = useState<PickRow[]>([]);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
-  const [rankings, setRankings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Crop state
@@ -210,19 +209,16 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       if (seasonIds.length === 0) {
         setPicks([]);
         setGuesses([]);
-        setRankings([]);
         setLoading(false);
         return;
       }
 
-      const [picksRes, guessesRes, rankingsRes] = await Promise.all([
+      const [picksRes, guessesRes] = await Promise.all([
         supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed').in('season_id', seasonIds),
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
-        supabase.from('movie_rankings').select('user_id, movie_pick_id, rank, season_id').in('season_id', seasonIds),
       ]);
       setPicks((picksRes.data || []) as PickRow[]);
       setGuesses((guessesRes.data || []) as GuessRow[]);
-      setRankings(rankingsRes.data || []);
       setLoading(false);
     };
     fetchData();
@@ -377,138 +373,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             Add Past Rankings
           </Button>
         )}
-
-        {/* Ranking preferences */}
-        {rankings.length > 0 && (() => {
-          // Build co-pick groups for ranking attribution
-          const coPickGroups = new Map<string, string[]>();
-          picks.forEach(p => {
-            if (p.watch_order != null) {
-              const key = `${p.season_id}:${p.watch_order}`;
-              if (!coPickGroups.has(key)) coPickGroups.set(key, []);
-              coPickGroups.get(key)!.push(p.user_id);
-            }
-          });
-
-          // Map each pick to all its co-pickers
-          const pickToAllPickers = new Map<string, string[]>();
-          picks.forEach(p => {
-            if (p.watch_order != null) {
-              const key = `${p.season_id}:${p.watch_order}`;
-              const coPickers = coPickGroups.get(key) || [p.user_id];
-              pickToAllPickers.set(p.id, coPickers);
-            } else {
-              pickToAllPickers.set(p.id, [p.user_id]);
-            }
-          });
-
-          // Calculate favorite picker (who this user ranks highest on average)
-          const pickerRankings = new Map<string, number[]>();
-          rankings.filter(r => r.user_id === selectedUserId).forEach(ranking => {
-            const allPickers = pickToAllPickers.get(ranking.movie_pick_id) || [];
-            allPickers.forEach(pickerId => {
-              if (!pickerRankings.has(pickerId)) {
-                pickerRankings.set(pickerId, []);
-              }
-              pickerRankings.get(pickerId)!.push(ranking.rank);
-            });
-          });
-
-          let favoritePicker: string | null = null;
-          let bestAvgRank = Infinity;
-          pickerRankings.forEach((ranks, pickerId) => {
-            if (pickerId !== selectedUserId && ranks.length >= 2) { // Exclude self and need at least 2 rankings
-              const avgRank = ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length;
-              if (avgRank < bestAvgRank) {
-                bestAvgRank = avgRank;
-                favoritePicker = pickerId;
-              }
-            }
-          });
-
-          // Calculate biggest fan (who ranks this user's picks highest on average)
-          const fanRankings = new Map<string, number[]>();
-          rankings.forEach(ranking => {
-            const allPickers = pickToAllPickers.get(ranking.movie_pick_id) || [];
-            if (allPickers.includes(selectedUserId) && ranking.user_id !== selectedUserId) {
-              // This ranking is for a movie that the selected user was involved in picking
-              if (!fanRankings.has(ranking.user_id)) {
-                fanRankings.set(ranking.user_id, []);
-              }
-              fanRankings.get(ranking.user_id)!.push(ranking.rank);
-            }
-          });
-
-          let biggestFan: string | null = null;
-          let bestFanAvgRank = Infinity;
-          fanRankings.forEach((ranks, fanId) => {
-            if (ranks.length >= 2) { // Need at least 2 rankings to be meaningful
-              const avgRank = ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length;
-              if (avgRank < bestFanAvgRank) {
-                bestFanAvgRank = avgRank;
-                biggestFan = fanId;
-              }
-            }
-          });
-
-          const favoriteProfile = favoritePicker ? getProfile(favoritePicker) : null;
-          const biggestFanProfile = biggestFan ? getProfile(biggestFan) : null;
-
-          if (favoriteProfile || biggestFanProfile) {
-            return (
-              <div className="space-y-3">
-                <h4 className="font-display text-sm font-bold flex items-center gap-1.5">
-                  <Trophy className="w-4 h-4 text-primary" />
-                  Ranking Preferences
-                </h4>
-                <div className="space-y-2">
-                  {favoriteProfile && (
-                    <div className="bg-muted/20 rounded-xl p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="w-6 h-6 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center shrink-0">
-                          {favoriteProfile.avatar_url ? (
-                            <img src={favoriteProfile.avatar_url} alt={favoriteProfile.display_name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-[10px] font-bold text-primary">
-                              {favoriteProfile.display_name?.charAt(0).toUpperCase() || '?'}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate">{favoriteProfile.display_name}</p>
-                          <p className="text-[10px] text-muted-foreground">Favorite Picker</p>
-                        </div>
-                        <span className="text-xs font-bold text-primary">#{bestAvgRank.toFixed(1)}</span>
-                      </div>
-                    </div>
-                  )}
-                  {biggestFanProfile && (
-                    <div className="bg-muted/20 rounded-xl p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="w-6 h-6 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center shrink-0">
-                          {biggestFanProfile.avatar_url ? (
-                            <img src={biggestFanProfile.avatar_url} alt={biggestFanProfile.display_name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-[10px] font-bold text-primary">
-                              {biggestFanProfile.display_name?.charAt(0).toUpperCase() || '?'}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate">{biggestFanProfile.display_name}</p>
-                          <p className="text-[10px] text-muted-foreground">Biggest Fan</p>
-                        </div>
-                        <span className="text-xs font-bold text-primary">#{bestFanAvgRank.toFixed(1)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          }
-          return null;
-        })()}
-        )
 
         {/* Their picks */}
         <div>
