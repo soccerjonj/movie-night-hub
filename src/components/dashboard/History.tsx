@@ -455,6 +455,13 @@ const History = ({ group, profiles, members }: Props) => {
             </div>
           </div>
 
+          {/* Club Rankings */}
+          <ClubRankings
+            seasonIds={selectedSeasonId === 'all' ? seasons.filter(s => s.status === 'completed' || s.status === 'reviewing').map(s => s.id) : [selectedSeasonId]}
+            profiles={profiles}
+            label={selectedSeasonId === 'all' ? 'All-Time Club Rankings' : `Season ${seasons.find(s => s.id === selectedSeasonId)?.season_number} Rankings`}
+          />
+
           {/* Scoreboard */}
           <div className="glass-card rounded-2xl p-4 sm:p-6">
             <div className="flex items-center gap-2 mb-4">
