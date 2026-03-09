@@ -218,6 +218,9 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDrop={() => handleDrop(index)}
                     onDragEnd={handleDragEnd}
+                    onTouchStart={(e) => handleTouchStart(index, e)}
+                    onTouchMove={(e) => handleTouchMove(e)}
+                    onTouchEnd={() => handleTouchEnd()}
                   >
                     <div className="flex flex-col shrink-0">
                       <button onClick={() => moveItem(index, index - 1)} className="text-muted-foreground hover:text-foreground text-[9px] leading-none px-0.5" disabled={index === 0}>▲</button>
