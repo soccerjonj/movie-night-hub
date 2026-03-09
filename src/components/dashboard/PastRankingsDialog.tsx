@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Profile } from '@/hooks/useGroup';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Film, GripVertical, Check, Star, Trophy } from 'lucide-react';
@@ -47,7 +47,6 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
     if (!open || !user) return;
     const fetchUnranked = async () => {
       setLoading(true);
-      // Get completed/reviewing seasons
       const { data: seasons } = await supabase
         .from('seasons')
         .select('id, season_number, title, status')
@@ -61,7 +60,6 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
         return;
       }
 
-      // Get seasons user already ranked
       const { data: existingRankings } = await supabase
         .from('movie_rankings')
         .select('season_id')
@@ -78,7 +76,6 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
     fetchUnranked();
   }, [open, user, groupId]);
 
-  // Fetch movies for selected season
   useEffect(() => {
     if (!selectedSeasonId) {
       setMovies([]);
@@ -92,7 +89,6 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
         .eq('season_id', selectedSeasonId)
         .order('watch_order', { ascending: true });
 
-      // Deduplicate by watch_order (co-picks)
       const unique = (data || []).filter((p, i, arr) =>
         arr.findIndex(x => x.watch_order === p.watch_order) === i
       );
@@ -139,7 +135,6 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
       if (error) throw error;
       toast.success('Rankings submitted! 🎬');
 
-      // Remove this season from the unranked list
       setUnrankedSeasons(prev => prev.filter(s => s.id !== selectedSeasonId));
       const remaining = unrankedSeasons.filter(s => s.id !== selectedSeasonId);
       setSelectedSeasonId(remaining.length > 0 ? remaining[0].id : null);
@@ -159,30 +154,30 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] flex flex-col overflow-hidden p-0">
-        {/* Fixed header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
+      <DialogContent className="max-w-md max-h-[94vh] flex flex-col overflow-hidden p-0">
+        {/* Compact header */}
+        <div className="px-4 pt-3 pb-2 border-b border-border/40 shrink-0">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-primary" />
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Trophy className="w-4 h-4 text-primary" />
               Add Past Rankings
             </DialogTitle>
           </DialogHeader>
         </div>
 
         {loading ? (
-          <div className="text-center text-muted-foreground py-8">Loading...</div>
+          <div className="text-center text-muted-foreground py-6 text-sm">Loading...</div>
         ) : unrankedSeasons.length === 0 ? (
-          <div className="text-center py-8 px-6">
-            <Trophy className="w-10 h-10 mx-auto mb-3 text-primary/30" />
+          <div className="text-center py-6 px-4">
+            <Trophy className="w-8 h-8 mx-auto mb-2 text-primary/30" />
             <p className="text-sm text-muted-foreground">You've ranked all completed seasons!</p>
           </div>
         ) : (
           <>
-            {/* Fixed controls below header */}
-            <div className="px-6 pt-4 pb-2 shrink-0 space-y-3">
+            {/* Compact controls */}
+            <div className="px-4 pt-2 pb-1 shrink-0 space-y-1.5">
               <Select value={selectedSeasonId || ''} onValueChange={setSelectedSeasonId}>
-                <SelectTrigger className="bg-muted/50">
+                <SelectTrigger className="bg-muted/50 h-8 text-xs">
                   <SelectValue placeholder="Select a season" />
                 </SelectTrigger>
                 <SelectContent>
@@ -193,13 +188,13 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground">
                 Drag to rank from favorite (#1) to least favorite.
               </p>
             </div>
 
-            {/* Scrollable ranking list */}
-            <div className="flex-1 overflow-y-auto px-6 py-2 space-y-1.5 min-h-0">
+            {/* Compact scrollable ranking list */}
+            <div className="flex-1 overflow-y-auto px-4 py-1 space-y-0.5 min-h-0">
               {rankings.map((movieId, index) => {
                 const movie = getMovieById(movieId);
                 if (!movie) return null;
@@ -210,7 +205,7 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                   <motion.div
                     key={movieId}
                     layout
-                    className={`flex items-center gap-2 rounded-xl p-2 transition-colors ${
+                    className={`flex items-center gap-1.5 rounded-lg py-1 px-1.5 transition-colors ${
                       isDragging ? 'opacity-50 bg-primary/10' :
                       isDragOver ? 'bg-primary/5 ring-1 ring-primary/30' :
                       'bg-muted/20 hover:bg-muted/30'
@@ -221,12 +216,12 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                     onDrop={() => handleDrop(index)}
                     onDragEnd={handleDragEnd}
                   >
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <button onClick={() => moveItem(index, index - 1)} className="text-muted-foreground hover:text-foreground text-xs p-0.5" disabled={index === 0}>▲</button>
-                      <button onClick={() => moveItem(index, index + 1)} className="text-muted-foreground hover:text-foreground text-xs p-0.5" disabled={index === rankings.length - 1}>▼</button>
+                    <div className="flex flex-col shrink-0">
+                      <button onClick={() => moveItem(index, index - 1)} className="text-muted-foreground hover:text-foreground text-[9px] leading-none px-0.5" disabled={index === 0}>▲</button>
+                      <button onClick={() => moveItem(index, index + 1)} className="text-muted-foreground hover:text-foreground text-[9px] leading-none px-0.5" disabled={index === rankings.length - 1}>▼</button>
                     </div>
 
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
                       index === 0 ? 'bg-primary text-primary-foreground' :
                       index === 1 ? 'bg-primary/60 text-primary-foreground' :
                       index === 2 ? 'bg-primary/30 text-foreground' :
@@ -235,36 +230,34 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                       {index + 1}
                     </div>
 
-                    <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <GripVertical className="w-3 h-3 text-muted-foreground shrink-0" />
 
                     {movie.poster_url ? (
-                      <img src={movie.poster_url} alt={movie.title} className="w-8 rounded-lg object-cover shrink-0" />
+                      <img src={movie.poster_url} alt={movie.title} className="w-6 h-9 rounded object-cover shrink-0" />
                     ) : (
-                      <div className="w-8 h-11 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <Film className="w-3 h-3 text-muted-foreground" />
+                      <div className="w-6 h-9 rounded bg-muted flex items-center justify-center shrink-0">
+                        <Film className="w-2.5 h-2.5 text-muted-foreground" />
                       </div>
                     )}
 
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{movie.title}</p>
-                      {movie.year && <span className="text-xs text-muted-foreground">{movie.year}</span>}
-                    </div>
+                    <p className="font-medium text-xs truncate flex-1 min-w-0">{movie.title}</p>
 
-                    {index === 0 && <Star className="w-4 h-4 text-primary fill-primary shrink-0" />}
+                    {index === 0 && <Star className="w-3 h-3 text-primary fill-primary shrink-0" />}
                   </motion.div>
                 );
               })}
             </div>
 
-            {/* Fixed submit footer */}
-            <div className="px-6 py-4 border-t border-border/40 shrink-0">
+            {/* Compact submit footer */}
+            <div className="px-4 py-2 border-t border-border/40 shrink-0">
               <Button
                 variant="gold"
-                className="w-full"
+                size="sm"
+                className="w-full h-8"
                 onClick={handleSubmit}
                 disabled={submitting || rankings.length === 0}
               >
-                <Check className="w-4 h-4 mr-2" />
+                <Check className="w-3.5 h-3.5 mr-1.5" />
                 {submitting ? 'Submitting...' : 'Submit Rankings'}
               </Button>
             </div>
@@ -276,4 +269,3 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
 };
 
 export default PastRankingsDialog;
-
