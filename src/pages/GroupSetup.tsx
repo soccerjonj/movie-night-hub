@@ -145,7 +145,7 @@ const GroupSetup = () => {
         {mode === 'choose' && (
           <div className="space-y-6">
             <div className="text-center">
-              <img src={logo} alt="Movie Club" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
+              <img src={logo} alt="Movie Club" className="h-16 object-contain rounded-2xl mx-auto mb-4" />
               <h1 className="text-2xl font-display font-bold">Join or Create a Club</h1>
               <p className="text-muted-foreground mt-2">Get started with your movie club</p>
             </div>
