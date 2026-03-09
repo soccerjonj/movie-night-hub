@@ -4,7 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Film, Popcorn } from 'lucide-react';
+import { Popcorn } from 'lucide-react';
+import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
@@ -46,9 +47,7 @@ const AuthPage = () => {
         className="glass-card rounded-2xl p-8 w-full max-w-md mx-4 relative z-10"
       >
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-            <Film className="w-8 h-8 text-primary" />
-          </div>
+          <img src={logo} alt="Movie Club" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
           <h1 className="text-3xl font-display font-bold text-gradient-gold">Movie Club</h1>
           <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1">
             <Popcorn className="w-4 h-4" />
