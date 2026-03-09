@@ -69,7 +69,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <img src={logo} alt="Loading" className="h-12 object-contain rounded-xl animate-pulse" />
+        <img src={logo} alt="Loading" className="h-24 sm:h-32 object-contain rounded-2xl animate-pulse" />
       </div>
     );
   }
