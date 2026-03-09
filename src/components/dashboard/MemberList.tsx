@@ -85,6 +85,35 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const cropImgRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pastRankingsOpen, setPastRankingsOpen] = useState(false);
+  const [hasUnrankedSeasons, setHasUnrankedSeasons] = useState(false);
+
+  // Check if user has unranked completed seasons
+  useEffect(() => {
+    if (!user) return;
+    const checkUnranked = async () => {
+      const { data: completedSeasons } = await supabase
+        .from('seasons')
+        .select('id')
+        .eq('group_id', group.id)
+        .in('status', ['completed', 'reviewing']);
+
+      if (!completedSeasons || completedSeasons.length === 0) {
+        setHasUnrankedSeasons(false);
+        return;
+      }
+
+      const { data: existingRankings } = await supabase
+        .from('movie_rankings')
+        .select('season_id')
+        .eq('user_id', user.id)
+        .in('season_id', completedSeasons.map(s => s.id));
+
+      const rankedIds = new Set((existingRankings || []).map(r => r.season_id));
+      const hasUnranked = completedSeasons.some(s => !rankedIds.has(s.id));
+      setHasUnrankedSeasons(hasUnranked);
+    };
+    checkUnranked();
+  }, [user, group.id, pastRankingsOpen]);
 
   const onCropImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = e.currentTarget;
@@ -332,8 +361,8 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           </div>
         </div>
 
-        {/* Add Past Rankings button - own profile only */}
-        {isOwnProfile && (
+        {/* Add Past Rankings button - own profile only, if there are unranked seasons */}
+        {isOwnProfile && hasUnrankedSeasons && (
           <Button
             variant="outline"
             size="sm"
