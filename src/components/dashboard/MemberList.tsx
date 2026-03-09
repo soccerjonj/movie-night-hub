@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop } from 'lucide-react';
+import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import ReactCrop, { type Crop as CropType, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import PastRankingsDialog from './PastRankingsDialog';
 
 interface Props {
   members: GroupMember[];
@@ -83,6 +84,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const [uploading, setUploading] = useState(false);
   const cropImgRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pastRankingsOpen, setPastRankingsOpen] = useState(false);
 
   const onCropImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = e.currentTarget;
@@ -330,6 +332,19 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           </div>
         </div>
 
+        {/* Add Past Rankings button - own profile only */}
+        {isOwnProfile && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => setPastRankingsOpen(true)}
+          >
+            <ListOrdered className="w-4 h-4 mr-2" />
+            Add Past Rankings
+          </Button>
+        )}
+
         {/* Their picks */}
         <div>
           <h4 className="font-display text-sm font-bold mb-2 flex items-center gap-1.5">
@@ -527,6 +542,15 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Past Rankings Dialog */}
+      <PastRankingsDialog
+        open={pastRankingsOpen}
+        onOpenChange={setPastRankingsOpen}
+        groupId={group.id}
+        profiles={profiles}
+        onUpdate={onUpdate}
+      />
     </>
   );
 };
