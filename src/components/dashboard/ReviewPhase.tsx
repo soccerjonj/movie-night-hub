@@ -30,6 +30,8 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props)
   const [submittedCount, setSubmittedCount] = useState(0);
   const [dragItem, setDragItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useTouchDragReorder(rankings, setRankings, listRef);
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
