@@ -8,6 +8,7 @@ import { Popcorn } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { authSchema, getSafeErrorMessage } from '@/lib/security';
 
 const AuthPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -19,17 +20,22 @@ const AuthPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const parsed = authSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
     setLoading(true);
     try {
       if (isSignUp) {
-        await signUp(email, password);
+        await signUp(parsed.data.email, parsed.data.password);
         toast.success('Account created! Check your email to confirm.');
       } else {
-        await signIn(email, password);
+        await signIn(parsed.data.email, parsed.data.password);
         navigate('/dashboard');
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Authentication failed');
+      toast.error(getSafeErrorMessage(err, 'Authentication failed'));
     } finally {
       setLoading(false);
     }

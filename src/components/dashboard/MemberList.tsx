@@ -10,6 +10,7 @@ import ReactCrop, { type Crop as CropType, centerCrop, makeAspectCrop } from 're
 import 'react-image-crop/dist/ReactCrop.css';
 import PastRankingsDialog from './PastRankingsDialog';
 import RankingInsights from './RankingInsights';
+import { validateImageFile, getSafeErrorMessage } from '@/lib/security';
 
 interface Props {
   members: GroupMember[];
@@ -138,8 +139,8 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
+    const validation = validateImageFile(file);
+    if (!validation.valid) { toast.error(validation.error); return; }
     openCropWithFile(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -187,7 +188,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       setCropDialogOpen(false);
       setCropImageSrc(null);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to upload');
+      toast.error(getSafeErrorMessage(err, 'Failed to upload'));
     } finally {
       setUploading(false);
     }
