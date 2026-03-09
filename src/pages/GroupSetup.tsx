@@ -9,6 +9,7 @@ import { Users, Plus, ArrowRight, Ghost, UserCheck } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { groupNameSchema, joinCodeSchema, getSafeErrorMessage } from '@/lib/security';
 
 interface PlaceholderProfile {
   user_id: string;
@@ -51,12 +52,17 @@ const GroupSetup = () => {
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
+    const parsed = groupNameSchema.safeParse({ name: groupName });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
     if (!user) return;
     setLoading(true);
     try {
       const { data: group, error: groupError } = await supabase
         .from('groups')
-        .insert({ name: groupName, admin_user_id: user.id })
+        .insert({ name: parsed.data.name, admin_user_id: user.id })
         .select()
         .single();
       if (groupError) throw groupError;
@@ -69,7 +75,7 @@ const GroupSetup = () => {
       toast.success('Group created!');
       navigate('/clubs');
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err, 'Failed to create group'));
+      toast.error(getSafeErrorMessage(err, 'Failed to create group'));
     } finally {
       setLoading(false);
     }
@@ -77,11 +83,16 @@ const GroupSetup = () => {
 
   const handleFindGroup = async (e: React.FormEvent) => {
     e.preventDefault();
+    const parsed = joinCodeSchema.safeParse({ code: joinCode.trim().toLowerCase() });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
     if (!user) return;
     setLoading(true);
     try {
       const { data: groups, error: findError } = await supabase
-        .rpc('find_group_by_code', { _code: joinCode.trim().toLowerCase() });
+        .rpc('find_group_by_code', { _code: parsed.data.code });
 
       if (findError || !groups || groups.length === 0) {
         throw new Error('Invalid join code. Please check and try again.');
@@ -90,7 +101,6 @@ const GroupSetup = () => {
       const groupId = groups[0].id;
       setFoundGroupId(groupId);
 
-      // Fetch placeholder members through a security definer RPC so non-members can see claimable names.
       const { data: claimableNames, error: placeholdersError } = await supabase
         .rpc('list_available_placeholders', { _group_id: groupId });
       if (placeholdersError) throw placeholdersError;
@@ -106,7 +116,7 @@ const GroupSetup = () => {
 
       throw new Error('No available member names. Ask your admin to add you first.');
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err, 'Failed to find group'));
+      toast.error(getSafeErrorMessage(err, 'Failed to find group'));
     } finally {
       setLoading(false);
     }
@@ -116,7 +126,6 @@ const GroupSetup = () => {
     if (!user) return;
     setLoading(true);
     try {
-      // Claim the placeholder assigned by admin
       const { error } = await supabase.rpc('claim_placeholder', {
         _placeholder_user_id: placeholderUserId,
         _real_user_id: user.id,
@@ -126,7 +135,7 @@ const GroupSetup = () => {
       toast.success('Joined the group!');
       navigate('/clubs');
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err, 'Failed to join group'));
+      toast.error(getSafeErrorMessage(err, 'Failed to join group'));
     } finally {
       setLoading(false);
     }
