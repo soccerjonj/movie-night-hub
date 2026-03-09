@@ -9,7 +9,6 @@ import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { authSchema, getSafeErrorMessage } from '@/lib/security';
-import { motion } from 'framer-motion';
 
 const AuthPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
