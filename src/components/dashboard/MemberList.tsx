@@ -542,6 +542,15 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Past Rankings Dialog */}
+      <PastRankingsDialog
+        open={pastRankingsOpen}
+        onOpenChange={setPastRankingsOpen}
+        groupId={group.id}
+        profiles={profiles}
+        onUpdate={onUpdate}
+      />
     </>
   );
 };
