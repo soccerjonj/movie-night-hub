@@ -380,22 +380,44 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
 
         {/* Ranking preferences */}
         {rankings.length > 0 && (() => {
+          // Build co-pick groups for ranking attribution
+          const coPickGroups = new Map<string, string[]>();
+          picks.forEach(p => {
+            if (p.watch_order != null) {
+              const key = `${p.season_id}:${p.watch_order}`;
+              if (!coPickGroups.has(key)) coPickGroups.set(key, []);
+              coPickGroups.get(key)!.push(p.user_id);
+            }
+          });
+
+          // Map each pick to all its co-pickers
+          const pickToAllPickers = new Map<string, string[]>();
+          picks.forEach(p => {
+            if (p.watch_order != null) {
+              const key = `${p.season_id}:${p.watch_order}`;
+              const coPickers = coPickGroups.get(key) || [p.user_id];
+              pickToAllPickers.set(p.id, coPickers);
+            } else {
+              pickToAllPickers.set(p.id, [p.user_id]);
+            }
+          });
+
           // Calculate favorite picker (who this user ranks highest on average)
           const pickerRankings = new Map<string, number[]>();
           rankings.filter(r => r.user_id === selectedUserId).forEach(ranking => {
-            const pick = picks.find(p => p.id === ranking.movie_pick_id);
-            if (pick) {
-              if (!pickerRankings.has(pick.user_id)) {
-                pickerRankings.set(pick.user_id, []);
+            const allPickers = pickToAllPickers.get(ranking.movie_pick_id) || [];
+            allPickers.forEach(pickerId => {
+              if (!pickerRankings.has(pickerId)) {
+                pickerRankings.set(pickerId, []);
               }
-              pickerRankings.get(pick.user_id)!.push(ranking.rank);
-            }
+              pickerRankings.get(pickerId)!.push(ranking.rank);
+            });
           });
 
           let favoritePicker: string | null = null;
           let bestAvgRank = Infinity;
           pickerRankings.forEach((ranks, pickerId) => {
-            if (ranks.length >= 2) { // Need at least 2 rankings to be meaningful
+            if (pickerId !== selectedUserId && ranks.length >= 2) { // Exclude self and need at least 2 rankings
               const avgRank = ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length;
               if (avgRank < bestAvgRank) {
                 bestAvgRank = avgRank;
@@ -406,16 +428,15 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
 
           // Calculate biggest fan (who ranks this user's picks highest on average)
           const fanRankings = new Map<string, number[]>();
-          const userPicks = picks.filter(p => p.user_id === selectedUserId);
-          userPicks.forEach(pick => {
-            rankings.filter(r => r.movie_pick_id === pick.id).forEach(ranking => {
-              if (ranking.user_id !== selectedUserId) { // Exclude self-rankings
-                if (!fanRankings.has(ranking.user_id)) {
-                  fanRankings.set(ranking.user_id, []);
-                }
-                fanRankings.get(ranking.user_id)!.push(ranking.rank);
+          rankings.forEach(ranking => {
+            const allPickers = pickToAllPickers.get(ranking.movie_pick_id) || [];
+            if (allPickers.includes(selectedUserId) && ranking.user_id !== selectedUserId) {
+              // This ranking is for a movie that the selected user was involved in picking
+              if (!fanRankings.has(ranking.user_id)) {
+                fanRankings.set(ranking.user_id, []);
               }
-            });
+              fanRankings.get(ranking.user_id)!.push(ranking.rank);
+            }
           });
 
           let biggestFan: string | null = null;
