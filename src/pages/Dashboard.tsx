@@ -237,6 +237,13 @@ const Dashboard = () => {
           ) : (
             <History group={group} profiles={profiles} members={members} />
           )}
+
+          {/* Always render MemberList dialog for profile access from any tab */}
+          {tab !== 'current' && (
+            <div className="hidden">
+              <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} externalSelectedUserId={openProfileUserId} onExternalSelectedClear={() => setOpenProfileUserId(null)} />
+            </div>
+          )}
         </motion.div>
       </main>
     </div>
