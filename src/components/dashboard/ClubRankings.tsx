@@ -128,6 +128,7 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
         </h2>
       </div>
 
+      {!hideFavorites && (<>
       {/* Highlight cards for top & bottom */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <div className="rounded-xl bg-primary/10 ring-1 ring-primary/20 p-3 flex items-center gap-3">
