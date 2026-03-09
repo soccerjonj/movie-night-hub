@@ -197,6 +197,9 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props)
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={() => handleDrop(index)}
                 onDragEnd={handleDragEnd}
+                onTouchStart={(e) => !submitted && handleTouchStart(index, e)}
+                onTouchMove={(e) => !submitted && handleTouchMove(e)}
+                onTouchEnd={() => !submitted && handleTouchEnd()}
               >
                 {!submitted && (
                   <div className="flex flex-col gap-0.5 shrink-0">
