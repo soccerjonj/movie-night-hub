@@ -7,6 +7,7 @@ interface Props {
   seasonIds: string[];
   profiles: Profile[];
   label?: string;
+  hideFavorites?: boolean;
 }
 
 interface RankedMovie {
@@ -19,7 +20,9 @@ interface RankedMovie {
   pickerName: string;
 }
 
-const ClubRankings = ({ seasonIds, profiles, label }: Props) => {
+export { type RankedMovie };
+
+const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
   const [rankedMovies, setRankedMovies] = useState<RankedMovie[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -125,6 +128,7 @@ const ClubRankings = ({ seasonIds, profiles, label }: Props) => {
         </h2>
       </div>
 
+      {!hideFavorites && (<>
       {/* Highlight cards for top & bottom */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <div className="rounded-xl bg-primary/10 ring-1 ring-primary/20 p-3 flex items-center gap-3">
@@ -172,6 +176,7 @@ const ClubRankings = ({ seasonIds, profiles, label }: Props) => {
           </div>
         )}
       </div>
+      </>)}
 
       {/* Full ranked list */}
       <div className="space-y-1.5">
