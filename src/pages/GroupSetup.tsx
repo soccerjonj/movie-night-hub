@@ -5,7 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Film, Users, Plus, ArrowRight, Ghost, UserCheck } from 'lucide-react';
+import { Users, Plus, ArrowRight, Ghost, UserCheck } from 'lucide-react';
+import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
@@ -144,9 +145,7 @@ const GroupSetup = () => {
         {mode === 'choose' && (
           <div className="space-y-6">
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-                <Users className="w-8 h-8 text-primary" />
-              </div>
+              <img src={logo} alt="Movie Club" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
               <h1 className="text-2xl font-display font-bold">Join or Create a Club</h1>
               <p className="text-muted-foreground mt-2">Get started with your movie club</p>
             </div>
