@@ -201,6 +201,11 @@ const Dashboard = () => {
                 />
               )}
 
+              {/* Movie Reveal Popup */}
+              {season?.status === 'watching' && season.guessing_enabled && (
+                <MovieRevealDialog season={season} moviePicks={moviePicks} profiles={profiles} getProfile={getProfile} />
+              )}
+
               {/* Season Status */}
               {season && <SeasonStatus season={season} moviePicks={moviePicks} getProfile={getProfile} />}
 
