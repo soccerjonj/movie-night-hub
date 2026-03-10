@@ -10,9 +10,7 @@ interface Props {
 }
 
 interface Insight {
-  userId: string;
-  displayName: string;
-  avatarUrl: string | null;
+  users: { userId: string; displayName: string; avatarUrl: string | null }[];
   avgRank: number;
 }
 
