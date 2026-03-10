@@ -109,9 +109,13 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     if (!season) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('seasons').update({
-        current_movie_index: index,
-      }).eq('id', season.id);
+      // Auto-advance the next_call_date by the watch interval when moving forward
+      const updateData: Record<string, unknown> = { current_movie_index: index };
+      if (season.next_call_date && index > season.current_movie_index) {
+        const newCallDate = addDays(new Date(season.next_call_date), season.watch_interval_days * (index - season.current_movie_index));
+        updateData.next_call_date = newCallDate.toISOString();
+      }
+      const { error } = await supabase.from('seasons').update(updateData).eq('id', season.id);
       if (error) throw error;
       toast.success(`Jumped to movie ${index + 1}!`);
       onUpdate();
