@@ -111,35 +111,30 @@ const RankingInsights = ({ userId, groupId, profiles }: Props) => {
         });
 
       // Compute insights
-      const toInsight = (uid: string, avg: number): Insight => {
+      const toUser = (uid: string) => {
         const p = getProfile(uid);
-        return {
-          userId: uid,
-          displayName: p?.display_name || '?',
-          avatarUrl: p?.avatar_url || null,
-          avgRank: avg,
-        };
+        return { userId: uid, displayName: p?.display_name || '?', avatarUrl: p?.avatar_url || null };
+      };
+
+      const findTied = (entries: [string, { total: number; count: number }][], mode: 'min' | 'max'): Insight | null => {
+        if (entries.length === 0) return null;
+        const avgs = entries.map(([id, v]) => ({ id, avg: v.total / v.count }));
+        const targetAvg = mode === 'min'
+          ? Math.min(...avgs.map(a => a.avg))
+          : Math.max(...avgs.map(a => a.avg));
+        const tied = avgs.filter(a => Math.abs(a.avg - targetAvg) < 0.001);
+        return { users: tied.map(t => toUser(t.id)), avgRank: targetAvg };
       };
 
       // Favorite picker = lowest avg rank (best)
       const pickerEntries = Object.entries(pickerScoresFromUser).filter(([, v]) => v.count > 0);
-      if (pickerEntries.length > 0) {
-        const best = pickerEntries.reduce((a, b) => (a[1].total / a[1].count) < (b[1].total / b[1].count) ? a : b);
-        setFavoritePicker(toInsight(best[0], best[1].total / best[1].count));
-      }
+      setFavoritePicker(findTied(pickerEntries, 'min'));
 
       // Biggest fan = lowest avg rank (ranks user's picks highest)
       // Biggest critic = highest avg rank
       const rankerEntries = Object.entries(rankerScoresForUser).filter(([, v]) => v.count > 0);
-      if (rankerEntries.length > 0) {
-        const fan = rankerEntries.reduce((a, b) => (a[1].total / a[1].count) < (b[1].total / b[1].count) ? a : b);
-        setBiggestFan(toInsight(fan[0], fan[1].total / fan[1].count));
-
-        if (rankerEntries.length > 1) {
-          const critic = rankerEntries.reduce((a, b) => (a[1].total / a[1].count) > (b[1].total / b[1].count) ? a : b);
-          setBiggestCritic(toInsight(critic[0], critic[1].total / critic[1].count));
-        }
-      }
+      setBiggestFan(findTied(rankerEntries, 'min'));
+      setBiggestCritic(rankerEntries.length > 1 ? findTied(rankerEntries, 'max') : null);
 
       setLoading(false);
     };
@@ -150,27 +145,31 @@ const RankingInsights = ({ userId, groupId, profiles }: Props) => {
   if (loading) return null;
   if (!favoritePicker && !biggestFan && !biggestCritic) return null;
 
-  const InsightCard = ({ icon, label, insight, color }: { icon: React.ReactNode; label: string; insight: Insight; color: string }) => (
-    <div className="flex items-center gap-2 rounded-xl bg-muted/20 p-2.5">
-      <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0 ${color}`}>
-        {insight.avatarUrl ? (
-          <img src={insight.avatarUrl} alt={insight.displayName} className="w-full h-full object-cover" />
-        ) : (
-          insight.displayName.charAt(0).toUpperCase()
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1 mb-0.5">
-          {icon}
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+  const InsightCard = ({ icon, label, insight, color }: { icon: React.ReactNode; label: string; insight: Insight; color: string }) => {
+    const firstUser = insight.users[0];
+    const names = insight.users.map(u => u.displayName).join(', ');
+    return (
+      <div className="flex items-center gap-2 rounded-xl bg-muted/20 p-2.5">
+        <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0 ${color}`}>
+          {firstUser.avatarUrl ? (
+            <img src={firstUser.avatarUrl} alt={firstUser.displayName} className="w-full h-full object-cover" />
+          ) : (
+            firstUser.displayName.charAt(0).toUpperCase()
+          )}
         </div>
-        <p className="text-sm font-medium truncate">{insight.displayName}</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1 mb-0.5">
+            {icon}
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+          </div>
+          <p className="text-sm font-medium truncate">{names}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[10px] text-muted-foreground">avg {insight.avgRank.toFixed(1)}</p>
+        </div>
       </div>
-      <div className="text-right shrink-0">
-        <p className="text-[10px] text-muted-foreground">avg {insight.avgRank.toFixed(1)}</p>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div>
