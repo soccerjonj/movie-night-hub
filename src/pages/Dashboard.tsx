@@ -19,6 +19,7 @@ import ReviewPhase from '@/components/dashboard/ReviewPhase';
 import MemberList from '@/components/dashboard/MemberList';
 import Scoreboard from '@/components/dashboard/Scoreboard';
 import History from '@/components/dashboard/History';
+import MovieRevealDialog from '@/components/dashboard/MovieRevealDialog';
 
 const Dashboard = () => {
   const { groupId } = useParams<{ groupId: string }>();
@@ -198,6 +199,11 @@ const Dashboard = () => {
                   showPanel={showAdminPanel}
                   setShowPanel={setShowAdminPanel}
                 />
+              )}
+
+              {/* Movie Reveal Popup */}
+              {season?.status === 'watching' && season.guessing_enabled && (
+                <MovieRevealDialog season={season} moviePicks={moviePicks} profiles={profiles} getProfile={getProfile} />
               )}
 
               {/* Season Status */}
