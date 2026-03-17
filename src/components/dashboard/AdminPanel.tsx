@@ -556,6 +556,26 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <Button variant="outline" size="sm" onClick={startEditingCallDate} disabled={loading}>
                   <CalendarClock className="w-4 h-4 mr-1" /> {season.next_call_date ? 'Change Call Date' : 'Set Call Date'}
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => { setCallLinkValue(season.call_link || ''); setEditingCallLink(true); }} disabled={loading}>
+                  <Play className="w-4 h-4 mr-1" /> {season.call_link ? 'Edit Call Link' : 'Add Call Link'}
+                </Button>
+                {season.call_link && (
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={async () => {
+                    setLoading(true);
+                    try {
+                      const { error } = await supabase.from('seasons').update({ call_link: null } as any).eq('id', season.id);
+                      if (error) throw error;
+                      toast.success('Call link removed');
+                      onUpdate();
+                    } catch (err: unknown) {
+                      toast.error(err instanceof Error ? err.message : 'Failed to remove call link');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }} disabled={loading}>
+                    <Trash2 className="w-4 h-4 mr-1" /> Remove Call Link
+                  </Button>
+                )}
                 {season.next_call_date && (
                   <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={removeCallDate} disabled={loading}>
                     <Trash2 className="w-4 h-4 mr-1" /> Remove Call Date
