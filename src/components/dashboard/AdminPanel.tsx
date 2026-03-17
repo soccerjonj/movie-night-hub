@@ -52,6 +52,8 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const [callDate, setCallDate] = useState('');
   const [callTime, setCallTime] = useState('');
   const [callTimezone, setCallTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [editingCallLink, setEditingCallLink] = useState(false);
+  const [callLinkValue, setCallLinkValue] = useState('');
   const getProfileName = (userId: string) => profiles.find((p) => p.user_id === userId)?.display_name || 'Unknown';
 
   const copyJoinCode = () => {
