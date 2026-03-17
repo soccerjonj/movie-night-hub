@@ -49,18 +49,13 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
     const lastSeen = getLastSeenIndex(season.id);
     const currentIdx = season.current_movie_index;
 
-    // If we've never seen this season, just record the current index
-    if (lastSeen === -1) {
-      setLastSeenIndex(season.id, currentIdx);
-      return;
-    }
-
     // Build a unique key so we only trigger once per index change per session
     const revealKey = `${season.id}:${currentIdx}`;
     if (shownForIndex.current === revealKey) return;
 
-    // If the index advanced, show the reveal for the last watched movie
-    if (currentIdx > lastSeen && lastSeen >= 0) {
+    // Show reveal if: first visit and there's a movie to reveal, OR index advanced since last visit
+    const shouldReveal = (lastSeen === -1 && currentIdx > 0) || (lastSeen >= 0 && currentIdx > lastSeen);
+    if (shouldReveal) {
       shownForIndex.current = revealKey;
       setLastSeenIndex(season.id, currentIdx);
 
