@@ -52,6 +52,8 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const [callDate, setCallDate] = useState('');
   const [callTime, setCallTime] = useState('');
   const [callTimezone, setCallTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [editingCallLink, setEditingCallLink] = useState(false);
+  const [callLinkValue, setCallLinkValue] = useState('');
   const getProfileName = (userId: string) => profiles.find((p) => p.user_id === userId)?.display_name || 'Unknown';
 
   const copyJoinCode = () => {
@@ -554,6 +556,26 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <Button variant="outline" size="sm" onClick={startEditingCallDate} disabled={loading}>
                   <CalendarClock className="w-4 h-4 mr-1" /> {season.next_call_date ? 'Change Call Date' : 'Set Call Date'}
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => { setCallLinkValue(season.call_link || ''); setEditingCallLink(true); }} disabled={loading}>
+                  <Play className="w-4 h-4 mr-1" /> {season.call_link ? 'Edit Call Link' : 'Add Call Link'}
+                </Button>
+                {season.call_link && (
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={async () => {
+                    setLoading(true);
+                    try {
+                      const { error } = await supabase.from('seasons').update({ call_link: null } as any).eq('id', season.id);
+                      if (error) throw error;
+                      toast.success('Call link removed');
+                      onUpdate();
+                    } catch (err: unknown) {
+                      toast.error(err instanceof Error ? err.message : 'Failed to remove call link');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }} disabled={loading}>
+                    <Trash2 className="w-4 h-4 mr-1" /> Remove Call Link
+                  </Button>
+                )}
                 {season.next_call_date && (
                   <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={removeCallDate} disabled={loading}>
                     <Trash2 className="w-4 h-4 mr-1" /> Remove Call Date
@@ -614,7 +636,41 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             </div>
           )}
 
-          {/* Grouped Action Dropdowns */}
+          {/* Call Link Editor */}
+          {editingCallLink && season && (
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Call Link (Zoom, Google Meet, etc.)</label>
+                <Input
+                  type="url"
+                  placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+                  value={callLinkValue}
+                  onChange={e => setCallLinkValue(e.target.value)}
+                  className="bg-muted/50"
+                />
+              </div>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-green-500" onClick={async () => {
+                setLoading(true);
+                try {
+                  const { error } = await supabase.from('seasons').update({ call_link: callLinkValue.trim() || null } as any).eq('id', season.id);
+                  if (error) throw error;
+                  toast.success('Call link saved!');
+                  setEditingCallLink(false);
+                  onUpdate();
+                } catch (err: unknown) {
+                  toast.error(err instanceof Error ? err.message : 'Failed to save call link');
+                } finally {
+                  setLoading(false);
+                }
+              }} disabled={loading}>
+                <Check className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setEditingCallLink(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2 items-center">
             {/* Manage Members */}
             <DropdownPanel label="Manage Members" icon={<Users className="w-4 h-4 mr-1" />}>

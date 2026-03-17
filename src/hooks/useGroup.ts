@@ -21,6 +21,7 @@ export interface Season {
   watch_interval_days: number;
   guessing_enabled: boolean;
   watch_start_date: string | null;
+  call_link: string | null;
 }
 
 export interface MoviePick {
