@@ -636,7 +636,41 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             </div>
           )}
 
-          {/* Grouped Action Dropdowns */}
+          {/* Call Link Editor */}
+          {editingCallLink && season && (
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Call Link (Zoom, Google Meet, etc.)</label>
+                <Input
+                  type="url"
+                  placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+                  value={callLinkValue}
+                  onChange={e => setCallLinkValue(e.target.value)}
+                  className="bg-muted/50"
+                />
+              </div>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-green-500" onClick={async () => {
+                setLoading(true);
+                try {
+                  const { error } = await supabase.from('seasons').update({ call_link: callLinkValue.trim() || null } as any).eq('id', season.id);
+                  if (error) throw error;
+                  toast.success('Call link saved!');
+                  setEditingCallLink(false);
+                  onUpdate();
+                } catch (err: unknown) {
+                  toast.error(err instanceof Error ? err.message : 'Failed to save call link');
+                } finally {
+                  setLoading(false);
+                }
+              }} disabled={loading}>
+                <Check className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setEditingCallLink(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2 items-center">
             {/* Manage Members */}
             <DropdownPanel label="Manage Members" icon={<Users className="w-4 h-4 mr-1" />}>

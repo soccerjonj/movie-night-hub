@@ -147,12 +147,41 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
       )}
 
       {season.next_call_date && (
-        <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
-          <Calendar className="w-4 h-4" />
-          <span>
-            Next call: {format(new Date(season.next_call_date), 'EEEE, MMM d · h:mm a')}
-            {' '}({formatDistanceToNow(new Date(season.next_call_date), { addSuffix: true })})
-          </span>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="w-4 h-4" />
+            <span>
+              Next call: {format(new Date(season.next_call_date), 'EEEE, MMM d · h:mm a')}
+              {' '}({formatDistanceToNow(new Date(season.next_call_date), { addSuffix: true })})
+            </span>
+          </div>
+          {season.call_link && (
+            <a
+              href={season.call_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 px-3 py-1.5 rounded-full w-fit"
+            >
+              <Video className="w-4 h-4" />
+              Join Call
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
+      )}
+
+      {!season.next_call_date && season.call_link && (
+        <div className="mt-4">
+          <a
+            href={season.call_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 px-3 py-1.5 rounded-full w-fit"
+          >
+            <Video className="w-4 h-4" />
+            Join Call
+            <ExternalLink className="w-3 h-3" />
+          </a>
         </div>
       )}
 
