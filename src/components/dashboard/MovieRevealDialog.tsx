@@ -41,6 +41,7 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
   const [open, setOpen] = useState(false);
   const [revealedPick, setRevealedPick] = useState<MoviePick | null>(null);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
+  const shownForIndex = useRef<string | null>(null);
 
   useEffect(() => {
     if (!season || season.status !== 'watching' || !user) return;
@@ -54,14 +55,19 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
       return;
     }
 
+    // Build a unique key so we only trigger once per index change per session
+    const revealKey = `${season.id}:${currentIdx}`;
+    if (shownForIndex.current === revealKey) return;
+
     // If the index advanced, show the reveal for the last watched movie
     if (currentIdx > lastSeen && lastSeen >= 0) {
+      shownForIndex.current = revealKey;
+      setLastSeenIndex(season.id, currentIdx);
+
       const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
-      // The movie that was just watched is at the previous index (currentIdx - 1)
       const justWatched = sortedPicks[currentIdx - 1];
       if (justWatched) {
         setRevealedPick(justWatched);
-        // Fetch guesses for this movie
         supabase
           .from('guesses')
           .select('guesser_id, guessed_user_id, movie_pick_id')
@@ -72,7 +78,6 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
             setOpen(true);
           });
       }
-      setLastSeenIndex(season.id, currentIdx);
     }
   }, [season, moviePicks, user]);
 
