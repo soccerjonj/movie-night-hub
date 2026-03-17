@@ -293,6 +293,7 @@ export type Database = {
       }
       seasons: {
         Row: {
+          call_link: string | null
           created_at: string
           current_movie_index: number
           group_id: string
@@ -308,6 +309,7 @@ export type Database = {
           watch_start_date: string | null
         }
         Insert: {
+          call_link?: string | null
           created_at?: string
           current_movie_index?: number
           group_id: string
@@ -323,6 +325,7 @@ export type Database = {
           watch_start_date?: string | null
         }
         Update: {
+          call_link?: string | null
           created_at?: string
           current_movie_index?: number
           group_id?: string

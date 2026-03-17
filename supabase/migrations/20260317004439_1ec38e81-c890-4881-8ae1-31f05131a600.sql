@@ -1,0 +1,1 @@
+ALTER TABLE public.seasons ADD COLUMN call_link text DEFAULT NULL;
