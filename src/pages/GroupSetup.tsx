@@ -170,12 +170,28 @@ const GroupSetup = () => {
               <p className="text-muted-foreground mt-2">Name your movie club</p>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="clubType">Club Type</Label>
+              <Select value={clubType} onValueChange={(v) => setClubType(v as 'movie' | 'book')}>
+                <SelectTrigger className="bg-muted/50 border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="movie">
+                    <span className="flex items-center gap-2"><Film className="w-4 h-4" /> Movie Club</span>
+                  </SelectItem>
+                  <SelectItem value="book">
+                    <span className="flex items-center gap-2"><BookOpen className="w-4 h-4" /> Book Club</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="groupName">Club Name</Label>
               <Input
                 id="groupName"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
-                placeholder="The Cinema Society"
+                placeholder={clubType === 'movie' ? 'The Cinema Society' : 'The Book Corner'}
                 required
                 className="bg-muted/50 border-border"
               />
