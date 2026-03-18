@@ -292,7 +292,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
                 onClick={() => setShowWatched(!showWatched)}
                 className="w-full justify-between text-muted-foreground hover:text-foreground"
               >
-                <span>{watchedPicks.length} already watched</span>
+                <span>{watchedPicks.length} already {labels.watched}</span>
                 {showWatched ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
               {showWatched && watchedPicks.map((pick) => renderPick(pick, sortedPicks.indexOf(pick)))}
