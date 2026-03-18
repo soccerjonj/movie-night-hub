@@ -102,7 +102,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType }: Props) => {
               />
             ) : (
               <div className="w-36 sm:w-44 aspect-[2/3] rounded-xl bg-muted/30 flex items-center justify-center shrink-0">
-                <Film className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/30" />
+                <ItemIcon className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/30" />
               </div>
             )}
             {/* Title + year next to poster on mobile, hidden on desktop */}
