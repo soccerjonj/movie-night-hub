@@ -292,7 +292,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
                   <img src={movie.poster_url} alt={movie?.title} className="w-10 rounded-lg object-cover shrink-0" />
                 ) : (
                   <div className="w-10 h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <Film className="w-4 h-4 text-muted-foreground" />
+                    <ItemIcon className="w-4 h-4 text-muted-foreground" />
                   </div>
                 )}
 
