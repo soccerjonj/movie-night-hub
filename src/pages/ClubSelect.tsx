@@ -90,7 +90,7 @@ const ClubSelect = () => {
             .limit(1),
         ]);
         const status = latestSeason && latestSeason.length > 0 ? latestSeason[0].status : null;
-        groupInfos.push({ id: g.id, name: g.name, member_count: count ?? 0, season_status: status });
+        groupInfos.push({ id: g.id, name: g.name, member_count: count ?? 0, season_status: status, club_type: (g as any).club_type || 'movie' });
       }
 
       setGroups(groupInfos);
