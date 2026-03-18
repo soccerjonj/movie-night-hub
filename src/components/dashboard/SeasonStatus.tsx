@@ -201,7 +201,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType }: Props) => {
               ))}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {season.current_movie_index + 1} of {moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length} movies
+            {season.current_movie_index + 1} of {moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length} {labels.items}
           </p>
         </div>
       )}
