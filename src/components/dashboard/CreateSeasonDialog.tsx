@@ -190,7 +190,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Horror Month, 90s Classics, Studio Ghibli..."
+              placeholder={isBookClub ? "e.g. Sci-Fi Month, Classic Literature..." : "e.g. Horror Month, 90s Classics, Studio Ghibli..."}
               className="bg-muted/50 text-base font-medium"
             />
             <p className="text-xs text-muted-foreground">This will be displayed prominently while members pick their movies.</p>
