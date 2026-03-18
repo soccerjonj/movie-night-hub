@@ -56,7 +56,7 @@ const GroupSetup = () => {
     try {
       const { data: group, error: groupError } = await supabase
         .from('groups')
-        .insert({ name: parsed.data.name, admin_user_id: user.id })
+        .insert({ name: parsed.data.name, admin_user_id: user.id, club_type: clubType } as any)
         .select()
         .single();
       if (groupError) throw groupError;
