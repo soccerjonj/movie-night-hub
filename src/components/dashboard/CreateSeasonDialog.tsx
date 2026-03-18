@@ -332,13 +332,15 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
               />
             </div>
           </div>
-          <div className="flex items-center justify-between rounded-lg bg-muted/10 px-4 py-3">
-            <div>
-              <Label className="text-sm font-semibold">Guessing Round</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">Members guess who picked each movie</p>
+          {!isBookClub && (
+            <div className="flex items-center justify-between rounded-lg bg-muted/10 px-4 py-3">
+              <div>
+                <Label className="text-sm font-semibold">Guessing Round</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Members guess who picked each {labels.item}</p>
+              </div>
+              <Switch checked={guessingEnabled} onCheckedChange={setGuessingEnabled} />
             </div>
-            <Switch checked={guessingEnabled} onCheckedChange={setGuessingEnabled} />
-          </div>
+          )}
 
           {/* Summary + Create */}
           <div className="border-t border-border pt-4 space-y-3">
