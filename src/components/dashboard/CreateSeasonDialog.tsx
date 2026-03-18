@@ -249,7 +249,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
 
           {/* Movies Per Member */}
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">Movies Per Pick Slot</Label>
+            <Label className="text-sm font-semibold">{labels.Items} Per Pick Slot</Label>
             <div className="flex items-center gap-3">
               <Select value={String(moviesPerMember)} onValueChange={(v) => setMoviesPerMember(Number(v))}>
                 <SelectTrigger className="w-20">
