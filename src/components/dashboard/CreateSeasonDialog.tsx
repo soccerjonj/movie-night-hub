@@ -346,8 +346,8 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
           <div className="border-t border-border pt-4 space-y-3">
             <div className="text-sm text-muted-foreground space-y-1">
               <p><strong>{selectedParticipants.length}</strong> member{selectedParticipants.length !== 1 ? 's' : ''} picking{uniqueGroups.length > 0 ? ` (${uniqueGroups.length} co-pick group${uniqueGroups.length !== 1 ? 's' : ''})` : ''}</p>
-              <p><strong>{totalPickSlots}</strong> total movie{totalPickSlots !== 1 ? 's' : ''} to watch</p>
-              <p>1 movie every <strong>{watchIntervalDays === 1 ? 'day' : watchIntervalDays === 7 ? 'week' : watchIntervalDays === 14 ? '2 weeks' : watchIntervalDays === 21 ? '3 weeks' : watchIntervalDays === 30 ? 'month' : `${watchIntervalDays} days`}</strong>
+              <p><strong>{totalPickSlots}</strong> total {labels.item}{totalPickSlots !== 1 ? 's' : ''} to {labels.watch}</p>
+              <p>1 {labels.item} every <strong>{watchIntervalDays === 1 ? 'day' : watchIntervalDays === 7 ? 'week' : watchIntervalDays === 14 ? '2 weeks' : watchIntervalDays === 21 ? '3 weeks' : watchIntervalDays === 30 ? 'month' : `${watchIntervalDays} days`}</strong>
                 {watchIntervalDays >= 7 && <>, due by <strong>{watchIntervalDays >= 28 ? `the ${watchDeadlineDay}${watchDeadlineDay === '1' ? 'st' : watchDeadlineDay === '2' ? 'nd' : watchDeadlineDay === '3' ? 'rd' : 'th'}` : watchDeadlineDay.charAt(0).toUpperCase() + watchDeadlineDay.slice(1)}</strong></>}
                 {' '}at <strong>{watchDeadlineTime}</strong>
               </p>
