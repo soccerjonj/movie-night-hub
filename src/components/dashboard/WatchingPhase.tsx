@@ -28,7 +28,9 @@ interface GuessRow {
   movie_pick_id: string;
 }
 
-const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAdmin, onUpdate }: Props) => {
+const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAdmin, onUpdate, clubType }: Props) => {
+  const labels = getClubLabels(clubType);
+  const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const { user } = useAuth();
   const [showWatched, setShowWatched] = useState(false);
   const [posterOverrides, setPosterOverrides] = useState<Record<string, string>>({});
