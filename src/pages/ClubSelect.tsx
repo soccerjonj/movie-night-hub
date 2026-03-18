@@ -14,6 +14,7 @@ interface GroupInfo {
   name: string;
   member_count: number;
   season_status: string | null;
+  club_type: 'movie' | 'book';
 }
 
 const ClubSelect = () => {
