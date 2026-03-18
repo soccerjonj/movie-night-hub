@@ -262,7 +262,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
                 </SelectContent>
               </Select>
               <span className="text-sm text-muted-foreground">
-                = {totalPickSlots} total movie{totalPickSlots !== 1 ? 's' : ''}
+                = {totalPickSlots} total {labels.item}{totalPickSlots !== 1 ? 's' : ''}
               </span>
             </div>
           </div>
