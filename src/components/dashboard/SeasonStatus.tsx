@@ -86,8 +86,8 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType }: Props) => {
         </h2>
         <span className="text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary font-medium w-fit">
           {season.status === 'watching'
-            ? `Currently watching: Season ${season.season_number}, Episode ${season.current_movie_index + 1}`
-            : statusLabels[season.status]}
+            ? `Currently ${labels.watching}: Season ${season.season_number}, Episode ${season.current_movie_index + 1}`
+            : labels.statusLabels[season.status]}
         </span>
       </div>
 
