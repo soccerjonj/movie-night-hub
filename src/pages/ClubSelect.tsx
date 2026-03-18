@@ -132,7 +132,13 @@ const ClubSelect = () => {
                   onClick={() => navigate(`/dashboard/${g.id}`)}
                   className="flex-1 flex items-center gap-4 rounded-xl p-4 border border-border bg-muted/10 hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
                 >
-                  <img src={logo} alt="" className="h-10 object-contain rounded-xl shrink-0" />
+                  <div className="flex items-center gap-2 h-10 w-10 justify-center shrink-0">
+                    {g.club_type === 'book' ? (
+                      <BookOpen className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Film className="w-5 h-5 text-primary" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{g.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
