@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Film, ChevronDown, ChevronUp, Check, X, Users } from 'lucide-react';
+import { Film, BookOpen, ChevronDown, ChevronUp, Check, X, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ClubType, getClubLabels } from '@/lib/clubTypes';
 
 const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
@@ -18,6 +19,7 @@ interface Props {
   getProfile: (userId: string) => Profile | undefined;
   isAdmin: boolean;
   onUpdate: () => void;
+  clubType: ClubType;
 }
 
 interface GuessRow {
