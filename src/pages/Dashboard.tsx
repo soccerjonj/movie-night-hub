@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import SeasonStatus from '@/components/dashboard/SeasonStatus';
 import AdminPanel from '@/components/dashboard/AdminPanel';
 import MoviePickPhase from '@/components/dashboard/MoviePickPhase';
+import BookPickPhase from '@/components/dashboard/BookPickPhase';
 import GuessingPhase from '@/components/dashboard/GuessingPhase';
 import WatchingPhase from '@/components/dashboard/WatchingPhase';
 import ReviewPhase from '@/components/dashboard/ReviewPhase';
@@ -20,6 +21,7 @@ import MemberList from '@/components/dashboard/MemberList';
 import Scoreboard from '@/components/dashboard/Scoreboard';
 import History from '@/components/dashboard/History';
 import MovieRevealDialog from '@/components/dashboard/MovieRevealDialog';
+import { getClubLabels } from '@/lib/clubTypes';
 
 const Dashboard = () => {
   const { groupId } = useParams<{ groupId: string }>();
@@ -31,6 +33,9 @@ const Dashboard = () => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [hasEverGuessed, setHasEverGuessed] = useState(false);
   const [openProfileUserId, setOpenProfileUserId] = useState<string | null>(null);
+
+  const labels = getClubLabels(group?.club_type ?? 'movie');
+  const isBookClub = labels.type === 'book';
 
   useEffect(() => {
     if (!groupId) return;
@@ -86,7 +91,7 @@ const Dashboard = () => {
             <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate('/clubs')}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <img src={logo} alt="Movie Club" className="h-8 sm:h-10 object-contain rounded-xl shrink-0" />
+            <img src={logo} alt="Club" className="h-8 sm:h-10 object-contain rounded-xl shrink-0" />
             <div className="min-w-0">
               <h1 className="font-display text-base sm:text-lg font-bold truncate">{group.name}</h1>
               {season && tab === 'current' && (
@@ -201,30 +206,34 @@ const Dashboard = () => {
                 />
               )}
 
-              {/* Movie Reveal Popup */}
-              {season?.status === 'watching' && season.guessing_enabled && (
+              {/* Movie Reveal Popup - only for movie clubs with guessing */}
+              {season?.status === 'watching' && season.guessing_enabled && !isBookClub && (
                 <MovieRevealDialog season={season} moviePicks={moviePicks} profiles={profiles} getProfile={getProfile} />
               )}
 
               {/* Season Status */}
-              {season && <SeasonStatus season={season} moviePicks={moviePicks} getProfile={getProfile} />}
+              {season && <SeasonStatus season={season} moviePicks={moviePicks} getProfile={getProfile} clubType={labels.type} />}
 
               {/* Phase-specific content */}
               {season?.status === 'picking' && (
-                <MoviePickPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
+                isBookClub ? (
+                  <BookPickPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
+                ) : (
+                  <MoviePickPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
+                )
               )}
-              {season?.status === 'guessing' && (
+              {season?.status === 'guessing' && !isBookClub && (
                 <GuessingPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
               )}
               {season?.status === 'watching' && (
-                <WatchingPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} />
+                <WatchingPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} clubType={labels.type} />
               )}
               {season?.status === 'reviewing' && (
-                <ReviewPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} onUpdate={refetch} />
+                <ReviewPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} onUpdate={refetch} clubType={labels.type} />
               )}
 
-              {/* Scoreboard */}
-              {group && (season?.guessing_enabled || hasEverGuessed) && (
+              {/* Scoreboard - only for clubs that have guessing */}
+              {group && !isBookClub && (season?.guessing_enabled || hasEverGuessed) && (
                 <Scoreboard group={group} season={season} profiles={profiles} members={members} collapsed={!season?.guessing_enabled} />
               )}
 

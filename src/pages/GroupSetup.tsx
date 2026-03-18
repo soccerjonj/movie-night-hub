@@ -5,7 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, Plus, ArrowRight, Ghost, UserCheck } from 'lucide-react';
+import { Users, Plus, ArrowRight, Ghost, UserCheck, Film, BookOpen } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -22,6 +23,7 @@ const GroupSetup = () => {
   const navigate = useNavigate();
   const [mode, setMode] = useState<'choose' | 'create' | 'join' | 'claim'>('choose');
   const [groupName, setGroupName] = useState('');
+  const [clubType, setClubType] = useState<'movie' | 'book'>('movie');
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundGroupId, setFoundGroupId] = useState<string | null>(null);
@@ -54,7 +56,7 @@ const GroupSetup = () => {
     try {
       const { data: group, error: groupError } = await supabase
         .from('groups')
-        .insert({ name: parsed.data.name, admin_user_id: user.id })
+        .insert({ name: parsed.data.name, admin_user_id: user.id, club_type: clubType } as any)
         .select()
         .single();
       if (groupError) throw groupError;
@@ -168,12 +170,28 @@ const GroupSetup = () => {
               <p className="text-muted-foreground mt-2">Name your movie club</p>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="clubType">Club Type</Label>
+              <Select value={clubType} onValueChange={(v) => setClubType(v as 'movie' | 'book')}>
+                <SelectTrigger className="bg-muted/50 border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="movie">
+                    <span className="flex items-center gap-2"><Film className="w-4 h-4" /> Movie Club</span>
+                  </SelectItem>
+                  <SelectItem value="book">
+                    <span className="flex items-center gap-2"><BookOpen className="w-4 h-4" /> Book Club</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="groupName">Club Name</Label>
               <Input
                 id="groupName"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
-                placeholder="The Cinema Society"
+                placeholder={clubType === 'movie' ? 'The Cinema Society' : 'The Book Corner'}
                 required
                 className="bg-muted/50 border-border"
               />

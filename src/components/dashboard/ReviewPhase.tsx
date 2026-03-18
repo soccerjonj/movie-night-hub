@@ -3,10 +3,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile, GroupMember } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
-import { Film, GripVertical, Check, Trophy, Star } from 'lucide-react';
+import { Film, BookOpen, GripVertical, Check, Trophy, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTouchDragReorder } from '@/hooks/useTouchDragReorder';
+import { ClubType, getClubLabels } from '@/lib/clubTypes';
 
 interface Props {
   season: Season;
@@ -14,6 +15,7 @@ interface Props {
   profiles: Profile[];
   members: GroupMember[];
   onUpdate: () => void;
+  clubType: ClubType;
 }
 
 interface RankingEntry {
@@ -21,7 +23,9 @@ interface RankingEntry {
   rank: number;
 }
 
-const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props) => {
+const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType }: Props) => {
+  const labels = getClubLabels(clubType);
+  const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const { user } = useAuth();
   const [rankings, setRankings] = useState<string[]>([]); // ordered movie pick IDs (index 0 = rank 1 = favorite)
   const [submitted, setSubmitted] = useState(false);
@@ -171,7 +175,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props)
       <p className="text-xs sm:text-sm text-muted-foreground mb-4">
         {submitted
           ? `You've submitted your rankings! ${everyoneSubmitted ? 'Results are in!' : `Waiting for others (${submittedCount}/${members.length}).`}`
-          : 'Drag to rank movies from your favorite (#1) to least favorite.'}
+          : `Drag to rank ${labels.items} from your favorite (#1) to least favorite.`}
       </p>
 
       {/* Ranking UI */}
@@ -233,7 +237,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props)
                   <img src={movie.poster_url} alt={movie.title} className="w-8 sm:w-10 rounded-lg object-cover shrink-0" />
                 ) : (
                   <div className="w-8 sm:w-10 h-11 sm:h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <Film className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+                    <ItemIcon className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
                   </div>
                 )}
 
@@ -288,7 +292,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props)
                   <img src={movie.poster_url} alt={movie?.title} className="w-10 rounded-lg object-cover shrink-0" />
                 ) : (
                   <div className="w-10 h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <Film className="w-4 h-4 text-muted-foreground" />
+                    <ItemIcon className="w-4 h-4 text-muted-foreground" />
                   </div>
                 )}
 
