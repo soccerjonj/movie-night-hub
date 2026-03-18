@@ -270,7 +270,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
           <div className="space-y-3">
             <Label className="text-sm font-semibold">{labels.Watch} Schedule</Label>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-muted-foreground">Watch 1 movie every</span>
+              <span className="text-sm text-muted-foreground">{labels.Watch} 1 {labels.item} every</span>
               <Select value={String(watchIntervalDays)} onValueChange={(v) => setWatchIntervalDays(Number(v))}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
