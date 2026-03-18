@@ -23,6 +23,7 @@ const GroupSetup = () => {
   const navigate = useNavigate();
   const [mode, setMode] = useState<'choose' | 'create' | 'join' | 'claim'>('choose');
   const [groupName, setGroupName] = useState('');
+  const [clubType, setClubType] = useState<'movie' | 'book'>('movie');
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundGroupId, setFoundGroupId] = useState<string | null>(null);
