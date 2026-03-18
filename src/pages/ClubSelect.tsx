@@ -66,7 +66,7 @@ const ClubSelect = () => {
       // Fetch group details
       const { data: groupsData } = await supabase
         .from('groups')
-        .select('id, name')
+        .select('id, name, club_type')
         .in('id', groupIds);
 
       if (!groupsData) {
