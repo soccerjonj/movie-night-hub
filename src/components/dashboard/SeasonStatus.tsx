@@ -125,7 +125,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType }: Props) => {
           )}
           {/* Desktop layout */}
           <div className="flex-1 hidden sm:block text-left">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Now Watching</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{labels.nowAction}</p>
             <h3 className="font-display text-2xl font-bold">{currentMovie.title}</h3>
             {currentMovie.year && <p className="text-sm text-muted-foreground mt-0.5">{currentMovie.year}</p>}
             {director && <p className="text-sm text-muted-foreground mt-0.5">Directed by {director}</p>}
