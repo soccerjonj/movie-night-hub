@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
+import { getClubLabels } from '@/lib/clubTypes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown, ListOrdered } from 'lucide-react';
