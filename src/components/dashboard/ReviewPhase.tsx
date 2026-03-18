@@ -3,10 +3,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile, GroupMember } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
-import { Film, GripVertical, Check, Trophy, Star } from 'lucide-react';
+import { Film, BookOpen, GripVertical, Check, Trophy, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTouchDragReorder } from '@/hooks/useTouchDragReorder';
+import { ClubType, getClubLabels } from '@/lib/clubTypes';
 
 interface Props {
   season: Season;
@@ -14,6 +15,7 @@ interface Props {
   profiles: Profile[];
   members: GroupMember[];
   onUpdate: () => void;
+  clubType: ClubType;
 }
 
 interface RankingEntry {
