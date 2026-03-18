@@ -26,6 +26,8 @@ interface ParticipantConfig {
 }
 
 const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onCreated }: Props) => {
+  const labels = getClubLabels(group.club_type);
+  const isBookClub = labels.type === 'book';
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
