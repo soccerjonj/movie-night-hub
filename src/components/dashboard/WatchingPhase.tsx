@@ -281,7 +281,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
   return (
     <>
       <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
-        <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">Watch Schedule</h2>
+        <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">{labels.scheduleLabel}</h2>
 
         <div className="space-y-2 sm:space-y-3">
           {watchedPicks.length > 0 && (
