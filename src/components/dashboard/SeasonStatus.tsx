@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Calendar, Film, Eye, Video, ExternalLink } from 'lucide-react';
+import { Calendar, Film, BookOpen, Eye, Video, ExternalLink } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { ClubType, getClubLabels } from '@/lib/clubTypes';
 
 interface Props {
   season: Season;
   moviePicks: MoviePick[];
   getProfile: (userId: string) => Profile | undefined;
+  clubType: ClubType;
 }
 
 const statusLabels: Record<string, string> = {
