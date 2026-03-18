@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
+import { getClubLabels } from '@/lib/clubTypes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -25,6 +26,8 @@ interface ParticipantConfig {
 }
 
 const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onCreated }: Props) => {
+  const labels = getClubLabels(group.club_type);
+  const isBookClub = labels.type === 'book';
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +47,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
     setTitle('');
     setMoviesPerMember(1);
     setWatchIntervalDays(7);
-    setGuessingEnabled(true);
+    setGuessingEnabled(isBookClub ? false : true);
     setWatchDeadlineDay('monday');
     setWatchDeadlineTime('19:30');
     setNextGroupId(1);
@@ -187,10 +190,10 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Horror Month, 90s Classics, Studio Ghibli..."
+              placeholder={isBookClub ? "e.g. Sci-Fi Month, Classic Literature..." : "e.g. Horror Month, 90s Classics, Studio Ghibli..."}
               className="bg-muted/50 text-base font-medium"
             />
-            <p className="text-xs text-muted-foreground">This will be displayed prominently while members pick their movies.</p>
+            <p className="text-xs text-muted-foreground">This will be displayed prominently while members pick their {labels.items}.</p>
           </div>
 
           {/* Who's Picking */}
@@ -246,7 +249,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
 
           {/* Movies Per Member */}
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">Movies Per Pick Slot</Label>
+            <Label className="text-sm font-semibold">{labels.Items} Per Pick Slot</Label>
             <div className="flex items-center gap-3">
               <Select value={String(moviesPerMember)} onValueChange={(v) => setMoviesPerMember(Number(v))}>
                 <SelectTrigger className="w-20">
@@ -259,15 +262,15 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
                 </SelectContent>
               </Select>
               <span className="text-sm text-muted-foreground">
-                = {totalPickSlots} total movie{totalPickSlots !== 1 ? 's' : ''}
+                = {totalPickSlots} total {labels.item}{totalPickSlots !== 1 ? 's' : ''}
               </span>
             </div>
           </div>
 
           <div className="space-y-3">
-            <Label className="text-sm font-semibold">Watch Schedule</Label>
+            <Label className="text-sm font-semibold">{labels.Watch} Schedule</Label>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-muted-foreground">Watch 1 movie every</span>
+              <span className="text-sm text-muted-foreground">{labels.Watch} 1 {labels.item} every</span>
               <Select value={String(watchIntervalDays)} onValueChange={(v) => setWatchIntervalDays(Number(v))}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -329,20 +332,22 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
               />
             </div>
           </div>
-          <div className="flex items-center justify-between rounded-lg bg-muted/10 px-4 py-3">
-            <div>
-              <Label className="text-sm font-semibold">Guessing Round</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">Members guess who picked each movie</p>
+          {!isBookClub && (
+            <div className="flex items-center justify-between rounded-lg bg-muted/10 px-4 py-3">
+              <div>
+                <Label className="text-sm font-semibold">Guessing Round</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Members guess who picked each {labels.item}</p>
+              </div>
+              <Switch checked={guessingEnabled} onCheckedChange={setGuessingEnabled} />
             </div>
-            <Switch checked={guessingEnabled} onCheckedChange={setGuessingEnabled} />
-          </div>
+          )}
 
           {/* Summary + Create */}
           <div className="border-t border-border pt-4 space-y-3">
             <div className="text-sm text-muted-foreground space-y-1">
               <p><strong>{selectedParticipants.length}</strong> member{selectedParticipants.length !== 1 ? 's' : ''} picking{uniqueGroups.length > 0 ? ` (${uniqueGroups.length} co-pick group${uniqueGroups.length !== 1 ? 's' : ''})` : ''}</p>
-              <p><strong>{totalPickSlots}</strong> total movie{totalPickSlots !== 1 ? 's' : ''} to watch</p>
-              <p>1 movie every <strong>{watchIntervalDays === 1 ? 'day' : watchIntervalDays === 7 ? 'week' : watchIntervalDays === 14 ? '2 weeks' : watchIntervalDays === 21 ? '3 weeks' : watchIntervalDays === 30 ? 'month' : `${watchIntervalDays} days`}</strong>
+              <p><strong>{totalPickSlots}</strong> total {labels.item}{totalPickSlots !== 1 ? 's' : ''} to {labels.watch}</p>
+              <p>1 {labels.item} every <strong>{watchIntervalDays === 1 ? 'day' : watchIntervalDays === 7 ? 'week' : watchIntervalDays === 14 ? '2 weeks' : watchIntervalDays === 21 ? '3 weeks' : watchIntervalDays === 30 ? 'month' : `${watchIntervalDays} days`}</strong>
                 {watchIntervalDays >= 7 && <>, due by <strong>{watchIntervalDays >= 28 ? `the ${watchDeadlineDay}${watchDeadlineDay === '1' ? 'st' : watchDeadlineDay === '2' ? 'nd' : watchDeadlineDay === '3' ? 'rd' : 'th'}` : watchDeadlineDay.charAt(0).toUpperCase() + watchDeadlineDay.slice(1)}</strong></>}
                 {' '}at <strong>{watchDeadlineTime}</strong>
               </p>

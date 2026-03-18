@@ -7,6 +7,7 @@ export interface Group {
   name: string;
   join_code: string;
   admin_user_id: string;
+  club_type: 'movie' | 'book';
 }
 
 export interface Season {

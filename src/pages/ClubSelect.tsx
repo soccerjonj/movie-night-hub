@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Users, ArrowRight, X } from 'lucide-react';
+import { Plus, Users, ArrowRight, X, Film, BookOpen } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { motion } from 'framer-motion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -14,6 +14,7 @@ interface GroupInfo {
   name: string;
   member_count: number;
   season_status: string | null;
+  club_type: 'movie' | 'book';
 }
 
 const ClubSelect = () => {
@@ -65,7 +66,7 @@ const ClubSelect = () => {
       // Fetch group details
       const { data: groupsData } = await supabase
         .from('groups')
-        .select('id, name')
+        .select('id, name, club_type')
         .in('id', groupIds);
 
       if (!groupsData) {
@@ -89,7 +90,7 @@ const ClubSelect = () => {
             .limit(1),
         ]);
         const status = latestSeason && latestSeason.length > 0 ? latestSeason[0].status : null;
-        groupInfos.push({ id: g.id, name: g.name, member_count: count ?? 0, season_status: status });
+        groupInfos.push({ id: g.id, name: g.name, member_count: count ?? 0, season_status: status, club_type: (g as any).club_type || 'movie' });
       }
 
       setGroups(groupInfos);
@@ -131,7 +132,13 @@ const ClubSelect = () => {
                   onClick={() => navigate(`/dashboard/${g.id}`)}
                   className="flex-1 flex items-center gap-4 rounded-xl p-4 border border-border bg-muted/10 hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
                 >
-                  <img src={logo} alt="" className="h-10 object-contain rounded-xl shrink-0" />
+                  <div className="flex items-center gap-2 h-10 w-10 justify-center shrink-0">
+                    {g.club_type === 'book' ? (
+                      <BookOpen className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Film className="w-5 h-5 text-primary" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{g.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">

@@ -1,27 +1,23 @@
 import { useState, useEffect } from 'react';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Calendar, Film, Eye, Video, ExternalLink } from 'lucide-react';
+import { Calendar, Film, BookOpen, Eye, Video, ExternalLink } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { ClubType, getClubLabels } from '@/lib/clubTypes';
 
 interface Props {
   season: Season;
   moviePicks: MoviePick[];
   getProfile: (userId: string) => Profile | undefined;
+  clubType: ClubType;
 }
-
-const statusLabels: Record<string, string> = {
-  picking: '🎬 Picking Movies',
-  guessing: '🔮 Guessing Round',
-  watching: '🍿 Watching Season',
-  reviewing: '⭐ Season Review',
-  completed: '✅ Season Complete',
-};
 
 const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 const TMDB_IMAGE_LG = 'https://image.tmdb.org/t/p/w500';
 
-const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
+const SeasonStatus = ({ season, moviePicks, getProfile, clubType }: Props) => {
+  const labels = getClubLabels(clubType);
+  const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [director, setDirector] = useState<string | null>(null);
 
@@ -90,8 +86,8 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
         </h2>
         <span className="text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary font-medium w-fit">
           {season.status === 'watching'
-            ? `Currently watching: Season ${season.season_number}, Episode ${season.current_movie_index + 1}`
-            : statusLabels[season.status]}
+            ? `Currently ${labels.watching}: Season ${season.season_number}, Episode ${season.current_movie_index + 1}`
+            : labels.statusLabels[season.status]}
         </span>
       </div>
 
@@ -106,12 +102,12 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
               />
             ) : (
               <div className="w-36 sm:w-44 aspect-[2/3] rounded-xl bg-muted/30 flex items-center justify-center shrink-0">
-                <Film className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/30" />
+                <ItemIcon className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/30" />
               </div>
             )}
             {/* Title + year next to poster on mobile, hidden on desktop */}
             <div className="sm:hidden flex-1 min-w-0">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Now Watching</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{labels.nowAction}</p>
               <h3 className="font-display text-lg font-bold">{currentMovie.title}</h3>
               {currentMovie.year && <p className="text-xs text-muted-foreground mt-0.5">{currentMovie.year}</p>}
               {director && <p className="text-xs text-muted-foreground mt-0.5">Directed by {director}</p>}
@@ -129,7 +125,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
           )}
           {/* Desktop layout */}
           <div className="flex-1 hidden sm:block text-left">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Now Watching</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{labels.nowAction}</p>
             <h3 className="font-display text-2xl font-bold">{currentMovie.title}</h3>
             {currentMovie.year && <p className="text-sm text-muted-foreground mt-0.5">{currentMovie.year}</p>}
             {director && <p className="text-sm text-muted-foreground mt-0.5">Directed by {director}</p>}
@@ -205,7 +201,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile }: Props) => {
               ))}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {season.current_movie_index + 1} of {moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length} movies
+            {season.current_movie_index + 1} of {moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length} {labels.items}
           </p>
         </div>
       )}

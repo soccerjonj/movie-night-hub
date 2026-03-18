@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
+import { getClubLabels } from '@/lib/clubTypes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown, ListOrdered } from 'lucide-react';
@@ -43,6 +44,8 @@ interface Props {
 }
 
 const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, showPanel, setShowPanel }: Props & { showPanel: boolean; setShowPanel: (v: boolean) => void }) => {
+  const labels = getClubLabels(group.club_type);
+  const isBookClub = labels.type === 'book';
   const [loading, setLoading] = useState(false);
   
   const [editingSeason, setEditingSeason] = useState(false);
@@ -426,7 +429,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'picking' && (
               <>
-                {(season as any).guessing_enabled !== false ? (
+                {!isBookClub && (season as any).guessing_enabled !== false ? (
                   <Button variant="gold" size="sm" onClick={startGuessingRound} disabled={loading || moviePicks.length < members.length}>
                     <Shuffle className="w-4 h-4 mr-1" /> Start Guessing Round
                     {moviePicks.length < members.length && (
@@ -435,7 +438,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                   </Button>
                 ) : (
                   <Button variant="gold" size="sm" onClick={async () => {
-                    // Skip guessing, shuffle and go straight to watching
+                    // Skip guessing, shuffle and go straight to watching/reading
                     if (!season) return;
                     setLoading(true);
                     try {
@@ -451,7 +454,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                         next_call_date: callDate.toISOString(),
                       }).eq('id', season.id);
                       if (error) throw error;
-                      toast.success('Watching season started!');
+                      toast.success(`${labels.Watching} season started!`);
                       onUpdate();
                     } catch (err: unknown) {
                       toast.error(err instanceof Error ? err.message : 'Failed');
@@ -459,7 +462,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                       setLoading(false);
                     }
                   }} disabled={loading || moviePicks.length < members.length}>
-                    <Play className="w-4 h-4 mr-1" /> Start Watching
+                    <Play className="w-4 h-4 mr-1" /> Start {labels.Watching}
                     {moviePicks.length < members.length && (
                       <span className="ml-1 text-xs">({moviePicks.length}/{members.length} picks)</span>
                     )}

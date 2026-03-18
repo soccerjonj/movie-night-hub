@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Film, ChevronDown, ChevronUp, Check, X, Users } from 'lucide-react';
+import { Film, BookOpen, ChevronDown, ChevronUp, Check, X, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ClubType, getClubLabels } from '@/lib/clubTypes';
 
 const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
@@ -18,6 +19,7 @@ interface Props {
   getProfile: (userId: string) => Profile | undefined;
   isAdmin: boolean;
   onUpdate: () => void;
+  clubType: ClubType;
 }
 
 interface GuessRow {
@@ -26,7 +28,9 @@ interface GuessRow {
   movie_pick_id: string;
 }
 
-const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAdmin, onUpdate }: Props) => {
+const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAdmin, onUpdate, clubType }: Props) => {
+  const labels = getClubLabels(clubType);
+  const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const { user } = useAuth();
   const [showWatched, setShowWatched] = useState(false);
   const [posterOverrides, setPosterOverrides] = useState<Record<string, string>>({});
@@ -277,7 +281,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
   return (
     <>
       <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
-        <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">Watch Schedule</h2>
+        <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">{labels.scheduleLabel}</h2>
 
         <div className="space-y-2 sm:space-y-3">
           {watchedPicks.length > 0 && (
@@ -288,7 +292,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
                 onClick={() => setShowWatched(!showWatched)}
                 className="w-full justify-between text-muted-foreground hover:text-foreground"
               >
-                <span>{watchedPicks.length} already watched</span>
+                <span>{watchedPicks.length} already {labels.watched}</span>
                 {showWatched ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
               {showWatched && watchedPicks.map((pick) => renderPick(pick, sortedPicks.indexOf(pick)))}
