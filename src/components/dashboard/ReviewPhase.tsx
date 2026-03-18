@@ -175,7 +175,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
       <p className="text-xs sm:text-sm text-muted-foreground mb-4">
         {submitted
           ? `You've submitted your rankings! ${everyoneSubmitted ? 'Results are in!' : `Waiting for others (${submittedCount}/${members.length}).`}`
-          : 'Drag to rank movies from your favorite (#1) to least favorite.'}
+          : `Drag to rank ${labels.items} from your favorite (#1) to least favorite.`}
       </p>
 
       {/* Ranking UI */}
