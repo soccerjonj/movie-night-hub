@@ -47,7 +47,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
     setTitle('');
     setMoviesPerMember(1);
     setWatchIntervalDays(7);
-    setGuessingEnabled(true);
+    setGuessingEnabled(isBookClub ? false : true);
     setWatchDeadlineDay('monday');
     setWatchDeadlineTime('19:30');
     setNextGroupId(1);
