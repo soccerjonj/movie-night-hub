@@ -44,6 +44,8 @@ interface Props {
 }
 
 const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, showPanel, setShowPanel }: Props & { showPanel: boolean; setShowPanel: (v: boolean) => void }) => {
+  const labels = getClubLabels(group.club_type);
+  const isBookClub = labels.type === 'book';
   const [loading, setLoading] = useState(false);
   
   const [editingSeason, setEditingSeason] = useState(false);
