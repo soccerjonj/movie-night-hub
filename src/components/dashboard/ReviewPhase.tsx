@@ -23,7 +23,9 @@ interface RankingEntry {
   rank: number;
 }
 
-const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate }: Props) => {
+const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType }: Props) => {
+  const labels = getClubLabels(clubType);
+  const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const { user } = useAuth();
   const [rankings, setRankings] = useState<string[]>([]); // ordered movie pick IDs (index 0 = rank 1 = favorite)
   const [submitted, setSubmitted] = useState(false);
