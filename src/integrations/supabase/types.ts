@@ -53,6 +53,7 @@ export type Database = {
       groups: {
         Row: {
           admin_user_id: string
+          club_type: Database["public"]["Enums"]["club_type"]
           created_at: string
           id: string
           join_code: string
@@ -60,6 +61,7 @@ export type Database = {
         }
         Insert: {
           admin_user_id: string
+          club_type?: Database["public"]["Enums"]["club_type"]
           created_at?: string
           id?: string
           join_code?: string
@@ -67,6 +69,7 @@ export type Database = {
         }
         Update: {
           admin_user_id?: string
+          club_type?: Database["public"]["Enums"]["club_type"]
           created_at?: string
           id?: string
           join_code?: string
@@ -386,6 +389,7 @@ export type Database = {
       }
     }
     Enums: {
+      club_type: "movie" | "book"
       season_status:
         | "picking"
         | "guessing"
@@ -519,6 +523,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      club_type: ["movie", "book"],
       season_status: [
         "picking",
         "guessing",
