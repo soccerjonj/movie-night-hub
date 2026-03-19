@@ -560,7 +560,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                   <CalendarClock className="w-4 h-4 mr-1" /> {season.next_call_date ? 'Change Call Date' : 'Set Call Date'}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => { setCallLinkValue(season.call_link || ''); setEditingCallLink(true); }} disabled={loading}>
-                  <Play className="w-4 h-4 mr-1" /> {season.call_link ? 'Edit Call Link' : 'Add Call Link'}
+                  <Play className="w-4 h-4 mr-1" /> {group.meeting_type === 'in_person' ? (season.call_link ? 'Edit Location' : 'Set Location') : (season.call_link ? 'Edit Call Link' : 'Add Call Link')}
                 </Button>
                 {season.call_link && (
                   <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={async () => {
@@ -643,10 +643,10 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
           {editingCallLink && season && (
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <label className="text-xs text-muted-foreground mb-1 block">Call Link (Zoom, Google Meet, etc.)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{group.meeting_type === 'in_person' ? 'Meeting Location' : 'Call Link (Zoom, Google Meet, etc.)'}</label>
                 <Input
-                  type="url"
-                  placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+                  type={group.meeting_type === 'in_person' ? 'text' : 'url'}
+                  placeholder={group.meeting_type === 'in_person' ? "e.g. Joe's house, The Coffee Bean" : "https://zoom.us/j/... or https://meet.google.com/..."}
                   value={callLinkValue}
                   onChange={e => setCallLinkValue(e.target.value)}
                   className="bg-muted/50"

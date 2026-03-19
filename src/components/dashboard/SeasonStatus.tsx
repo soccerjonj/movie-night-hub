@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Calendar, Film, BookOpen, Eye, Video, ExternalLink } from 'lucide-react';
+import { Season, MoviePick, Profile, Group } from '@/hooks/useGroup';
+import { Calendar, Film, BookOpen, Eye, Video, ExternalLink, MapPin } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { ClubType, getClubLabels } from '@/lib/clubTypes';
@@ -10,12 +10,14 @@ interface Props {
   moviePicks: MoviePick[];
   getProfile: (userId: string) => Profile | undefined;
   clubType: ClubType;
+  group?: Group;
 }
 
 const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 const TMDB_IMAGE_LG = 'https://image.tmdb.org/t/p/w500';
 
-const SeasonStatus = ({ season, moviePicks, getProfile, clubType }: Props) => {
+const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props) => {
+  const isInPerson = group?.meeting_type === 'in_person';
   const labels = getClubLabels(clubType);
   const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
@@ -151,7 +153,13 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType }: Props) => {
               {' '}({formatDistanceToNow(new Date(season.next_call_date), { addSuffix: true })})
             </span>
           </div>
-          {season.call_link && (
+          {isInPerson && group?.meeting_location && (
+            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-full w-fit">
+              <MapPin className="w-4 h-4 text-primary" />
+              {group.meeting_location}
+            </span>
+          )}
+          {!isInPerson && season.call_link && (
             <a
               href={season.call_link}
               target="_blank"
@@ -166,7 +174,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType }: Props) => {
         </div>
       )}
 
-      {!season.next_call_date && season.call_link && (
+      {!season.next_call_date && !isInPerson && season.call_link && (
         <div className="mt-4">
           <a
             href={season.call_link}
@@ -178,6 +186,14 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType }: Props) => {
             Join Call
             <ExternalLink className="w-3 h-3" />
           </a>
+        </div>
+      )}
+      {!season.next_call_date && isInPerson && group?.meeting_location && (
+        <div className="mt-4">
+          <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-full w-fit">
+            <MapPin className="w-4 h-4 text-primary" />
+            {group.meeting_location}
+          </span>
         </div>
       )}
 

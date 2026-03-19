@@ -5,11 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, Plus, ArrowRight, Ghost, UserCheck, Film, BookOpen } from 'lucide-react';
+import { Users, Plus, ArrowRight, Ghost, UserCheck, Film, BookOpen, Video, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { groupNameSchema, joinCodeSchema, getSafeErrorMessage } from '@/lib/security';
 
 interface PlaceholderProfile {
@@ -17,35 +17,59 @@ interface PlaceholderProfile {
   display_name: string;
 }
 
+type Mode = 'choose' | 'create' | 'join' | 'claim';
+type CreateStep = 'type' | 'name' | 'meeting' | 'confirm';
+
+const CREATE_STEPS: CreateStep[] = ['type', 'name', 'meeting', 'confirm'];
 
 const GroupSetup = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'choose' | 'create' | 'join' | 'claim'>('choose');
-  const [groupName, setGroupName] = useState('');
+  const [mode, setMode] = useState<Mode>('choose');
+
+  // Create wizard state
+  const [createStep, setCreateStep] = useState<CreateStep>('type');
   const [clubType, setClubType] = useState<'movie' | 'book'>('movie');
+  const [groupName, setGroupName] = useState('');
+  const [meetingType, setMeetingType] = useState<'remote' | 'in_person'>('remote');
+  const [meetingLocation, setMeetingLocation] = useState('');
+
+  // Join state
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundGroupId, setFoundGroupId] = useState<string | null>(null);
   const [placeholders, setPlaceholders] = useState<PlaceholderProfile[]>([]);
   const [selectedPlaceholder, setSelectedPlaceholder] = useState<string | null>(null);
 
-  // Check if user already has groups — redirect to club select
   useEffect(() => {
-    const checkGroup = async () => {
-      if (!user) return;
-      const { data } = await supabase
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', user.id)
-        .limit(1);
-      // Don't auto-redirect — user may want to join another club
-    };
-    checkGroup();
+    if (!user) return;
+    // Don't auto-redirect — user may want to join another club
   }, [user, navigate]);
 
-  const handleCreateGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const stepIndex = CREATE_STEPS.indexOf(createStep);
+
+  const goNextStep = () => {
+    const next = CREATE_STEPS[stepIndex + 1];
+    if (next) setCreateStep(next);
+  };
+
+  const goPrevStep = () => {
+    const prev = CREATE_STEPS[stepIndex - 1];
+    if (prev) setCreateStep(prev);
+    else setMode('choose');
+  };
+
+  const canProceed = () => {
+    switch (createStep) {
+      case 'type': return true;
+      case 'name': return groupName.trim().length > 0;
+      case 'meeting': return meetingType === 'remote' || meetingLocation.trim().length > 0;
+      case 'confirm': return true;
+      default: return false;
+    }
+  };
+
+  const handleCreateGroup = async () => {
     const parsed = groupNameSchema.safeParse({ name: groupName });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
@@ -56,7 +80,13 @@ const GroupSetup = () => {
     try {
       const { data: group, error: groupError } = await supabase
         .from('groups')
-        .insert({ name: parsed.data.name, admin_user_id: user.id, club_type: clubType } as any)
+        .insert({
+          name: parsed.data.name,
+          admin_user_id: user.id,
+          club_type: clubType,
+          meeting_type: meetingType,
+          meeting_location: meetingType === 'in_person' ? meetingLocation.trim() : null,
+        } as any)
         .select()
         .single();
       if (groupError) throw groupError;
@@ -66,8 +96,11 @@ const GroupSetup = () => {
         .insert({ group_id: group.id, user_id: user.id });
       if (memberError) throw memberError;
 
+      // Flag for walkthrough
+      localStorage.setItem(`show_walkthrough_${group.id}`, 'true');
+
       toast.success('Group created!');
-      navigate('/clubs');
+      navigate(`/dashboard/${group.id}`);
     } catch (err: unknown) {
       toast.error(getSafeErrorMessage(err, 'Failed to create group'));
     } finally {
@@ -135,6 +168,8 @@ const GroupSetup = () => {
     }
   };
 
+  const itemLabel = clubType === 'movie' ? 'movie' : 'book';
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
@@ -145,15 +180,16 @@ const GroupSetup = () => {
         transition={{ duration: 0.6 }}
         className="glass-card rounded-2xl p-8 w-full max-w-md mx-4 relative z-10"
       >
+        {/* ── Choose Mode ── */}
         {mode === 'choose' && (
           <div className="space-y-6">
             <div className="text-center">
-              <img src={logo} alt="Movie Club" className="h-16 object-contain rounded-2xl mx-auto mb-4" />
+              <img src={logo} alt="Club" className="h-16 object-contain rounded-2xl mx-auto mb-4" />
               <h1 className="text-2xl font-display font-bold">Join or Create a Club</h1>
-              <p className="text-muted-foreground mt-2">Get started with your movie club</p>
+              <p className="text-muted-foreground mt-2">Get started with your club</p>
             </div>
             <div className="space-y-3">
-              <Button variant="gold" className="w-full" onClick={() => setMode('create')}>
+              <Button variant="gold" className="w-full" onClick={() => { setMode('create'); setCreateStep('type'); }}>
                 <Plus className="w-4 h-4 mr-2" /> Create a New Club
               </Button>
               <Button variant="outline" className="w-full" onClick={() => setMode('join')}>
@@ -163,48 +199,219 @@ const GroupSetup = () => {
           </div>
         )}
 
+        {/* ── Create Wizard ── */}
         {mode === 'create' && (
-          <form onSubmit={handleCreateGroup} className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-display font-bold">Create Your Club</h2>
-              <p className="text-muted-foreground mt-2">Name your movie club</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clubType">Club Type</Label>
-              <Select value={clubType} onValueChange={(v) => setClubType(v as 'movie' | 'book')}>
-                <SelectTrigger className="bg-muted/50 border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="movie">
-                    <span className="flex items-center gap-2"><Film className="w-4 h-4" /> Movie Club</span>
-                  </SelectItem>
-                  <SelectItem value="book">
-                    <span className="flex items-center gap-2"><BookOpen className="w-4 h-4" /> Book Club</span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="groupName">Club Name</Label>
-              <Input
-                id="groupName"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder={clubType === 'movie' ? 'The Cinema Society' : 'The Book Corner'}
-                required
-                className="bg-muted/50 border-border"
-              />
-            </div>
-            <div className="flex gap-3">
-              <Button type="button" variant="ghost" onClick={() => setMode('choose')}>Back</Button>
-              <Button type="submit" variant="gold" className="flex-1" disabled={loading}>
-                {loading ? 'Creating...' : 'Create Club'}
-              </Button>
-            </div>
-          </form>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={createStep}
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-6"
+            >
+              {/* Progress bar */}
+              <div className="flex gap-1">
+                {CREATE_STEPS.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1 flex-1 rounded-full transition-all ${
+                      i <= stepIndex ? 'bg-primary' : 'bg-muted'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Step: Club Type */}
+              {createStep === 'type' && (
+                <>
+                  <div className="text-center">
+                    <h2 className="text-2xl font-display font-bold">What kind of club?</h2>
+                    <p className="text-muted-foreground mt-2">Choose your club type</p>
+                  </div>
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => setClubType('movie')}
+                      className={`w-full flex items-center gap-4 rounded-xl p-5 border transition-all ${
+                        clubType === 'movie'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-muted/10 hover:border-primary/50'
+                      }`}
+                    >
+                      <Film className={`w-8 h-8 ${clubType === 'movie' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="text-left">
+                        <span className="font-semibold text-base">Movie Club</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Pick movies, guess who picked what, rank them</p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClubType('book')}
+                      className={`w-full flex items-center gap-4 rounded-xl p-5 border transition-all ${
+                        clubType === 'book'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-muted/10 hover:border-primary/50'
+                      }`}
+                    >
+                      <BookOpen className={`w-8 h-8 ${clubType === 'book' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="text-left">
+                        <span className="font-semibold text-base">Book Club</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Pick books, track reading, rank and review</p>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Step: Club Name */}
+              {createStep === 'name' && (
+                <>
+                  <div className="text-center">
+                    <h2 className="text-2xl font-display font-bold">Name your club</h2>
+                    <p className="text-muted-foreground mt-2">Give your {itemLabel} club a name</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="groupName">Club Name</Label>
+                    <Input
+                      id="groupName"
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      placeholder={clubType === 'movie' ? 'The Cinema Society' : 'The Book Corner'}
+                      autoFocus
+                      className="bg-muted/50 border-border text-lg"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Step: Meeting Format */}
+              {createStep === 'meeting' && (
+                <>
+                  <div className="text-center">
+                    <h2 className="text-2xl font-display font-bold">How do you meet?</h2>
+                    <p className="text-muted-foreground mt-2">Choose your meeting format</p>
+                  </div>
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => setMeetingType('remote')}
+                      className={`w-full flex items-center gap-4 rounded-xl p-5 border transition-all ${
+                        meetingType === 'remote'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-muted/10 hover:border-primary/50'
+                      }`}
+                    >
+                      <Video className={`w-7 h-7 ${meetingType === 'remote' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="text-left">
+                        <span className="font-semibold">Remote / Video Call</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Meet via Zoom, Google Meet, etc.</p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMeetingType('in_person')}
+                      className={`w-full flex items-center gap-4 rounded-xl p-5 border transition-all ${
+                        meetingType === 'in_person'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-muted/10 hover:border-primary/50'
+                      }`}
+                    >
+                      <MapPin className={`w-7 h-7 ${meetingType === 'in_person' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="text-left">
+                        <span className="font-semibold">In Person</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Meet at a physical location</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  {meetingType === 'in_person' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="meetingLocation">Meeting Location</Label>
+                      <Input
+                        id="meetingLocation"
+                        value={meetingLocation}
+                        onChange={(e) => setMeetingLocation(e.target.value)}
+                        placeholder="e.g. Joe's living room, The Coffee Bean on 5th"
+                        autoFocus
+                        className="bg-muted/50 border-border"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Step: Confirmation */}
+              {createStep === 'confirm' && (
+                <>
+                  <div className="text-center">
+                    <h2 className="text-2xl font-display font-bold">Ready to go!</h2>
+                    <p className="text-muted-foreground mt-2">Here's your club setup</p>
+                  </div>
+                  <div className="space-y-3 bg-muted/20 rounded-xl p-5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Type</span>
+                      <span className="font-medium flex items-center gap-2">
+                        {clubType === 'movie' ? <Film className="w-4 h-4 text-primary" /> : <BookOpen className="w-4 h-4 text-primary" />}
+                        {clubType === 'movie' ? 'Movie Club' : 'Book Club'}
+                      </span>
+                    </div>
+                    <div className="border-t border-border" />
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Name</span>
+                      <span className="font-medium">{groupName}</span>
+                    </div>
+                    <div className="border-t border-border" />
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Meetings</span>
+                      <span className="font-medium flex items-center gap-2">
+                        {meetingType === 'remote' ? <Video className="w-4 h-4 text-primary" /> : <MapPin className="w-4 h-4 text-primary" />}
+                        {meetingType === 'remote' ? 'Remote' : 'In Person'}
+                      </span>
+                    </div>
+                    {meetingType === 'in_person' && meetingLocation && (
+                      <>
+                        <div className="border-t border-border" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Location</span>
+                          <span className="font-medium text-sm text-right max-w-[200px] truncate">{meetingLocation}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Navigation */}
+              <div className="flex gap-3">
+                <Button type="button" variant="ghost" onClick={goPrevStep}>
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Back
+                </Button>
+                {createStep === 'confirm' ? (
+                  <Button
+                    variant="gold"
+                    className="flex-1"
+                    disabled={loading}
+                    onClick={handleCreateGroup}
+                  >
+                    {loading ? 'Creating...' : 'Create Club'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="gold"
+                    className="flex-1"
+                    disabled={!canProceed()}
+                    onClick={goNextStep}
+                  >
+                    Continue <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                )}
+              </div>
+            </motion.div>
+          </AnimatePresence>
         )}
 
+        {/* ── Join with Code ── */}
         {mode === 'join' && (
           <form onSubmit={handleFindGroup} className="space-y-6">
             <div className="text-center">
@@ -231,6 +438,7 @@ const GroupSetup = () => {
           </form>
         )}
 
+        {/* ── Claim Placeholder ── */}
         {mode === 'claim' && (
           <div className="space-y-6">
             <div className="text-center">
