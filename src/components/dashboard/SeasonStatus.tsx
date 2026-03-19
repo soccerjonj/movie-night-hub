@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Calendar, Film, BookOpen, Eye, Video, ExternalLink } from 'lucide-react';
+import { Season, MoviePick, Profile, Group } from '@/hooks/useGroup';
+import { Calendar, Film, BookOpen, Eye, Video, ExternalLink, MapPin } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { ClubType, getClubLabels } from '@/lib/clubTypes';
