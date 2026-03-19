@@ -74,6 +74,14 @@ const Dashboard = () => {
     }
   }, [loading, group, navigate]);
 
+  // Show walkthrough for new groups
+  useEffect(() => {
+    if (groupId && isAdmin && localStorage.getItem(`show_walkthrough_${groupId}`) === 'true') {
+      setShowWalkthrough(true);
+      localStorage.removeItem(`show_walkthrough_${groupId}`);
+    }
+  }, [groupId, isAdmin]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
