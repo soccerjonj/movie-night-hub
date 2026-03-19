@@ -57,6 +57,8 @@ export type Database = {
           created_at: string
           id: string
           join_code: string
+          meeting_location: string | null
+          meeting_type: Database["public"]["Enums"]["meeting_type"]
           name: string
         }
         Insert: {
@@ -65,6 +67,8 @@ export type Database = {
           created_at?: string
           id?: string
           join_code?: string
+          meeting_location?: string | null
+          meeting_type?: Database["public"]["Enums"]["meeting_type"]
           name: string
         }
         Update: {
@@ -73,6 +77,8 @@ export type Database = {
           created_at?: string
           id?: string
           join_code?: string
+          meeting_location?: string | null
+          meeting_type?: Database["public"]["Enums"]["meeting_type"]
           name?: string
         }
         Relationships: []
@@ -390,6 +396,7 @@ export type Database = {
     }
     Enums: {
       club_type: "movie" | "book"
+      meeting_type: "remote" | "in_person"
       season_status:
         | "picking"
         | "guessing"
@@ -524,6 +531,7 @@ export const Constants = {
   public: {
     Enums: {
       club_type: ["movie", "book"],
+      meeting_type: ["remote", "in_person"],
       season_status: [
         "picking",
         "guessing",

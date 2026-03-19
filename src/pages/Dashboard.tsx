@@ -4,6 +4,7 @@ import { useGroup } from '@/hooks/useGroup';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut, Settings, ArrowLeft, DoorOpen } from 'lucide-react';
+import AdminWalkthrough from '@/components/dashboard/AdminWalkthrough';
 import logo from '@/assets/logo.png';
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -33,6 +34,7 @@ const Dashboard = () => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [hasEverGuessed, setHasEverGuessed] = useState(false);
   const [openProfileUserId, setOpenProfileUserId] = useState<string | null>(null);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
 
   const labels = getClubLabels(group?.club_type ?? 'movie');
   const isBookClub = labels.type === 'book';
@@ -72,6 +74,14 @@ const Dashboard = () => {
     }
   }, [loading, group, navigate]);
 
+  // Show walkthrough for new groups
+  useEffect(() => {
+    if (groupId && isAdmin && localStorage.getItem(`show_walkthrough_${groupId}`) === 'true') {
+      setShowWalkthrough(true);
+      localStorage.removeItem(`show_walkthrough_${groupId}`);
+    }
+  }, [groupId, isAdmin]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -84,6 +94,14 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Admin Walkthrough */}
+      {showWalkthrough && (
+        <AdminWalkthrough
+          groupId={groupId!}
+          labels={labels}
+          onDismiss={() => setShowWalkthrough(false)}
+        />
+      )}
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
@@ -212,7 +230,7 @@ const Dashboard = () => {
               )}
 
               {/* Season Status */}
-              {season && <SeasonStatus season={season} moviePicks={moviePicks} getProfile={getProfile} clubType={labels.type} />}
+              {season && <SeasonStatus season={season} moviePicks={moviePicks} getProfile={getProfile} clubType={labels.type} group={group} />}
 
               {/* Phase-specific content */}
               {season?.status === 'picking' && (
