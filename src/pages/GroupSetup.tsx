@@ -63,7 +63,7 @@ const GroupSetup = () => {
     switch (createStep) {
       case 'type': return true;
       case 'name': return groupName.trim().length > 0;
-      case 'meeting': return meetingType === 'remote' || meetingLocation.trim().length > 0;
+      case 'meeting': return true;
       case 'confirm': return true;
       default: return false;
     }
