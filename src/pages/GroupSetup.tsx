@@ -325,19 +325,11 @@ const GroupSetup = () => {
                     </button>
                   </div>
 
-                  {meetingType === 'in_person' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="meetingLocation">Meeting Location</Label>
-                      <Input
-                        id="meetingLocation"
-                        value={meetingLocation}
-                        onChange={(e) => setMeetingLocation(e.target.value)}
-                        placeholder="e.g. Joe's living room, The Coffee Bean on 5th"
-                        autoFocus
-                        className="bg-muted/50 border-border"
-                      />
-                    </div>
-                  )}
+                   {meetingType === 'in_person' && (
+                    <p className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-3">
+                      📍 You can set a meeting location after creating your club from the admin panel.
+                    </p>
+                   )}
                 </>
               )}
 
