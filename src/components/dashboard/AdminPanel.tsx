@@ -560,7 +560,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                   <CalendarClock className="w-4 h-4 mr-1" /> {season.next_call_date ? 'Change Call Date' : 'Set Call Date'}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => { setCallLinkValue(season.call_link || ''); setEditingCallLink(true); }} disabled={loading}>
-                  <Play className="w-4 h-4 mr-1" /> {season.call_link ? 'Edit Call Link' : 'Add Call Link'}
+                  <Play className="w-4 h-4 mr-1" /> {group.meeting_type === 'in_person' ? (season.call_link ? 'Edit Location' : 'Set Location') : (season.call_link ? 'Edit Call Link' : 'Add Call Link')}
                 </Button>
                 {season.call_link && (
                   <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={async () => {
