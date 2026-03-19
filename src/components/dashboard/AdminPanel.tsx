@@ -388,7 +388,54 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             </Button>
           </div>
 
-          {/* Edit Season */}
+          {/* Meeting Location (in-person groups) */}
+          {group.meeting_type === 'in_person' && (
+            <div className="space-y-2">
+              {!editingLocation ? (
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  <span className="text-sm text-muted-foreground">
+                    {group.meeting_location || 'No meeting location set'}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setLocationValue(group.meeting_location || ''); setEditingLocation(true); }}>
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground block">Meeting Location</label>
+                  <PlacesAutocomplete
+                    value={locationValue}
+                    onChange={setLocationValue}
+                    placeholder="Search for a place..."
+                    autoFocus
+                  />
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="text-green-500" onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const { error } = await supabase.from('groups').update({ meeting_location: locationValue.trim() || null } as any).eq('id', group.id);
+                        if (error) throw error;
+                        toast.success('Meeting location updated!');
+                        setEditingLocation(false);
+                        onUpdate();
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to update location');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }} disabled={loading}>
+                      <Check className="w-4 h-4 mr-1" /> Save
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setEditingLocation(false)}>
+                      <X className="w-4 h-4 mr-1" /> Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {season && !editingSeason && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
