@@ -16,7 +16,8 @@ interface Props {
 const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 const TMDB_IMAGE_LG = 'https://image.tmdb.org/t/p/w500';
 
-const SeasonStatus = ({ season, moviePicks, getProfile, clubType }: Props) => {
+const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props) => {
+  const isInPerson = group?.meeting_type === 'in_person';
   const labels = getClubLabels(clubType);
   const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
