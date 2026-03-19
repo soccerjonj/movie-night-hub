@@ -4,7 +4,7 @@ import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup
 import { getClubLabels } from '@/lib/clubTypes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown, ListOrdered } from 'lucide-react';
+import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown, ListOrdered, MapPin } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
@@ -15,6 +15,7 @@ import EditGuessesDialog from './EditGuessesDialog';
 import EditPicksDialog from './EditPicksDialog';
 import AddPlaceholderDialog from './AddPlaceholderDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import PlacesAutocomplete from './PlacesAutocomplete';
 
 // Collapsible dropdown panel for grouping admin actions
 function DropdownPanel({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -57,6 +58,8 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const [callTimezone, setCallTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [editingCallLink, setEditingCallLink] = useState(false);
   const [callLinkValue, setCallLinkValue] = useState('');
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [locationValue, setLocationValue] = useState(group.meeting_location || '');
   const getProfileName = (userId: string) => profiles.find((p) => p.user_id === userId)?.display_name || 'Unknown';
 
   const copyJoinCode = () => {
@@ -385,7 +388,54 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             </Button>
           </div>
 
-          {/* Edit Season */}
+          {/* Meeting Location (in-person groups) */}
+          {group.meeting_type === 'in_person' && (
+            <div className="space-y-2">
+              {!editingLocation ? (
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  <span className="text-sm text-muted-foreground">
+                    {group.meeting_location || 'No meeting location set'}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setLocationValue(group.meeting_location || ''); setEditingLocation(true); }}>
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground block">Meeting Location</label>
+                  <PlacesAutocomplete
+                    value={locationValue}
+                    onChange={setLocationValue}
+                    placeholder="Search for a place..."
+                    autoFocus
+                  />
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="text-green-500" onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const { error } = await supabase.from('groups').update({ meeting_location: locationValue.trim() || null } as any).eq('id', group.id);
+                        if (error) throw error;
+                        toast.success('Meeting location updated!');
+                        setEditingLocation(false);
+                        onUpdate();
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to update location');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }} disabled={loading}>
+                      <Check className="w-4 h-4 mr-1" /> Save
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setEditingLocation(false)}>
+                      <X className="w-4 h-4 mr-1" /> Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {season && !editingSeason && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
