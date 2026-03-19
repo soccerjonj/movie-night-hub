@@ -361,15 +361,6 @@ const GroupSetup = () => {
                         {meetingType === 'remote' ? 'Remote' : 'In Person'}
                       </span>
                     </div>
-                    {meetingType === 'in_person' && meetingLocation && (
-                      <>
-                        <div className="border-t border-border" />
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Location</span>
-                          <span className="font-medium text-sm text-right max-w-[200px] truncate">{meetingLocation}</span>
-                        </div>
-                      </>
-                    )}
                   </div>
                 </>
               )}
