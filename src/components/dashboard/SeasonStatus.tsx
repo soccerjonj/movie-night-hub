@@ -153,7 +153,13 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
               {' '}({formatDistanceToNow(new Date(season.next_call_date), { addSuffix: true })})
             </span>
           </div>
-          {season.call_link && (
+          {isInPerson && group?.meeting_location && (
+            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-full w-fit">
+              <MapPin className="w-4 h-4 text-primary" />
+              {group.meeting_location}
+            </span>
+          )}
+          {!isInPerson && season.call_link && (
             <a
               href={season.call_link}
               target="_blank"
@@ -168,7 +174,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </div>
       )}
 
-      {!season.next_call_date && season.call_link && (
+      {!season.next_call_date && !isInPerson && season.call_link && (
         <div className="mt-4">
           <a
             href={season.call_link}
@@ -180,6 +186,14 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
             Join Call
             <ExternalLink className="w-3 h-3" />
           </a>
+        </div>
+      )}
+      {!season.next_call_date && isInPerson && group?.meeting_location && (
+        <div className="mt-4">
+          <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-full w-fit">
+            <MapPin className="w-4 h-4 text-primary" />
+            {group.meeting_location}
+          </span>
         </div>
       )}
 
