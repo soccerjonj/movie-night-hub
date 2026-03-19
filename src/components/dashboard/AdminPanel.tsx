@@ -15,6 +15,7 @@ import EditGuessesDialog from './EditGuessesDialog';
 import EditPicksDialog from './EditPicksDialog';
 import AddPlaceholderDialog from './AddPlaceholderDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import PlacesAutocomplete from './PlacesAutocomplete';
 
 // Collapsible dropdown panel for grouping admin actions
 function DropdownPanel({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
