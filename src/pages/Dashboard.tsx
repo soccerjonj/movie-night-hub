@@ -4,6 +4,7 @@ import { useGroup } from '@/hooks/useGroup';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut, Settings, ArrowLeft, DoorOpen } from 'lucide-react';
+import AdminWalkthrough from '@/components/dashboard/AdminWalkthrough';
 import logo from '@/assets/logo.png';
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
