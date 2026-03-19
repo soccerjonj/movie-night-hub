@@ -8,6 +8,8 @@ export interface Group {
   join_code: string;
   admin_user_id: string;
   club_type: 'movie' | 'book';
+  meeting_type: 'remote' | 'in_person';
+  meeting_location: string | null;
 }
 
 export interface Season {

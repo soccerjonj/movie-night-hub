@@ -94,6 +94,14 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Admin Walkthrough */}
+      {showWalkthrough && (
+        <AdminWalkthrough
+          groupId={groupId!}
+          labels={labels}
+          onDismiss={() => setShowWalkthrough(false)}
+        />
+      )}
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
