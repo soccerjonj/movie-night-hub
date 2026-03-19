@@ -230,7 +230,7 @@ const Dashboard = () => {
               )}
 
               {/* Season Status */}
-              {season && <SeasonStatus season={season} moviePicks={moviePicks} getProfile={getProfile} clubType={labels.type} />}
+              {season && <SeasonStatus season={season} moviePicks={moviePicks} getProfile={getProfile} clubType={labels.type} group={group} />}
 
               {/* Phase-specific content */}
               {season?.status === 'picking' && (
