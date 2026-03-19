@@ -645,8 +645,8 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
               <div className="flex-1">
                 <label className="text-xs text-muted-foreground mb-1 block">{group.meeting_type === 'in_person' ? 'Meeting Location' : 'Call Link (Zoom, Google Meet, etc.)'}</label>
                 <Input
-                  type="url"
-                  placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+                  type={group.meeting_type === 'in_person' ? 'text' : 'url'}
+                  placeholder={group.meeting_type === 'in_person' ? "e.g. Joe's house, The Coffee Bean" : "https://zoom.us/j/... or https://meet.google.com/..."}
                   value={callLinkValue}
                   onChange={e => setCallLinkValue(e.target.value)}
                   className="bg-muted/50"
