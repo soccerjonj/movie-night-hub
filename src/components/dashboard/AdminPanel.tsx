@@ -349,7 +349,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
         next_call_date: null,
       }).eq('id', season.id);
       if (error) throw error;
-      toast.success('Season review started! Members can now rank movies.');
+      toast.success(`Season review started! Members can now rank ${labels.items}.`);
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to start review');
