@@ -8,6 +8,7 @@ import { Search, Check, BookOpen, Star, ExternalLink, X } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { GOOGLE_BOOKS_API_KEY } from '@/lib/apiKeys';
+import { sortBooksByPopularity } from '@/lib/bookSearch';
 
 interface Props {
   season: Season;
@@ -61,7 +62,7 @@ const BookPickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     try {
       const keyParam = GOOGLE_BOOKS_API_KEY ? `&key=${encodeURIComponent(GOOGLE_BOOKS_API_KEY)}` : '';
       const res = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=20&printType=books${keyParam}`
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=20&printType=books&orderBy=relevance${keyParam}`
       );
       if (!res.ok) {
         let details = '';
@@ -74,7 +75,8 @@ const BookPickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
         throw new Error(`Books API error (${res.status})${details ? `: ${details}` : ''}`);
       }
       const data = await res.json();
-      setResults((data.items || []) as GoogleBook[]);
+      const items = (data.items || []) as GoogleBook[];
+      setResults(sortBooksByPopularity(items, term));
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to search books');
     } finally {

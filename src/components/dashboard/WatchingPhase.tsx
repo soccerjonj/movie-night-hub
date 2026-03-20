@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ClubType, getClubLabels } from '@/lib/clubTypes';
+import ReadingAssignments from './ReadingAssignments';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
 
@@ -73,6 +74,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
   // Fetch movie posters/directors
   useEffect(() => {
     const fetchMovieData = async () => {
+      if (clubType === 'book') return;
       for (const pick of moviePicks) {
         try {
           let tmdbId = pick.tmdb_id;
@@ -106,7 +108,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
       }
     };
     fetchMovieData();
-  }, [moviePicks]);
+  }, [moviePicks, clubType]);
 
   const watchedPicks = sortedPicks.filter((_, i) => i < season.current_movie_index);
   const currentAndUpcoming = sortedPicks.filter((_, i) => i >= season.current_movie_index);
@@ -280,6 +282,9 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
 
   return (
     <>
+      {clubType === 'book' && (
+        <ReadingAssignments seasonId={season.id} isAdmin={isAdmin} />
+      )}
       <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
         <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">{labels.scheduleLabel}</h2>
 

@@ -238,6 +238,53 @@ export type Database = {
           },
         ]
       }
+      reading_assignments: {
+        Row: {
+          id: string
+          season_id: string
+          title: string | null
+          chapter_range: string | null
+          start_page: number | null
+          end_page: number | null
+          due_date: string | null
+          notes: string | null
+          order_index: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          season_id: string
+          title?: string | null
+          chapter_range?: string | null
+          start_page?: number | null
+          end_page?: number | null
+          due_date?: string | null
+          notes?: string | null
+          order_index?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          season_id?: string
+          title?: string | null
+          chapter_range?: string | null
+          start_page?: number | null
+          end_page?: number | null
+          due_date?: string | null
+          notes?: string | null
+          order_index?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_assignments_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
