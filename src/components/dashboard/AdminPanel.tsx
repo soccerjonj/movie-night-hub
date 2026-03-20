@@ -778,7 +778,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Reset all picks?</AlertDialogTitle>
-                        <AlertDialogDescription>This will delete every movie pick for this season. All guesses will also be removed. This cannot be undone.</AlertDialogDescription>
+                        <AlertDialogDescription>This will delete every {labels.item} pick for this season. All guesses will also be removed. This cannot be undone.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
