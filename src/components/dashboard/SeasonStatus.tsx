@@ -22,6 +22,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
   const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [director, setDirector] = useState<string | null>(null);
+  const [readingStatus, setReadingStatus] = useState<string | null>(null);
 
   // Find current movie by watch_order matching the index
   const currentMovie = moviePicks.find(p => p.watch_order === season.current_movie_index);
@@ -79,6 +80,42 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
     fetchTmdbData();
   }, [currentMovie?.id, currentMovie?.poster_url]);
 
+  useEffect(() => {
+    const fetchReadingStatus = async () => {
+      if (clubType !== 'book') {
+        setReadingStatus(null);
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from('reading_assignments')
+          .select('chapter_range, start_page, end_page')
+          .eq('season_id', season.id)
+          .order('order_index', { ascending: true })
+          .order('due_date', { ascending: true })
+          .limit(1);
+        if (error) throw error;
+        const first = data?.[0];
+        if (!first) {
+          setReadingStatus('Chapters TBD');
+          return;
+        }
+        if (first.chapter_range) {
+          setReadingStatus(`Chapters ${first.chapter_range}`);
+          return;
+        }
+        if (first.start_page || first.end_page) {
+          setReadingStatus(`Pages ${first.start_page ?? '?'}–${first.end_page ?? '?'}`);
+          return;
+        }
+        setReadingStatus('Chapters TBD');
+      } catch {
+        setReadingStatus('Chapters TBD');
+      }
+    };
+    fetchReadingStatus();
+  }, [clubType, season.id]);
+
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -88,7 +125,9 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </h2>
         <span className="text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary font-medium w-fit">
           {season.status === 'watching'
-            ? `Currently ${labels.watching}: ${labels.Item} ${season.current_movie_index + 1} of ${moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length}`
+            ? clubType === 'book'
+              ? `Currently reading: ${readingStatus ?? 'Chapters TBD'}`
+              : `Currently ${labels.watching}: ${labels.Item} ${season.current_movie_index + 1} of ${moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length}`
             : labels.statusLabels[season.status]}
         </span>
       </div>

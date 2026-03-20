@@ -57,6 +57,7 @@ interface MovieDisplay {
 }
 const History = ({ group, profiles, members }: Props) => {
   const labels = getClubLabels(group.club_type);
+  const isBookClub = labels.type === 'book';
   const [seasons, setSeasons] = useState<SeasonInfo[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>('all');
   const [picks, setPicks] = useState<PickRow[]>([]);
@@ -472,51 +473,52 @@ const History = ({ group, profiles, members }: Props) => {
             hideFavorites
           />
 
-          {/* Scoreboard */}
-          <div className="glass-card rounded-2xl p-4 sm:p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Trophy className="w-5 h-5 text-primary" />
-              <h2 className="font-display text-xl font-bold">
-                {selectedSeasonId === 'all' ? 'All-Time Scoreboard' : `${labels.seasonNoun} ${seasons.find(s => s.id === selectedSeasonId)?.season_number} Scoreboard`}
-              </h2>
-            </div>
+          {!isBookClub && (
+            <div className="glass-card rounded-2xl p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Trophy className="w-5 h-5 text-primary" />
+                <h2 className="font-display text-xl font-bold">
+                  {selectedSeasonId === 'all' ? 'All-Time Scoreboard' : `${labels.seasonNoun} ${seasons.find(s => s.id === selectedSeasonId)?.season_number} Scoreboard`}
+                </h2>
+              </div>
 
-            {scoreLoading ? (
-              <div className="text-center text-muted-foreground py-6">Loading scores...</div>
-            ) : scores.every(s => s.total === 0) ? (
-              <div className="text-center text-muted-foreground py-6">
-                <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No guesses scored yet</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {scores.map((entry, i) => {
-                  const profile = getProfile(entry.user_id);
-                  const pct = entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
-                  return (
-                    <div
-                      key={entry.user_id}
-                      className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${
-                        i === 0 && entry.correct > 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20'
-                      }`}
-                    >
-                      <span className="text-lg w-8 text-center">{getMedal(i)}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {entry.correct}/{entry.total} correct ({pct}%)
-                        </p>
+              {scoreLoading ? (
+                <div className="text-center text-muted-foreground py-6">Loading scores...</div>
+              ) : scores.every(s => s.total === 0) ? (
+                <div className="text-center text-muted-foreground py-6">
+                  <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No guesses scored yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {scores.map((entry, i) => {
+                    const profile = getProfile(entry.user_id);
+                    const pct = entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
+                    return (
+                      <div
+                        key={entry.user_id}
+                        className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${
+                          i === 0 && entry.correct > 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20'
+                        }`}
+                      >
+                        <span className="text-lg w-8 text-center">{getMedal(i)}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {entry.correct}/{entry.total} correct ({pct}%)
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-display text-lg font-bold text-primary">{entry.correct}</p>
+                          <p className="text-xs text-muted-foreground">pts</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-display text-lg font-bold text-primary">{entry.correct}</p>
-                        <p className="text-xs text-muted-foreground">pts</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
