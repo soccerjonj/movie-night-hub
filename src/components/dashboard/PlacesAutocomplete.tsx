@@ -106,7 +106,12 @@ const PlacesAutocomplete = ({ value, onChange, onPlaceSelected, placeholder = 'S
               return [street, city, state].filter(Boolean).join(', ');
             })();
             const name = details.name || place.name;
-            const display = name && shortAddress ? `${name}, ${shortAddress}` : (shortAddress || details.formatted_address || place.description);
+            const formatted = details.formatted_address || place.description;
+            const formattedShort = formatted
+              ? formatted.split(',').slice(0, 3).map((p) => p.trim()).filter(Boolean).join(', ')
+              : '';
+            const addressPart = shortAddress || formattedShort || formatted;
+            const display = name && addressPart ? `${name}, ${addressPart}` : (addressPart || name || place.description);
             setQuery(display);
             onChange(display);
             onPlaceSelected?.({
