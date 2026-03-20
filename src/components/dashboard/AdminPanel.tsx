@@ -533,7 +533,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm">
-                      <ListOrdered className="w-4 h-4 mr-1" /> Movie {season.current_movie_index + 1}/{moviePicks.length}
+                      <ListOrdered className="w-4 h-4 mr-1" /> {labels.Item} {season.current_movie_index + 1}/{moviePicks.length}
                       <ChevronDown className="w-3 h-3 ml-1" />
                     </Button>
                   </PopoverTrigger>
