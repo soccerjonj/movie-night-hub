@@ -887,7 +887,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete Season {season.season_number}?</AlertDialogTitle>
-                    <AlertDialogDescription>This will permanently delete this season, all movie picks, and all guesses. This cannot be undone.</AlertDialogDescription>
+                    <AlertDialogDescription>This will permanently delete this season, all {labels.item} picks, and all guesses. This cannot be undone.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
