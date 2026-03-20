@@ -125,7 +125,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
       }
       const { error } = await supabase.from('seasons').update(updateData).eq('id', season.id);
       if (error) throw error;
-      toast.success(`Jumped to movie ${index + 1}!`);
+      toast.success(`Jumped to ${labels.item} ${index + 1}!`);
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to jump to movie');
@@ -322,7 +322,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
     if (hasHistory) {
       const secondConfirm = window.confirm(
-        `${memberName} already has movie picks/guesses. Deleting this member may remove historical links. Are you absolutely sure?`,
+        `${memberName} already has ${labels.item} picks/guesses. Deleting this member may remove historical links. Are you absolutely sure?`,
       );
       if (!secondConfirm) return;
     }
@@ -349,7 +349,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
         next_call_date: null,
       }).eq('id', season.id);
       if (error) throw error;
-      toast.success('Season review started! Members can now rank movies.');
+      toast.success(`Season review started! Members can now rank ${labels.items}.`);
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to start review');
@@ -523,7 +523,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'guessing' && (
               <Button variant="gold" size="sm" onClick={startWatching} disabled={loading}>
-                <Play className="w-4 h-4 mr-1" /> Start Watching
+                <Play className="w-4 h-4 mr-1" /> Start {labels.Watching}
               </Button>
             )}
 
@@ -533,12 +533,12 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm">
-                      <ListOrdered className="w-4 h-4 mr-1" /> Movie {season.current_movie_index + 1}/{moviePicks.length}
+                      <ListOrdered className="w-4 h-4 mr-1" /> {labels.Item} {season.current_movie_index + 1}/{moviePicks.length}
                       <ChevronDown className="w-3 h-3 ml-1" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align="start" className="w-64 p-2 max-h-[300px] overflow-y-auto">
-                    <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Jump to movie:</p>
+                    <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Jump to {labels.item}:</p>
                     {[...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0)).map((pick, i) => (
                       <button
                         key={pick.id}
@@ -578,7 +578,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                         <AlertDialogDescription>
                           There {moviePicks.length - 1 - season.current_movie_index === 1 ? 'is' : 'are'} still{' '}
                           <strong>{moviePicks.length - 1 - season.current_movie_index}</strong>{' '}
-                          unwatched movie{moviePicks.length - 1 - season.current_movie_index === 1 ? '' : 's'} remaining.
+                          un{labels.watched} {labels.item}{moviePicks.length - 1 - season.current_movie_index === 1 ? '' : 's'} remaining.
                           This will skip them and move directly to the season review phase.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -778,7 +778,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Reset all picks?</AlertDialogTitle>
-                        <AlertDialogDescription>This will delete every movie pick for this season. All guesses will also be removed. This cannot be undone.</AlertDialogDescription>
+                        <AlertDialogDescription>This will delete every {labels.item} pick for this season. All guesses will also be removed. This cannot be undone.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -848,7 +848,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Go back to picking phase?</AlertDialogTitle>
-                          <AlertDialogDescription>This will move the season back to the picking phase. All guesses will be deleted. Movie picks will be kept.</AlertDialogDescription>
+                          <AlertDialogDescription>This will move the season back to the picking phase. All guesses will be deleted. {labels.Item} picks will be kept.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -887,7 +887,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete Season {season.season_number}?</AlertDialogTitle>
-                    <AlertDialogDescription>This will permanently delete this season, all movie picks, and all guesses. This cannot be undone.</AlertDialogDescription>
+                    <AlertDialogDescription>This will permanently delete this season, all {labels.item} picks, and all guesses. This cannot be undone.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>

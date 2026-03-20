@@ -88,7 +88,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </h2>
         <span className="text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary font-medium w-fit">
           {season.status === 'watching'
-            ? `Currently ${labels.watching}: Season ${season.season_number}, Episode ${season.current_movie_index + 1}`
+            ? `Currently ${labels.watching}: ${labels.Item} ${season.current_movie_index + 1} of ${moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length}`
             : labels.statusLabels[season.status]}
         </span>
       </div>
@@ -112,7 +112,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{labels.nowAction}</p>
               <h3 className="font-display text-lg font-bold">{currentMovie.title}</h3>
               {currentMovie.year && <p className="text-xs text-muted-foreground mt-0.5">{currentMovie.year}</p>}
-              {director && <p className="text-xs text-muted-foreground mt-0.5">Directed by {director}</p>}
+              {director && clubType !== 'book' && <p className="text-xs text-muted-foreground mt-0.5">Directed by {director}</p>}
               {currentMovie.revealed && (currentMovie.watch_order ?? 0) < season.current_movie_index && (
                 <p className="text-xs text-primary mt-1 flex items-center gap-1">
                   <Eye className="w-3 h-3" />
@@ -130,7 +130,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{labels.nowAction}</p>
             <h3 className="font-display text-2xl font-bold">{currentMovie.title}</h3>
             {currentMovie.year && <p className="text-sm text-muted-foreground mt-0.5">{currentMovie.year}</p>}
-            {director && <p className="text-sm text-muted-foreground mt-0.5">Directed by {director}</p>}
+            {director && clubType !== 'book' && <p className="text-sm text-muted-foreground mt-0.5">Directed by {director}</p>}
             {currentMovie.overview && (
               <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{currentMovie.overview}</p>
             )}
