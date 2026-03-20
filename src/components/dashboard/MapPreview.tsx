@@ -1,4 +1,5 @@
 import { ExternalLink } from 'lucide-react';
+import { GOOGLE_MAPS_API_KEY } from '@/lib/apiKeys';
 
 interface Props {
   lat: number;
@@ -8,8 +9,8 @@ interface Props {
 
 const MapPreview = ({ lat, lon, label }: Props) => {
   const center = `${lat},${lon}`;
-  const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=15/${lat}/${lon}`;
-  const imageUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${encodeURIComponent(center)}&zoom=15&size=640x320&markers=${encodeURIComponent(center)},red-pushpin`;
+  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(center)}`;
+  const imageUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(center)}&zoom=15&size=640x320&markers=color:red|${encodeURIComponent(center)}&key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}`;
 
   return (
     <div className="rounded-xl border border-border bg-card/50 overflow-hidden">

@@ -75,14 +75,14 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
       }
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(group.meeting_location)}&format=json&addressdetails=1&limit=1`,
-          { headers: { 'Accept': 'application/json' } }
+          `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(group.meeting_location)}&key=${encodeURIComponent(import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '')}`
         );
         if (!res.ok) return;
         const data = await res.json();
-        const first = data?.[0];
-        if (first?.lat && first?.lon) {
-          setLocationCoords({ lat: Number(first.lat), lon: Number(first.lon) });
+        const first = data?.results?.[0];
+        const loc = first?.geometry?.location;
+        if (loc?.lat && loc?.lng) {
+          setLocationCoords({ lat: Number(loc.lat), lon: Number(loc.lng) });
         }
       } catch {
         setLocationCoords(null);
@@ -512,7 +512,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
           )}
 
           {season && isBookClub && (
-            <MeetingScheduleManager seasonId={season.id} meetingType={group.meeting_type} />
+            <MeetingScheduleManager seasonId={season.id} meetingType={group.meeting_type} allowEdit />
           )}
 
           {season && !editingSeason && (
