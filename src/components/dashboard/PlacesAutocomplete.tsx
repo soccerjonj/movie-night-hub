@@ -1,22 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { MapPin, Loader2, Search } from 'lucide-react';
+import { loadGoogleMaps } from '@/lib/googleMaps';
 
 interface Place {
-  display_name: string;
+  place_id: string;
   name: string;
-  type: string;
-  lat: string;
-  lon: string;
-  address: {
-    road?: string;
-    city?: string;
-    town?: string;
-    village?: string;
-    state?: string;
-    country?: string;
-    [key: string]: string | undefined;
-  };
+  description: string;
+  main_text: string;
+  secondary_text: string;
+  lat?: number;
+  lon?: number;
 }
 
 interface Props {
@@ -34,6 +28,8 @@ const PlacesAutocomplete = ({ value, onChange, onPlaceSelected, placeholder = 'S
   const [showDropdown, setShowDropdown] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const containerRef = useRef<HTMLDivElement>(null);
+  const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null);
+  const detailsRef = useRef<google.maps.places.PlacesService | null>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -53,16 +49,27 @@ const PlacesAutocomplete = ({ value, onChange, onPlaceSelected, placeholder = 'S
     }
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=6`,
-        { headers: { 'Accept': 'application/json' } }
+      await loadGoogleMaps();
+      if (!serviceRef.current) {
+        serviceRef.current = new google.maps.places.AutocompleteService();
+      }
+      serviceRef.current.getPlacePredictions(
+        { input: q, types: ['establishment', 'geocode'] },
+        (predictions) => {
+          const items = (predictions || []).slice(0, 6).map((p) => ({
+            place_id: p.place_id,
+            name: p.structured_formatting?.main_text || p.description,
+            description: p.description,
+            main_text: p.structured_formatting?.main_text || p.description,
+            secondary_text: p.structured_formatting?.secondary_text || '',
+          }));
+          setResults(items);
+          setShowDropdown(true);
+          setLoading(false);
+        }
       );
-      const data = await res.json();
-      setResults(data as Place[]);
-      setShowDropdown(true);
     } catch {
       setResults([]);
-    } finally {
       setLoading(false);
     }
   };
@@ -73,22 +80,42 @@ const PlacesAutocomplete = ({ value, onChange, onPlaceSelected, placeholder = 'S
     debounceRef.current = setTimeout(() => searchPlaces(val), 400);
   };
 
-  const selectPlace = (place: Place) => {
-    const city = place.address?.city || place.address?.town || place.address?.village || '';
-    const short = place.name && city
-      ? `${place.name}, ${city}`
-      : place.display_name.split(',').slice(0, 3).join(',').trim();
-    setQuery(short);
-    onChange(short);
-    onPlaceSelected?.(place);
-    setShowDropdown(false);
+  const selectPlace = async (place: Place) => {
+    setQuery(place.description);
+    onChange(place.description);
+    try {
+      await loadGoogleMaps();
+      if (!detailsRef.current) {
+        const dummy = document.createElement('div');
+        detailsRef.current = new google.maps.places.PlacesService(dummy);
+      }
+      detailsRef.current.getDetails(
+        { placeId: place.place_id, fields: ['name', 'geometry', 'formatted_address'] },
+        (details) => {
+          if (details?.geometry?.location) {
+            const lat = details.geometry.location.lat();
+            const lon = details.geometry.location.lng();
+            onPlaceSelected?.({
+              ...place,
+              name: details.name || place.name,
+              description: details.formatted_address || place.description,
+              lat,
+              lon,
+            });
+          } else {
+            onPlaceSelected?.(place);
+          }
+        }
+      );
+    } catch {
+      onPlaceSelected?.(place);
+    } finally {
+      setShowDropdown(false);
+    }
   };
 
   const formatPlaceName = (place: Place) => {
-    const parts = place.display_name.split(',');
-    const main = parts[0]?.trim();
-    const sub = parts.slice(1, 3).join(',').trim();
-    return { main, sub };
+    return { main: place.main_text, sub: place.secondary_text };
   };
 
   return (
@@ -128,7 +155,7 @@ const PlacesAutocomplete = ({ value, onChange, onPlaceSelected, placeholder = 'S
             );
           })}
           <p className="text-[10px] text-muted-foreground/50 text-center py-1">
-            Powered by OpenStreetMap
+            Powered by Google Maps
           </p>
         </div>
       )}

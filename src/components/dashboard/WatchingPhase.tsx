@@ -9,6 +9,7 @@ import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ClubType, getClubLabels } from '@/lib/clubTypes';
 import ReadingAssignments from './ReadingAssignments';
+import MeetingScheduleManager from './MeetingScheduleManager';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
 
@@ -21,6 +22,7 @@ interface Props {
   isAdmin: boolean;
   onUpdate: () => void;
   clubType: ClubType;
+  meetingType: 'remote' | 'in_person';
 }
 
 interface GuessRow {
@@ -39,7 +41,7 @@ interface ReadingAssignment {
   notes: string | null;
 }
 
-const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAdmin, onUpdate, clubType }: Props) => {
+const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAdmin, onUpdate, clubType, meetingType }: Props) => {
   const labels = getClubLabels(clubType);
   const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const { user } = useAuth();
@@ -333,7 +335,10 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
   return (
     <>
       {clubType === 'book' && (
-        <ReadingAssignments seasonId={season.id} isAdmin={isAdmin} />
+        <>
+          <ReadingAssignments seasonId={season.id} isAdmin={isAdmin} />
+          <MeetingScheduleManager seasonId={season.id} meetingType={meetingType} allowEdit={false} />
+        </>
       )}
       <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
         <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">{labels.scheduleLabel}</h2>

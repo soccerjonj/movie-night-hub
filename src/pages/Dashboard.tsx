@@ -244,7 +244,7 @@ const Dashboard = () => {
                 <GuessingPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
               )}
               {season?.status === 'watching' && (
-                <WatchingPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} clubType={labels.type} />
+                <WatchingPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} clubType={labels.type} meetingType={group.meeting_type} />
               )}
               {season?.status === 'reviewing' && (
                 <ReviewPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} onUpdate={refetch} clubType={labels.type} />

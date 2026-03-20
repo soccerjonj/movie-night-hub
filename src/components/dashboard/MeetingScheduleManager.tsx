@@ -22,9 +22,10 @@ type Meeting = {
 interface Props {
   seasonId: string;
   meetingType: 'remote' | 'in_person';
+  allowEdit?: boolean;
 }
 
-const MeetingScheduleManager = ({ seasonId, meetingType }: Props) => {
+const MeetingScheduleManager = ({ seasonId, meetingType, allowEdit = false }: Props) => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -337,11 +338,11 @@ const MeetingScheduleManager = ({ seasonId, meetingType }: Props) => {
         </div>
         <p className="text-sm text-muted-foreground mt-2">No meetings scheduled yet.</p>
         <div className="mt-3">
-          {!showCreate ? (
+          {allowEdit && !showCreate ? (
             <Button variant="outline" size="sm" onClick={() => setShowCreate(true)}>
               Create meeting schedule
             </Button>
-          ) : (
+          ) : allowEdit ? (
             <div className="mt-3 space-y-3">
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -516,6 +517,8 @@ const MeetingScheduleManager = ({ seasonId, meetingType }: Props) => {
                 </>
               )}
             </div>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-2">Ask your admin to add meetings.</p>
           )}
         </div>
       </div>
@@ -529,6 +532,7 @@ const MeetingScheduleManager = ({ seasonId, meetingType }: Props) => {
           <CalendarClock className="w-5 h-5 text-primary" />
           <h3 className="font-display text-lg font-bold">Meeting schedule</h3>
         </div>
+        {allowEdit && (
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowCalendar(!showCalendar)}>
             <CalendarDays className="w-4 h-4 mr-1" /> {showCalendar ? 'List view' : 'Calendar'}
@@ -537,6 +541,7 @@ const MeetingScheduleManager = ({ seasonId, meetingType }: Props) => {
             <Plus className="w-4 h-4 mr-1" /> {showCreate ? 'Close' : 'Add meeting'}
           </Button>
         </div>
+        )}
       </div>
 
       {showCalendar && (
@@ -574,7 +579,7 @@ const MeetingScheduleManager = ({ seasonId, meetingType }: Props) => {
       )}
 
       <div className="space-y-3">
-        {showCreate && (
+        {allowEdit && showCreate && (
           <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
             <p className="text-sm font-medium">Add a meeting</p>
             {renderSingleMeetingForm(() => setShowCreate(false))}
@@ -596,9 +601,11 @@ const MeetingScheduleManager = ({ seasonId, meetingType }: Props) => {
                       </p>
                     )}
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => startEdit(meeting)} disabled={loading}>
-                    Edit
-                  </Button>
+                  {allowEdit && (
+                    <Button variant="outline" size="sm" onClick={() => startEdit(meeting)} disabled={loading}>
+                      Edit
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -637,6 +644,7 @@ const MeetingScheduleManager = ({ seasonId, meetingType }: Props) => {
         })}
       </div>
 
+      {allowEdit && (
       <div className="mt-4 border-t border-border/60 pt-4 space-y-3">
         <div className="flex items-center gap-2">
           <Plus className="w-4 h-4 text-primary" />
@@ -659,7 +667,9 @@ const MeetingScheduleManager = ({ seasonId, meetingType }: Props) => {
           <span className="text-xs text-muted-foreground">Uses current frequency and last meeting as the anchor.</span>
         </div>
       </div>
+      )}
 
+      {allowEdit && (
       <div className="mt-5 border-t border-border/60 pt-4 space-y-3">
         <div className="flex items-center gap-2">
           <RefreshCw className="w-4 h-4 text-primary" />
@@ -707,6 +717,7 @@ const MeetingScheduleManager = ({ seasonId, meetingType }: Props) => {
           Changing frequency regenerates future meetings only. Edited meeting dates stay as-is.
         </p>
       </div>
+      )}
     </div>
   );
 };
