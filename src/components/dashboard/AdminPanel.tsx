@@ -125,7 +125,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
       }
       const { error } = await supabase.from('seasons').update(updateData).eq('id', season.id);
       if (error) throw error;
-      toast.success(`Jumped to movie ${index + 1}!`);
+      toast.success(`Jumped to ${labels.item} ${index + 1}!`);
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to jump to movie');
