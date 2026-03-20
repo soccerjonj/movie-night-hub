@@ -112,7 +112,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{labels.nowAction}</p>
               <h3 className="font-display text-lg font-bold">{currentMovie.title}</h3>
               {currentMovie.year && <p className="text-xs text-muted-foreground mt-0.5">{currentMovie.year}</p>}
-              {director && <p className="text-xs text-muted-foreground mt-0.5">Directed by {director}</p>}
+              {director && clubType !== 'book' && <p className="text-xs text-muted-foreground mt-0.5">Directed by {director}</p>}
               {currentMovie.revealed && (currentMovie.watch_order ?? 0) < season.current_movie_index && (
                 <p className="text-xs text-primary mt-1 flex items-center gap-1">
                   <Eye className="w-3 h-3" />
