@@ -88,7 +88,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </h2>
         <span className="text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary font-medium w-fit">
           {season.status === 'watching'
-            ? `Currently ${labels.watching}: Season ${season.season_number}, Episode ${season.current_movie_index + 1}`
+            ? `Currently ${labels.watching}: ${labels.Item} ${season.current_movie_index + 1} of ${moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length}`
             : labels.statusLabels[season.status]}
         </span>
       </div>
