@@ -523,7 +523,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'guessing' && (
               <Button variant="gold" size="sm" onClick={startWatching} disabled={loading}>
-                <Play className="w-4 h-4 mr-1" /> Start Watching
+                <Play className="w-4 h-4 mr-1" /> Start {labels.Watching}
               </Button>
             )}
 
