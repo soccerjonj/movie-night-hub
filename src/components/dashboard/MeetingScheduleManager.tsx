@@ -79,6 +79,23 @@ const MeetingScheduleManager = ({ seasonId, meetingType, allowEdit = false }: Pr
     fetchMeetings();
   }, [seasonId]);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel(`club-meetings-${seasonId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'club_meetings', filter: `season_id=eq.${seasonId}` },
+        () => {
+          fetchMeetings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [seasonId]);
+
   const buildMeetingDates = () => {
     if (!firstMeetingDate || !firstMeetingTime) return [];
     const [hour, minute] = firstMeetingTime.split(':').map((v) => Number.parseInt(v, 10));
