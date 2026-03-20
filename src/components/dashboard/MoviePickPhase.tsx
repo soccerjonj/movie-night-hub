@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Check, Film, Star, ExternalLink, X } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 
 interface Props {
   season: Season;
@@ -35,8 +36,6 @@ const getLetterboxdUrl = (title: string, year?: string) => {
   const q = encodeURIComponent(year ? `${title} ${year}` : title);
   return `https://letterboxd.com/search/${q}/`;
 };
-
-const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 
 const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Props) => {
   const { user } = useAuth();

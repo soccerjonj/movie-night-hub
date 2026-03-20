@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Check, BookOpen, Star, ExternalLink, X } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { GOOGLE_BOOKS_API_KEY } from '@/lib/apiKeys';
 
 interface Props {
   season: Season;
@@ -58,8 +59,9 @@ const BookPickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     setSearching(true);
     setSelected(null);
     try {
+      const keyParam = GOOGLE_BOOKS_API_KEY ? `&key=${encodeURIComponent(GOOGLE_BOOKS_API_KEY)}` : '';
       const res = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=20&printType=books`
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=20&printType=books${keyParam}`
       );
       const data = await res.json();
       setResults((data.items || []) as GoogleBook[]);

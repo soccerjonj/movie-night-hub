@@ -4,6 +4,7 @@ import { Calendar, Film, BookOpen, Eye, Video, ExternalLink, MapPin } from 'luci
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { ClubType, getClubLabels } from '@/lib/clubTypes';
+import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 
 interface Props {
   season: Season;
@@ -13,7 +14,6 @@ interface Props {
   group?: Group;
 }
 
-const TMDB_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTY4MWM0OWEzYmQ0MTgwY2Y4NjliNWJiODU3NDFiZSIsIm5iZiI6MTc3MjY1ODEzNS4xNjIsInN1YiI6IjY5YTg5ZGQ3ZDcxNDhmYzc5OTk0NzE3ZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.OiO9ThN-gfA-HMEzrO52JlEQgg1njrMcVosXVcYlKKo';
 const TMDB_IMAGE_LG = 'https://image.tmdb.org/t/p/w500';
 
 const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props) => {
