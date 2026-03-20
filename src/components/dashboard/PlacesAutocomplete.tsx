@@ -6,6 +6,8 @@ interface Place {
   display_name: string;
   name: string;
   type: string;
+  lat: string;
+  lon: string;
   address: {
     road?: string;
     city?: string;
@@ -20,11 +22,12 @@ interface Place {
 interface Props {
   value: string;
   onChange: (value: string) => void;
+  onPlaceSelected?: (place: Place) => void;
   placeholder?: string;
   autoFocus?: boolean;
 }
 
-const PlacesAutocomplete = ({ value, onChange, placeholder = 'Search for a place...', autoFocus }: Props) => {
+const PlacesAutocomplete = ({ value, onChange, onPlaceSelected, placeholder = 'Search for a place...', autoFocus }: Props) => {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,6 +80,7 @@ const PlacesAutocomplete = ({ value, onChange, placeholder = 'Search for a place
       : place.display_name.split(',').slice(0, 3).join(',').trim();
     setQuery(short);
     onChange(short);
+    onPlaceSelected?.(place);
     setShowDropdown(false);
   };
 

@@ -16,6 +16,7 @@ import EditPicksDialog from './EditPicksDialog';
 import AddPlaceholderDialog from './AddPlaceholderDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PlacesAutocomplete from './PlacesAutocomplete';
+import MapPreview from './MapPreview';
 
 // Collapsible dropdown panel for grouping admin actions
 function DropdownPanel({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -60,7 +61,32 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const [callLinkValue, setCallLinkValue] = useState('');
   const [editingLocation, setEditingLocation] = useState(false);
   const [locationValue, setLocationValue] = useState(group.meeting_location || '');
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
   const getProfileName = (userId: string) => profiles.find((p) => p.user_id === userId)?.display_name || 'Unknown';
+
+  useEffect(() => {
+    const fetchCoords = async () => {
+      if (!group.meeting_location || group.meeting_type !== 'in_person') {
+        setLocationCoords(null);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(group.meeting_location)}&format=json&addressdetails=1&limit=1`,
+          { headers: { 'Accept': 'application/json' } }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const first = data?.[0];
+        if (first?.lat && first?.lon) {
+          setLocationCoords({ lat: Number(first.lat), lon: Number(first.lon) });
+        }
+      } catch {
+        setLocationCoords(null);
+      }
+    };
+    fetchCoords();
+  }, [group.meeting_location, group.meeting_type]);
 
   const copyJoinCode = () => {
     navigator.clipboard.writeText(group.join_code);
@@ -194,7 +220,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
       await supabase.from('movie_picks').delete().eq('season_id', season.id);
       const { error } = await supabase.from('seasons').delete().eq('id', season.id);
       if (error) throw error;
-      toast.success(`Season ${season.season_number} deleted!`);
+      toast.success(`${labels.seasonNoun} ${season.season_number} deleted!`);
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete season');
@@ -216,7 +242,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     try {
       const num = parseInt(editSeasonNumber);
       if (isNaN(num) || num < 1) {
-        toast.error('Season number must be a positive number');
+        toast.error(`${labels.seasonNoun} number must be a positive number`);
         return;
       }
       const { error } = await supabase.from('seasons').update({
@@ -224,7 +250,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
         title: editSeasonTitle.trim() || null,
       }).eq('id', season.id);
       if (error) throw error;
-      toast.success('Season updated!');
+      toast.success(`${labels.seasonNoun} updated!`);
       setEditingSeason(false);
       onUpdate();
     } catch (err: unknown) {
@@ -349,7 +375,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
         next_call_date: null,
       }).eq('id', season.id);
       if (error) throw error;
-      toast.success(`Season review started! Members can now rank ${labels.items}.`);
+      toast.success(`${labels.seasonNoun} review started! Members can now rank ${labels.items}.`);
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to start review');
@@ -364,7 +390,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     try {
       const { error } = await supabase.from('seasons').update({ status: 'completed' }).eq('id', season.id);
       if (error) throw error;
-      toast.success('Season completed! 🎉');
+      toast.success(`${labels.seasonNoun} completed! 🎉`);
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to complete season');
@@ -392,14 +418,19 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
           {group.meeting_type === 'in_person' && (
             <div className="space-y-2">
               {!editingLocation ? (
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-primary" />
-                  <span className="text-sm text-muted-foreground">
-                    {group.meeting_location || 'No meeting location set'}
-                  </span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setLocationValue(group.meeting_location || ''); setEditingLocation(true); }}>
-                    <Pencil className="w-3 h-3" />
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">
+                      {group.meeting_location || 'No meeting location set'}
+                    </span>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setLocationValue(group.meeting_location || ''); setEditingLocation(true); }}>
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  {locationCoords && group.meeting_location && (
+                    <MapPreview lat={locationCoords.lat} lon={locationCoords.lon} label={group.meeting_location} />
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -409,7 +440,15 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                     onChange={setLocationValue}
                     placeholder="Search for a place..."
                     autoFocus
+                    onPlaceSelected={(place) => {
+                      if (place.lat && place.lon) {
+                        setLocationCoords({ lat: Number(place.lat), lon: Number(place.lon) });
+                      }
+                    }}
                   />
+                  {locationCoords && (
+                    <MapPreview lat={locationCoords.lat} lon={locationCoords.lon} label={locationValue} />
+                  )}
                   <div className="flex gap-1">
                     <Button variant="ghost" size="sm" className="text-green-500" onClick={async () => {
                       setLoading(true);
@@ -439,7 +478,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
           {season && !editingSeason && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
-                Season {season.season_number}{season.title ? ` — ${season.title}` : ''}
+                {labels.seasonNoun} {season.season_number}{season.title ? ` — ${season.title}` : ''}
               </span>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={startEditingSeason}>
                 <Pencil className="w-3 h-3" />
@@ -449,11 +488,11 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
           {season && editingSeason && (
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Season #</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{labels.seasonNoun} #</label>
                 <Input type="number" min={1} value={editSeasonNumber} onChange={(e) => setEditSeasonNumber(e.target.value)} className="bg-muted/50 w-20" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Theme (optional)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{labels.seasonNoun} Theme (optional)</label>
                 <Input value={editSeasonTitle} onChange={(e) => setEditSeasonTitle(e.target.value)} placeholder="e.g. Horror Month" className="bg-muted/50 w-48" />
               </div>
               <Button variant="ghost" size="icon" className="h-9 w-9 text-green-500" onClick={saveSeasonEdit} disabled={loading}>
@@ -527,7 +566,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
               </Button>
             )}
 
-            {season?.status === 'watching' && (
+          {season?.status === 'watching' && (
               <>
                 {/* Jump to movie selector */}
                 <Popover>
@@ -560,7 +599,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
                 {season.current_movie_index >= moviePicks.length - 1 && (
                   <Button variant="gold" size="sm" onClick={startReview} disabled={loading}>
-                    <Star className="w-4 h-4 mr-1" /> Start Season Review
+                    <Star className="w-4 h-4 mr-1" /> Start {labels.seasonNoun} Review
                   </Button>
                 )}
 
@@ -569,23 +608,23 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={loading}>
-                        <X className="w-4 h-4 mr-1" /> End Season Early
+                        <X className="w-4 h-4 mr-1" /> End {labels.seasonNoun} Early
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>End season early?</AlertDialogTitle>
+                        <AlertDialogTitle>End {labels.seasonNoun.toLowerCase()} early?</AlertDialogTitle>
                         <AlertDialogDescription>
                           There {moviePicks.length - 1 - season.current_movie_index === 1 ? 'is' : 'are'} still{' '}
                           <strong>{moviePicks.length - 1 - season.current_movie_index}</strong>{' '}
                           un{labels.watched} {labels.item}{moviePicks.length - 1 - season.current_movie_index === 1 ? '' : 's'} remaining.
-                          This will skip them and move directly to the season review phase.
+                          This will skip them and move directly to the {labels.seasonNoun.toLowerCase()} review phase.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={startReview} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          End Season &amp; Start Review
+                          End {labels.seasonNoun} &amp; Start Review
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -639,7 +678,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'reviewing' && (
               <Button variant="gold" size="sm" onClick={completeSeason} disabled={loading}>
-                <Check className="w-4 h-4 mr-1" /> Complete Season
+                <Check className="w-4 h-4 mr-1" /> Complete {labels.seasonNoun}
               </Button>
             )}
           </div>
@@ -756,7 +795,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {/* Edit Current Season */}
             {season && (
-              <DropdownPanel label="Edit Current Season" icon={<PencilLine className="w-4 h-4 mr-1" />}>
+              <DropdownPanel label={`Edit Current ${labels.seasonNoun}`} icon={<PencilLine className="w-4 h-4 mr-1" />}>
                 <div className="flex flex-wrap gap-2">
                   <EditGuessesDialog group={group} profiles={profiles} onUpdated={onUpdate} />
                   <EditPicksDialog group={group} profiles={profiles} onUpdated={onUpdate} />
@@ -766,7 +805,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {/* Edit Season Setup — reset/revert controls */}
             {season && (season.status === 'picking' || season.status === 'guessing') && (
-              <DropdownPanel label="Edit Season Setup" icon={<SkipBack className="w-4 h-4 mr-1" />}>
+              <DropdownPanel label={`Edit ${labels.seasonNoun} Setup`} icon={<SkipBack className="w-4 h-4 mr-1" />}>
                 <div className="flex flex-wrap gap-2">
                   {/* Reset All Picks */}
                   <AlertDialog>
@@ -881,12 +920,12 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={loading}>
-                    <Trash2 className="w-4 h-4 mr-1" /> Delete Season {season.season_number}
+                    <Trash2 className="w-4 h-4 mr-1" /> Delete {labels.seasonNoun} {season.season_number}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Season {season.season_number}?</AlertDialogTitle>
+                    <AlertDialogTitle>Delete {labels.seasonNoun} {season.season_number}?</AlertDialogTitle>
                     <AlertDialogDescription>This will permanently delete this season, all {labels.item} picks, and all guesses. This cannot be undone.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

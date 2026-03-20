@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Group, Profile } from '@/hooks/useGroup';
+import { getClubLabels } from '@/lib/clubTypes';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,6 +28,7 @@ interface MoviePickOption {
 }
 
 const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
+  const labels = getClubLabels(group.club_type);
   const [open, setOpen] = useState(false);
   const [seasons, setSeasons] = useState<SeasonOption[]>([]);
   const [selectedSeason, setSelectedSeason] = useState('');
@@ -158,7 +160,7 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
         <div className="space-y-4">
           {/* Season selector */}
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Season</label>
+            <label className="text-sm text-muted-foreground mb-1 block">{labels.seasonNoun}</label>
             <Select value={selectedSeason} onValueChange={(v) => { setSelectedSeason(v); setSelectedGuesser(''); }}>
               <SelectTrigger className="bg-muted/50">
                 <SelectValue placeholder="Select a season" />
@@ -166,7 +168,7 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
               <SelectContent>
                 {seasons.map(s => (
                   <SelectItem key={s.id} value={s.id}>
-                    Season {s.season_number}{s.title ? ` — ${s.title}` : ''}
+                    {labels.seasonNoun} {s.season_number}{s.title ? ` — ${s.title}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

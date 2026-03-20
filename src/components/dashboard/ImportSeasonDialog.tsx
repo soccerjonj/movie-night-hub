@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile, Group } from '@/hooks/useGroup';
+import { getClubLabels } from '@/lib/clubTypes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -24,6 +25,7 @@ interface ImportMovie {
 }
 
 const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }: Props) => {
+  const labels = getClubLabels(group.club_type);
   const [open, setOpen] = useState(false);
   const [seasonNumber, setSeasonNumber] = useState(String(existingSeasonCount + 1));
   const [seasonTitle, setSeasonTitle] = useState('');
@@ -65,13 +67,13 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
   const handleImport = async () => {
     const parsedSeasonNumber = Number.parseInt(seasonNumber, 10);
     if (!Number.isInteger(parsedSeasonNumber) || parsedSeasonNumber < 1) {
-      toast.error('Season number must be a positive integer');
+      toast.error(`${labels.seasonNoun} number must be a positive integer`);
       return;
     }
 
     const validMovies = movies.filter(m => m.title.trim() && m.pickedBy.length > 0);
     if (validMovies.length === 0) {
-      toast.error('Add at least one movie with a picker');
+      toast.error(`Add at least one ${labels.item} with a picker`);
       return;
     }
 
@@ -113,12 +115,12 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
       const { error: picksError } = await supabase.from('movie_picks').insert(picks);
       if (picksError) throw picksError;
 
-      toast.success(`Season ${seasonNumber} imported with ${validMovies.length} movies!`);
+      toast.success(`${labels.seasonNoun} ${seasonNumber} imported with ${validMovies.length} ${labels.items}!`);
       setOpen(false);
       setMovies([{ title: '', pickedBy: [], year: '' }]);
       onImported();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to import season');
+      toast.error(err instanceof Error ? err.message : `Failed to import ${labels.seasonNoun.toLowerCase()}`);
     } finally {
       setImporting(false);
     }
@@ -130,19 +132,19 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Upload className="w-4 h-4 mr-1" /> Import Season
+          <Upload className="w-4 h-4 mr-1" /> Import {labels.seasonNoun}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display">Import Season</DialogTitle>
+          <DialogTitle className="font-display">Import {labels.seasonNoun}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
           {/* Season Number & Title */}
           <div className="flex gap-3">
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">Season #</label>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">{labels.seasonNoun} #</label>
               <Input
                 type="number"
                 value={seasonNumber}
@@ -180,7 +182,7 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
             </div>
             {seasonStatus === 'watching' && (
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">Current Movie #</label>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Current {labels.Item} #</label>
                 <Input
                   type="number"
                   value={currentMovieIndex}
@@ -265,7 +267,7 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
             onClick={handleImport}
             disabled={importing}
           >
-            {importing ? 'Importing...' : `Import Season ${seasonNumber}`}
+            {importing ? 'Importing...' : `Import ${labels.seasonNoun} ${seasonNumber}`}
           </Button>
         </div>
       </DialogContent>

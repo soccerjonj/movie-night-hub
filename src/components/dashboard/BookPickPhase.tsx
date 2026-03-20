@@ -156,7 +156,7 @@ const BookPickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
       {season.title && (
         <div className="mb-4 p-3 rounded-xl bg-primary/5 border border-primary/10 text-center">
-          <p className="text-xs uppercase tracking-wider text-primary/70 mb-0.5">Season Theme</p>
+          <p className="text-xs uppercase tracking-wider text-primary/70 mb-0.5">Book Theme</p>
           <h3 className="font-display text-lg sm:text-xl font-bold text-primary">{season.title}</h3>
         </div>
       )}

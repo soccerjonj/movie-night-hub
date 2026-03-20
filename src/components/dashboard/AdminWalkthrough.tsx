@@ -18,8 +18,8 @@ const steps = (labels: ClubLabels) => [
   },
   {
     icon: <Sparkles className="w-8 h-8" />,
-    title: 'Create a Season',
-    description: `Click "New Season" in the admin panel to start your first season. You'll choose participants, set a theme, and configure ${labels.watching} intervals.`,
+    title: `Create a ${labels.seasonNoun}`,
+    description: `Click "New ${labels.seasonNoun}" in the admin panel to start your first ${labels.seasonNoun.toLowerCase()}. You'll choose participants, set a theme, and configure ${labels.watching} intervals.`,
   },
   {
     icon: <CalendarClock className="w-8 h-8" />,
@@ -28,7 +28,7 @@ const steps = (labels: ClubLabels) => [
   },
   {
     icon: <Play className="w-8 h-8" />,
-    title: 'Manage the Season',
+    title: `Manage the ${labels.seasonNoun}`,
     description: `Use the ⚙️ button in the top bar to open admin tools. From there you can advance ${labels.items}, reveal picks, edit schedules, and move between phases.`,
   },
 ];

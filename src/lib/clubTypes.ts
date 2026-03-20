@@ -21,6 +21,8 @@ export interface ClubLabels {
   pickVerb: string;     // "Pick Your Movie" or "Pick Your Book"
   letterboxdEnabled: boolean;
   externalLink?: { label: string; getUrl: (title: string, year?: string) => string };
+  seasonNoun: string;   // "Season" or "Book"
+  seasonNounPlural: string; // "Seasons" or "Books"
 }
 
 const movieLabels: ClubLabels = {
@@ -38,11 +40,13 @@ const movieLabels: ClubLabels = {
     guessing: '🔮 Guessing Round',
     watching: '🍿 Watching Season',
     reviewing: '⭐ Season Review',
-    completed: '✅ Season Complete',
+    completed: '✅ Book Complete',
   },
   scheduleLabel: 'Watch Schedule',
   pickVerb: 'Pick Your Movie',
   letterboxdEnabled: true,
+  seasonNoun: 'Season',
+  seasonNounPlural: 'Seasons',
   externalLink: {
     label: 'Letterboxd',
     getUrl: (title: string, year?: string) => {
@@ -65,13 +69,15 @@ const bookLabels: ClubLabels = {
   statusLabels: {
     picking: '📚 Picking Books',
     guessing: '🔮 Guessing Round',
-    watching: '📖 Reading Season',
-    reviewing: '⭐ Season Review',
+    watching: '📖 Reading Book',
+    reviewing: '⭐ Book Review',
     completed: '✅ Season Complete',
   },
   scheduleLabel: 'Reading Schedule',
   pickVerb: 'Pick Your Book',
   letterboxdEnabled: false,
+  seasonNoun: 'Book',
+  seasonNounPlural: 'Books',
   externalLink: {
     label: 'Goodreads',
     getUrl: (title: string) => {
