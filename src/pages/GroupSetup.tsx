@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { GOOGLE_BOOKS_API_KEY } from '@/lib/apiKeys';
+import { sortBooksByPopularity } from '@/lib/bookSearch';
 import { motion, AnimatePresence } from 'framer-motion';
 import { groupNameSchema, joinCodeSchema, getSafeErrorMessage } from '@/lib/security';
 
@@ -120,7 +121,7 @@ const GroupSetup = () => {
     try {
       const keyParam = GOOGLE_BOOKS_API_KEY ? `&key=${encodeURIComponent(GOOGLE_BOOKS_API_KEY)}` : '';
       const res = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=8&printType=books${keyParam}`
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=8&printType=books&orderBy=relevance${keyParam}`
       );
       if (!res.ok) {
         let details = '';
@@ -133,7 +134,8 @@ const GroupSetup = () => {
         throw new Error(`Books API error (${res.status})${details ? `: ${details}` : ''}`);
       }
       const data = await res.json();
-      setBookResults((data.items || []) as GoogleBook[]);
+      const items = (data.items || []) as GoogleBook[];
+      setBookResults(sortBooksByPopularity(items, term));
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to search books');
     } finally {
@@ -181,10 +183,11 @@ const GroupSetup = () => {
           .insert({
             group_id: group.id,
             season_number: 1,
-            status: 'picking',
+            status: 'watching',
             movies_per_member: 1,
             watch_interval_days: 7,
             guessing_enabled: false,
+            current_movie_index: 0,
           })
           .select()
           .single();
@@ -208,6 +211,7 @@ const GroupSetup = () => {
           poster_url: coverUrl,
           year,
           overview: info.description?.substring(0, 500) || null,
+          watch_order: 0,
         });
       }
 
