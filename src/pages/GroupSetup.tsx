@@ -122,10 +122,20 @@ const GroupSetup = () => {
       const res = await fetch(
         `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=8&printType=books${keyParam}`
       );
+      if (!res.ok) {
+        let details = '';
+        try {
+          const errJson = await res.json();
+          details = errJson?.error?.message || JSON.stringify(errJson);
+        } catch {
+          try { details = await res.text(); } catch { details = ''; }
+        }
+        throw new Error(`Books API error (${res.status})${details ? `: ${details}` : ''}`);
+      }
       const data = await res.json();
       setBookResults((data.items || []) as GoogleBook[]);
-    } catch {
-      toast.error('Failed to search books');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to search books');
     } finally {
       setBookSearching(false);
     }
