@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, Plus, ArrowRight, Ghost, UserCheck, Film, BookOpen, Video, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Users, Plus, ArrowRight, Ghost, UserCheck, Film, BookOpen, Video, MapPin, ChevronRight, ChevronLeft, Search, Star, X, Check, BookMarked, Vote, CalendarClock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
@@ -17,10 +17,25 @@ interface PlaceholderProfile {
   display_name: string;
 }
 
-type Mode = 'choose' | 'create' | 'join' | 'claim';
-type CreateStep = 'type' | 'name' | 'meeting' | 'confirm';
+interface GoogleBook {
+  id: string;
+  volumeInfo: {
+    title: string;
+    authors?: string[];
+    publishedDate?: string;
+    description?: string;
+    imageLinks?: {
+      thumbnail?: string;
+      smallThumbnail?: string;
+    };
+    averageRating?: number;
+    ratingsCount?: number;
+    pageCount?: number;
+  };
+}
 
-const CREATE_STEPS: CreateStep[] = ['type', 'name', 'meeting', 'confirm'];
+type Mode = 'choose' | 'create' | 'join' | 'claim';
+type CreateStep = 'type' | 'name' | 'meeting' | 'book_choice' | 'book_search' | 'chapters' | 'confirm';
 
 const GroupSetup = () => {
   const { user } = useAuth();
@@ -34,6 +49,14 @@ const GroupSetup = () => {
   const [meetingType, setMeetingType] = useState<'remote' | 'in_person'>('remote');
   const [meetingLocation, setMeetingLocation] = useState('');
 
+  // Book-specific state
+  const [bookChoice, setBookChoice] = useState<'chosen' | 'vote' | null>(null);
+  const [bookQuery, setBookQuery] = useState('');
+  const [bookResults, setBookResults] = useState<GoogleBook[]>([]);
+  const [bookSearching, setBookSearching] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<GoogleBook | null>(null);
+  const [chapterChoice, setChapterChoice] = useState<'later' | 'now'>('later');
+
   // Join state
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,18 +66,34 @@ const GroupSetup = () => {
 
   useEffect(() => {
     if (!user) return;
-    // Don't auto-redirect — user may want to join another club
   }, [user, navigate]);
 
-  const stepIndex = CREATE_STEPS.indexOf(createStep);
+  // Compute dynamic steps based on club type and choices
+  const getSteps = (): CreateStep[] => {
+    const steps: CreateStep[] = ['type', 'name', 'meeting'];
+    if (clubType === 'book') {
+      steps.push('book_choice');
+      if (bookChoice === 'chosen') {
+        steps.push('book_search');
+        if (selectedBook) {
+          steps.push('chapters');
+        }
+      }
+    }
+    steps.push('confirm');
+    return steps;
+  };
+
+  const steps = getSteps();
+  const stepIndex = steps.indexOf(createStep);
 
   const goNextStep = () => {
-    const next = CREATE_STEPS[stepIndex + 1];
+    const next = steps[stepIndex + 1];
     if (next) setCreateStep(next);
   };
 
   const goPrevStep = () => {
-    const prev = CREATE_STEPS[stepIndex - 1];
+    const prev = steps[stepIndex - 1];
     if (prev) setCreateStep(prev);
     else setMode('choose');
   };
@@ -64,10 +103,37 @@ const GroupSetup = () => {
       case 'type': return true;
       case 'name': return groupName.trim().length > 0;
       case 'meeting': return true;
+      case 'book_choice': return bookChoice !== null;
+      case 'book_search': return selectedBook !== null;
+      case 'chapters': return true;
       case 'confirm': return true;
       default: return false;
     }
   };
+
+  // Book search
+  const searchBooks = async (q?: string) => {
+    const term = q ?? bookQuery;
+    if (!term.trim()) { setBookResults([]); return; }
+    setBookSearching(true);
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=8&printType=books`
+      );
+      const data = await res.json();
+      setBookResults((data.items || []) as GoogleBook[]);
+    } catch {
+      toast.error('Failed to search books');
+    } finally {
+      setBookSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (createStep !== 'book_search' || !bookQuery.trim()) { setBookResults([]); return; }
+    const timer = setTimeout(() => searchBooks(bookQuery), 400);
+    return () => clearTimeout(timer);
+  }, [bookQuery, createStep]);
 
   const handleCreateGroup = async () => {
     const parsed = groupNameSchema.safeParse({ name: groupName });
@@ -96,10 +162,47 @@ const GroupSetup = () => {
         .insert({ group_id: group.id, user_id: user.id });
       if (memberError) throw memberError;
 
+      // If book was pre-selected, auto-create season 1 with the book as a pick
+      if (clubType === 'book' && bookChoice === 'chosen' && selectedBook) {
+        const { data: seasonData, error: seasonError } = await supabase
+          .from('seasons')
+          .insert({
+            group_id: group.id,
+            season_number: 1,
+            status: 'picking',
+            movies_per_member: 1,
+            watch_interval_days: 7,
+            guessing_enabled: false,
+          })
+          .select()
+          .single();
+        if (seasonError) throw seasonError;
+
+        // Add the admin as a season participant
+        await supabase.from('season_participants').insert({
+          season_id: seasonData.id,
+          user_id: user.id,
+        });
+
+        // Insert the selected book as a pick
+        const info = selectedBook.volumeInfo;
+        const coverUrl = info.imageLinks?.thumbnail?.replace('http:', 'https:') || null;
+        const year = info.publishedDate?.split('-')[0] || null;
+        await supabase.from('movie_picks').insert({
+          season_id: seasonData.id,
+          user_id: user.id,
+          tmdb_id: null,
+          title: info.title,
+          poster_url: coverUrl,
+          year,
+          overview: info.description?.substring(0, 500) || null,
+        });
+      }
+
       // Flag for walkthrough
       localStorage.setItem(`show_walkthrough_${group.id}`, 'true');
 
-      toast.success('Group created!');
+      toast.success('Club created!');
       navigate(`/dashboard/${group.id}`);
     } catch (err: unknown) {
       toast.error(getSafeErrorMessage(err, 'Failed to create group'));
@@ -212,7 +315,7 @@ const GroupSetup = () => {
             >
               {/* Progress bar */}
               <div className="flex gap-1">
-                {CREATE_STEPS.map((_, i) => (
+                {steps.map((_, i) => (
                   <div
                     key={i}
                     className={`h-1 flex-1 rounded-full transition-all ${
@@ -232,7 +335,7 @@ const GroupSetup = () => {
                   <div className="space-y-3">
                     <button
                       type="button"
-                      onClick={() => setClubType('movie')}
+                      onClick={() => { setClubType('movie'); setBookChoice(null); setSelectedBook(null); }}
                       className={`w-full flex items-center gap-4 rounded-xl p-5 border transition-all ${
                         clubType === 'movie'
                           ? 'border-primary bg-primary/10'
@@ -333,6 +436,213 @@ const GroupSetup = () => {
                 </>
               )}
 
+              {/* Step: Book Choice (book clubs only) */}
+              {createStep === 'book_choice' && (
+                <>
+                  <div className="text-center">
+                    <h2 className="text-2xl font-display font-bold">Do you have a book?</h2>
+                    <p className="text-muted-foreground mt-2">Has your club already decided on a book to read?</p>
+                  </div>
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => setBookChoice('chosen')}
+                      className={`w-full flex items-center gap-4 rounded-xl p-5 border transition-all ${
+                        bookChoice === 'chosen'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-muted/10 hover:border-primary/50'
+                      }`}
+                    >
+                      <BookMarked className={`w-7 h-7 ${bookChoice === 'chosen' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="text-left">
+                        <span className="font-semibold">Yes, we have a book</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Search and add your first book now</p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setBookChoice('vote'); setSelectedBook(null); }}
+                      className={`w-full flex items-center gap-4 rounded-xl p-5 border transition-all ${
+                        bookChoice === 'vote'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-muted/10 hover:border-primary/50'
+                      }`}
+                    >
+                      <Vote className={`w-7 h-7 ${bookChoice === 'vote' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="text-left">
+                        <span className="font-semibold">Not yet, we'll decide later</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Members can suggest and vote on books after setup</p>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Step: Book Search (book clubs, chosen) */}
+              {createStep === 'book_search' && (
+                <>
+                  <div className="text-center">
+                    <h2 className="text-2xl font-display font-bold">Find your book</h2>
+                    <p className="text-muted-foreground mt-2">Search by title or author</p>
+                  </div>
+
+                  {selectedBook ? (
+                    <div className="bg-primary/5 rounded-xl p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        {selectedBook.volumeInfo.imageLinks?.thumbnail ? (
+                          <img
+                            src={selectedBook.volumeInfo.imageLinks.thumbnail.replace('http:', 'https:')}
+                            alt={selectedBook.volumeInfo.title}
+                            className="w-16 rounded-lg object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-16 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center shrink-0">
+                            <BookOpen className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h3 className="font-semibold text-sm">{selectedBook.volumeInfo.title}</h3>
+                              {selectedBook.volumeInfo.authors && (
+                                <p className="text-xs text-muted-foreground">{selectedBook.volumeInfo.authors.join(', ')}</p>
+                              )}
+                              {selectedBook.volumeInfo.publishedDate && (
+                                <p className="text-xs text-muted-foreground">{selectedBook.volumeInfo.publishedDate.split('-')[0]}</p>
+                              )}
+                              {selectedBook.volumeInfo.pageCount && (
+                                <p className="text-xs text-muted-foreground">{selectedBook.volumeInfo.pageCount} pages</p>
+                              )}
+                            </div>
+                            <button onClick={() => setSelectedBook(null)} className="text-muted-foreground hover:text-foreground">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-primary">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Selected as your first book</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <Input
+                          value={bookQuery}
+                          onChange={(e) => setBookQuery(e.target.value)}
+                          placeholder="Search for a book..."
+                          className="bg-muted/50 border-border flex-1"
+                          autoFocus
+                          onKeyDown={(e) => e.key === 'Enter' && searchBooks()}
+                        />
+                        <Button variant="gold" onClick={() => searchBooks()} disabled={bookSearching}>
+                          <Search className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      {bookSearching && (
+                        <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>
+                      )}
+
+                      {bookResults.length > 0 && (
+                        <div className="space-y-1 max-h-[280px] overflow-y-auto rounded-xl border border-border bg-card/50 p-1">
+                          {bookResults.map((book) => (
+                            <button
+                              key={book.id}
+                              onClick={() => setSelectedBook(book)}
+                              className="w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-primary/10 transition-colors"
+                            >
+                              {book.volumeInfo.imageLinks?.smallThumbnail ? (
+                                <img
+                                  src={book.volumeInfo.imageLinks.smallThumbnail.replace('http:', 'https:')}
+                                  alt={book.volumeInfo.title}
+                                  className="w-8 h-12 rounded object-cover shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-12 rounded bg-muted flex items-center justify-center shrink-0">
+                                  <BookOpen className="w-3 h-3 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{book.volumeInfo.title}</p>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {book.volumeInfo.authors && (
+                                    <span className="text-xs text-muted-foreground truncate">{book.volumeInfo.authors[0]}</span>
+                                  )}
+                                  {book.volumeInfo.publishedDate && (
+                                    <span className="text-xs text-muted-foreground">· {book.volumeInfo.publishedDate.split('-')[0]}</span>
+                                  )}
+                                  {book.volumeInfo.averageRating && (
+                                    <div className="flex items-center gap-0.5">
+                                      <Star className="w-2.5 h-2.5 text-primary fill-primary" />
+                                      <span className="text-[11px] text-muted-foreground">{book.volumeInfo.averageRating.toFixed(1)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {bookQuery.trim().length > 0 && !bookSearching && bookResults.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">No books found. Try a different search.</p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Step: Chapters (book clubs, book chosen) */}
+              {createStep === 'chapters' && (
+                <>
+                  <div className="text-center">
+                    <h2 className="text-2xl font-display font-bold">Chapter assignments</h2>
+                    <p className="text-muted-foreground mt-2">
+                      Would you like to set up which chapters to read for each meeting?
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => setChapterChoice('later')}
+                      className={`w-full flex items-center gap-4 rounded-xl p-5 border transition-all ${
+                        chapterChoice === 'later'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-muted/10 hover:border-primary/50'
+                      }`}
+                    >
+                      <CalendarClock className={`w-7 h-7 ${chapterChoice === 'later' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="text-left">
+                        <span className="font-semibold">Decide later</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">You can set chapter assignments from the admin panel anytime</p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChapterChoice('now')}
+                      className={`w-full flex items-center gap-4 rounded-xl p-5 border transition-all ${
+                        chapterChoice === 'now'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-muted/10 hover:border-primary/50'
+                      }`}
+                    >
+                      <BookOpen className={`w-7 h-7 ${chapterChoice === 'now' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="text-left">
+                        <span className="font-semibold">Set up now</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Assign chapter ranges for each meeting date</p>
+                      </div>
+                    </button>
+                  </div>
+                  {chapterChoice === 'now' && (
+                    <p className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-3">
+                      📖 Chapter assignment will be available from the admin panel once your club is created. You'll be able to set chapter ranges for each due date there.
+                    </p>
+                  )}
+                </>
+              )}
+
               {/* Step: Confirmation */}
               {createStep === 'confirm' && (
                 <>
@@ -361,6 +671,24 @@ const GroupSetup = () => {
                         {meetingType === 'remote' ? 'Remote' : 'In Person'}
                       </span>
                     </div>
+                    {clubType === 'book' && (
+                      <>
+                        <div className="border-t border-border" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">First Book</span>
+                          <span className="font-medium flex items-center gap-2">
+                            {selectedBook ? (
+                              <>
+                                <BookMarked className="w-4 h-4 text-primary" />
+                                <span className="truncate max-w-[180px]">{selectedBook.volumeInfo.title}</span>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">To be decided</span>
+                            )}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </>
               )}
@@ -421,48 +749,38 @@ const GroupSetup = () => {
           </form>
         )}
 
-        {/* ── Claim Placeholder ── */}
+        {/* ── Claim placeholder ── */}
         {mode === 'claim' && (
           <div className="space-y-6">
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-                <UserCheck className="w-8 h-8 text-primary" />
-              </div>
-              <h2 className="text-2xl font-display font-bold">Who are you?</h2>
-              <p className="text-muted-foreground mt-2">
-                Select your name from the unclaimed member list below
-              </p>
+              <UserCheck className="w-12 h-12 text-primary mx-auto mb-3" />
+              <h2 className="text-2xl font-display font-bold">Which one are you?</h2>
+              <p className="text-muted-foreground mt-2">Your admin created these member names. Tap yours to claim it.</p>
             </div>
-
             <div className="space-y-2">
-              {placeholders.map((p) => (
+              {placeholders.map((ph) => (
                 <button
-                  key={p.user_id}
-                  type="button"
-                  onClick={() => setSelectedPlaceholder(p.user_id === selectedPlaceholder ? null : p.user_id)}
-                  className={`w-full flex items-center gap-3 rounded-xl p-4 border transition-all ${
-                    selectedPlaceholder === p.user_id
+                  key={ph.user_id}
+                  onClick={() => setSelectedPlaceholder(ph.user_id)}
+                  className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                    selectedPlaceholder === ph.user_id
                       ? 'border-primary bg-primary/10'
                       : 'border-border bg-muted/10 hover:border-primary/50'
                   }`}
                 >
-                  <Ghost className={`w-5 h-5 ${selectedPlaceholder === p.user_id ? 'text-primary' : 'text-muted-foreground'}`} />
-                  <span className="font-medium">{p.display_name}</span>
+                  <span className="font-medium">{ph.display_name}</span>
                 </button>
               ))}
             </div>
-
-            <div className="flex flex-col gap-2">
+            <div className="flex gap-3">
+              <Button variant="ghost" onClick={() => { setMode('join'); setFoundGroupId(null); setSelectedPlaceholder(null); }}>Back</Button>
               <Button
                 variant="gold"
-                className="w-full"
-                disabled={loading || !selectedPlaceholder}
-                onClick={() => foundGroupId && selectedPlaceholder && joinGroup(foundGroupId, selectedPlaceholder)}
+                className="flex-1"
+                disabled={!selectedPlaceholder || loading}
+                onClick={() => selectedPlaceholder && foundGroupId && joinGroup(foundGroupId, selectedPlaceholder)}
               >
-                {loading ? 'Joining...' : 'Claim & Join'}
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => { setMode('join'); setPlaceholders([]); setSelectedPlaceholder(null); }}>
-                Back
+                {loading ? 'Joining...' : "That's Me!"}
               </Button>
             </div>
           </div>
