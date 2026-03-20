@@ -153,11 +153,11 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
 
       if (partError) throw partError;
 
-      toast.success(`Season ${seasonNumber} created!`);
+      toast.success(`${labels.seasonNoun} ${seasonNumber} created!`);
       setOpen(false);
       onCreated();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create season');
+      toast.error(err instanceof Error ? err.message : `Failed to create ${labels.seasonNoun.toLowerCase()}`);
     } finally {
       setLoading(false);
     }
@@ -173,19 +173,19 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
         <Button variant="gold" size="sm">
-          <Plus className="w-4 h-4 mr-1" /> Create New Season
+          <Plus className="w-4 h-4 mr-1" /> Create New {labels.seasonNoun}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Create New Season</DialogTitle>
+          <DialogTitle className="font-display text-xl">Create New {labels.seasonNoun}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 py-2">
           {/* Season Theme */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-primary" /> Season Theme
+              <Sparkles className="w-4 h-4 text-primary" /> {labels.seasonNoun} Theme
             </Label>
             <Input
               value={title}
@@ -359,7 +359,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
               onClick={handleCreate}
               disabled={loading || selectedParticipants.length < 1}
             >
-              {loading ? 'Creating...' : `Create Season ${currentSeasonNumber + 1}${title ? ` — ${title}` : ''}`}
+            {loading ? 'Creating...' : `Create ${labels.seasonNoun} ${currentSeasonNumber + 1}${title ? ` — ${title}` : ''}`}
             </Button>
           </div>
         </div>

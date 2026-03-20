@@ -83,7 +83,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
     <div className="glass-card rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <h2 className="font-display text-lg sm:text-xl font-bold">
-          Season {season.season_number}
+          {labels.seasonNoun} {season.season_number}
           {season.title ? ` — ${season.title}` : ''}
         </h2>
         <span className="text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary font-medium w-fit">

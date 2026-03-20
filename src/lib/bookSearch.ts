@@ -18,7 +18,7 @@ const computeScore = (book: GoogleBookLike, term?: string) => {
   const title = info.title ? normalize(info.title) : '';
   const authors = (info.authors ?? []).map(normalize);
 
-  let score = Math.log10(ratingsCount + 1) * 100 + avgRating * 10;
+  let score = Math.log10(ratingsCount + 1) * 100;
 
   if (term) {
     const q = normalize(term);

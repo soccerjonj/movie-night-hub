@@ -11,6 +11,8 @@ import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { GOOGLE_BOOKS_API_KEY } from '@/lib/apiKeys';
 import { sortBooksByPopularity } from '@/lib/bookSearch';
+import PlacesAutocomplete from '@/components/dashboard/PlacesAutocomplete';
+import MapPreview from '@/components/dashboard/MapPreview';
 import { motion, AnimatePresence } from 'framer-motion';
 import { groupNameSchema, joinCodeSchema, getSafeErrorMessage } from '@/lib/security';
 
@@ -50,6 +52,7 @@ const GroupSetup = () => {
   const [groupName, setGroupName] = useState('');
   const [meetingType, setMeetingType] = useState<'remote' | 'in_person'>('remote');
   const [meetingLocation, setMeetingLocation] = useState('');
+  const [meetingCoords, setMeetingCoords] = useState<{ lat: number; lon: number } | null>(null);
 
   // Book-specific state
   const [bookChoice, setBookChoice] = useState<'chosen' | 'vote' | null>(null);
@@ -445,9 +448,25 @@ const GroupSetup = () => {
                   </div>
 
                    {meetingType === 'in_person' && (
-                    <p className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-3">
-                      📍 You can set a meeting location after creating your club from the admin panel.
-                    </p>
+                    <div className="space-y-2">
+                      <label className="text-xs text-muted-foreground block">Meeting Location</label>
+                      <PlacesAutocomplete
+                        value={meetingLocation}
+                        onChange={setMeetingLocation}
+                        placeholder="Search for a place..."
+                        onPlaceSelected={(place) => {
+                          if (place.lat && place.lon) {
+                            setMeetingCoords({ lat: Number(place.lat), lon: Number(place.lon) });
+                          }
+                        }}
+                      />
+                      {meetingCoords && (
+                        <MapPreview lat={meetingCoords.lat} lon={meetingCoords.lon} label={meetingLocation} />
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        You can update the location later from the admin panel.
+                      </p>
+                    </div>
                    )}
                 </>
               )}

@@ -170,7 +170,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
       <div className="flex items-center gap-2 mb-1">
         <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-        <h2 className="font-display text-lg sm:text-xl font-bold">Season Review</h2>
+        <h2 className="font-display text-lg sm:text-xl font-bold">{clubType === 'book' ? 'Book Review' : 'Season Review'}</h2>
       </div>
       <p className="text-xs sm:text-sm text-muted-foreground mb-4">
         {submitted

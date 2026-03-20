@@ -114,7 +114,7 @@ const Dashboard = () => {
               <h1 className="font-display text-base sm:text-lg font-bold truncate">{group.name}</h1>
               {season && tab === 'current' && (
                 <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
-                  Season {season.season_number}{season.title ? ` — ${season.title}` : ''}
+                  {labels.seasonNoun} {season.season_number}{season.title ? ` — ${season.title}` : ''}
                 </p>
               )}
             </div>
@@ -185,7 +185,7 @@ const Dashboard = () => {
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              Current Season
+              Current {labels.seasonNoun}
             </button>
             <button
               onClick={() => setTab('history')}
@@ -262,8 +262,8 @@ const Dashboard = () => {
               {!season && !isAdmin && (
                 <div className="glass-card rounded-2xl p-12 text-center">
                   <img src={logo} alt="" className="h-16 object-contain rounded-xl mx-auto mb-4 opacity-30" />
-                  <h2 className="text-xl font-display font-bold mb-2">No Season Yet</h2>
-                  <p className="text-muted-foreground">Waiting for your admin to start a new season.</p>
+                  <h2 className="text-xl font-display font-bold mb-2">No {labels.seasonNoun} Yet</h2>
+                  <p className="text-muted-foreground">Waiting for your admin to start a new {labels.seasonNoun.toLowerCase()}.</p>
                 </div>
               )}
             </>
