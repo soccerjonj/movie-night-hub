@@ -170,7 +170,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
       return true;
     });
 
-    if (uniquePicks.length === 0) return <p className="text-xs text-muted-foreground italic py-2">No watched movies yet</p>;
+    if (uniquePicks.length === 0) return <p className="text-xs text-muted-foreground italic py-2">No scored picks yet</p>;
 
     return (
       <div className="space-y-1 py-2">
