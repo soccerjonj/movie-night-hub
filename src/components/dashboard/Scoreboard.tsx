@@ -170,7 +170,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
       return true;
     });
 
-    if (uniquePicks.length === 0) return <p className="text-xs text-muted-foreground italic py-2">No watched movies yet</p>;
+    if (uniquePicks.length === 0) return <p className="text-xs text-muted-foreground italic py-2">No scored picks yet</p>;
 
     return (
       <div className="space-y-1 py-2">
@@ -274,7 +274,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
               <div className="text-center text-muted-foreground py-8">
                 <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-30" />
                 <p>No guesses scored yet</p>
-                <p className="text-xs mt-1">Scores update as movie pickers are revealed</p>
+                <p className="text-xs mt-1">Scores update as pickers are revealed</p>
               </div>
             ) : (
               <div className="space-y-2">
