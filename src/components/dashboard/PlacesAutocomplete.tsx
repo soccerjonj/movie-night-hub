@@ -90,15 +90,29 @@ const PlacesAutocomplete = ({ value, onChange, onPlaceSelected, placeholder = 'S
         detailsRef.current = new google.maps.places.PlacesService(dummy);
       }
       detailsRef.current.getDetails(
-        { placeId: place.place_id, fields: ['name', 'geometry', 'formatted_address'] },
+        { placeId: place.place_id, fields: ['name', 'geometry', 'formatted_address', 'address_components'] },
         (details) => {
           if (details?.geometry?.location) {
             const lat = details.geometry.location.lat();
             const lon = details.geometry.location.lng();
+            const shortAddress = (() => {
+              const components = details.address_components || [];
+              const get = (type: string) => components.find(c => c.types.includes(type))?.short_name;
+              const streetNumber = get('street_number');
+              const route = get('route');
+              const city = get('locality') || get('postal_town') || get('administrative_area_level_2');
+              const state = get('administrative_area_level_1');
+              const street = [streetNumber, route].filter(Boolean).join(' ');
+              return [street, city, state].filter(Boolean).join(', ');
+            })();
+            const name = details.name || place.name;
+            const display = name && shortAddress ? `${name}, ${shortAddress}` : (shortAddress || details.formatted_address || place.description);
+            setQuery(display);
+            onChange(display);
             onPlaceSelected?.({
               ...place,
-              name: details.name || place.name,
-              description: details.formatted_address || place.description,
+              name,
+              description: display,
               lat,
               lon,
             });
