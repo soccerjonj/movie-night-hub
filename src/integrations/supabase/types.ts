@@ -238,6 +238,82 @@ export type Database = {
           },
         ]
       }
+      meeting_settings: {
+        Row: {
+          id: string
+          season_id: string
+          interval_value: number
+          interval_unit: string
+          same_location: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          season_id: string
+          interval_value: number
+          interval_unit: string
+          same_location?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          season_id?: string
+          interval_value?: number
+          interval_unit?: string
+          same_location?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_settings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_meetings: {
+        Row: {
+          id: string
+          season_id: string
+          meeting_index: number
+          meeting_at: string
+          location_text: string | null
+          location_lat: number | null
+          location_lon: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          season_id: string
+          meeting_index: number
+          meeting_at: string
+          location_text?: string | null
+          location_lat?: number | null
+          location_lon?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          season_id?: string
+          meeting_index?: number
+          meeting_at?: string
+          location_text?: string | null
+          location_lat?: number | null
+          location_lon?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_meetings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reading_assignments: {
         Row: {
           id: string

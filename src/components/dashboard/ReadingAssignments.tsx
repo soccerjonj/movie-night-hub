@@ -37,7 +37,8 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [keepOpen, setKeepOpen] = useState(false);
   const [title, setTitle] = useState('');
-  const [chapterRange, setChapterRange] = useState('');
+  const [chapterStart, setChapterStart] = useState('');
+  const [chapterEnd, setChapterEnd] = useState('');
   const [startPage, setStartPage] = useState('');
   const [endPage, setEndPage] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -49,7 +50,8 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
 
   const resetForm = () => {
     setTitle('');
-    setChapterRange('');
+    setChapterStart('');
+    setChapterEnd('');
     setStartPage('');
     setEndPage('');
     setDueDate('');
@@ -79,7 +81,7 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
   }, [seasonId]);
 
   const handleSave = async () => {
-    if (!chapterRange.trim() && !title.trim() && !startPage.trim() && !endPage.trim()) {
+    if (!chapterStart.trim() && !chapterEnd.trim() && !title.trim() && !startPage.trim() && !endPage.trim()) {
       toast.error('Add a chapter range, page range, or title');
       return;
     }
@@ -87,10 +89,15 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
     try {
       const startPageNum = startPage.trim() ? Number(startPage) : null;
       const endPageNum = endPage.trim() ? Number(endPage) : null;
+      const chapterStartNum = chapterStart.trim() ? Number(chapterStart) : null;
+      const chapterEndNum = chapterEnd.trim() ? Number(chapterEnd) : null;
+      const chapterRange = chapterStartNum || chapterEndNum
+        ? `${chapterStartNum ?? '?'}–${chapterEndNum ?? '?'}`
+        : null;
       const { error } = await supabase.from('reading_assignments').insert({
         season_id: seasonId,
         title: title.trim() || null,
-        chapter_range: chapterRange.trim() || null,
+        chapter_range: chapterRange,
         start_page: Number.isFinite(startPageNum) ? startPageNum : null,
         end_page: Number.isFinite(endPageNum) ? endPageNum : null,
         due_date: dueDate || null,
@@ -157,10 +164,49 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
               </DialogHeader>
               <div className="space-y-3">
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" className="bg-muted/50" />
-                <Input value={chapterRange} onChange={(e) => setChapterRange(e.target.value)} placeholder="Chapters (e.g., Ch 1–4)" className="bg-muted/50" />
                 <div className="flex gap-2">
-                  <Input value={startPage} onChange={(e) => setStartPage(e.target.value)} placeholder="Start page" className="bg-muted/50" />
-                  <Input value={endPage} onChange={(e) => setEndPage(e.target.value)} placeholder="End page" className="bg-muted/50" />
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    step={1}
+                    value={chapterStart}
+                    onChange={(e) => setChapterStart(e.target.value)}
+                    placeholder="Chapter start"
+                    className="bg-muted/50"
+                  />
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    step={1}
+                    value={chapterEnd}
+                    onChange={(e) => setChapterEnd(e.target.value)}
+                    placeholder="Chapter end"
+                    className="bg-muted/50"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    step={1}
+                    value={startPage}
+                    onChange={(e) => setStartPage(e.target.value)}
+                    placeholder="Start page"
+                    className="bg-muted/50"
+                  />
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    step={1}
+                    value={endPage}
+                    onChange={(e) => setEndPage(e.target.value)}
+                    placeholder="End page"
+                    className="bg-muted/50"
+                  />
                 </div>
                 <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="bg-muted/50" />
                 <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" className="bg-muted/50" />
@@ -199,10 +245,49 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
                   </DialogHeader>
                   <div className="space-y-3">
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" className="bg-muted/50" />
-                    <Input value={chapterRange} onChange={(e) => setChapterRange(e.target.value)} placeholder="Chapters (e.g., Ch 1–4)" className="bg-muted/50" />
                     <div className="flex gap-2">
-                      <Input value={startPage} onChange={(e) => setStartPage(e.target.value)} placeholder="Start page" className="bg-muted/50" />
-                      <Input value={endPage} onChange={(e) => setEndPage(e.target.value)} placeholder="End page" className="bg-muted/50" />
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        step={1}
+                        value={chapterStart}
+                        onChange={(e) => setChapterStart(e.target.value)}
+                        placeholder="Chapter start"
+                        className="bg-muted/50"
+                      />
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        step={1}
+                        value={chapterEnd}
+                        onChange={(e) => setChapterEnd(e.target.value)}
+                        placeholder="Chapter end"
+                        className="bg-muted/50"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        step={1}
+                        value={startPage}
+                        onChange={(e) => setStartPage(e.target.value)}
+                        placeholder="Start page"
+                        className="bg-muted/50"
+                      />
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        step={1}
+                        value={endPage}
+                        onChange={(e) => setEndPage(e.target.value)}
+                        placeholder="End page"
+                        className="bg-muted/50"
+                      />
                     </div>
                     <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="bg-muted/50" />
                     <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" className="bg-muted/50" />
@@ -223,6 +308,7 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
         <div className="mt-4 space-y-3">
           {assignments.map((assignment, index) => {
             const titleText = assignment.title || `Reading ${index + 1}`;
+            const chapterText = assignment.chapter_range ? `Chapters ${assignment.chapter_range}` : null;
             const pageText = assignment.start_page || assignment.end_page
               ? `Pages ${assignment.start_page ?? '?'}–${assignment.end_page ?? '?'}`
               : null;
@@ -236,10 +322,10 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
                       <span className="text-xs text-muted-foreground">Due {formatDueDate(assignment.due_date)}</span>
                     )}
                   </div>
-                  {(assignment.chapter_range || pageText) && (
+                  {(chapterText || pageText) && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      {assignment.chapter_range || pageText}
-                      {assignment.chapter_range && pageText ? ` · ${pageText}` : ''}
+                      {chapterText || pageText}
+                      {chapterText && pageText ? ` · ${pageText}` : ''}
                     </p>
                   )}
                   {assignment.notes && (

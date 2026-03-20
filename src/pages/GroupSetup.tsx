@@ -15,6 +15,7 @@ import PlacesAutocomplete from '@/components/dashboard/PlacesAutocomplete';
 import MapPreview from '@/components/dashboard/MapPreview';
 import { motion, AnimatePresence } from 'framer-motion';
 import { groupNameSchema, joinCodeSchema, getSafeErrorMessage } from '@/lib/security';
+import { addDays, addWeeks, addMonths, format } from 'date-fns';
 
 interface PlaceholderProfile {
   user_id: string;
@@ -39,7 +40,7 @@ interface GoogleBook {
 }
 
 type Mode = 'choose' | 'create' | 'join' | 'claim';
-type CreateStep = 'type' | 'name' | 'meeting' | 'book_choice' | 'book_search' | 'chapters' | 'confirm';
+type CreateStep = 'type' | 'name' | 'meeting' | 'book_choice' | 'book_search' | 'chapters' | 'schedule' | 'confirm';
 
 const GroupSetup = () => {
   const { user } = useAuth();
@@ -61,6 +62,13 @@ const GroupSetup = () => {
   const [bookSearching, setBookSearching] = useState(false);
   const [selectedBook, setSelectedBook] = useState<GoogleBook | null>(null);
   const [chapterChoice, setChapterChoice] = useState<'later' | 'now'>('later');
+  const [readingIntervalUnit, setReadingIntervalUnit] = useState<'days' | 'weeks' | 'months'>('weeks');
+  const [readingIntervalValue, setReadingIntervalValue] = useState(1);
+  const [firstMeetingDate, setFirstMeetingDate] = useState('');
+  const [firstMeetingTime, setFirstMeetingTime] = useState('19:00');
+  const [sameLocation, setSameLocation] = useState(true);
+  const [meetingPlaces, setMeetingPlaces] = useState<{ text: string; lat?: number; lon?: number }[]>([]);
+  const meetingsToSchedule = 6;
 
   // Join state
   const [joinCode, setJoinCode] = useState('');
@@ -80,10 +88,9 @@ const GroupSetup = () => {
       steps.push('book_choice');
       if (bookChoice === 'chosen') {
         steps.push('book_search');
-        if (selectedBook) {
-          steps.push('chapters');
-        }
       }
+      steps.push('chapters');
+      steps.push('schedule');
     }
     steps.push('confirm');
     return steps;
@@ -111,10 +118,61 @@ const GroupSetup = () => {
       case 'book_choice': return bookChoice !== null;
       case 'book_search': return selectedBook !== null;
       case 'chapters': return true;
+      case 'schedule': return !!firstMeetingDate && !!firstMeetingTime;
       case 'confirm': return true;
       default: return false;
     }
   };
+
+  const buildMeetingDates = () => {
+    if (!firstMeetingDate || !firstMeetingTime) return [];
+    const [hour, minute] = firstMeetingTime.split(':').map((v) => Number.parseInt(v, 10));
+    const start = new Date(`${firstMeetingDate}T00:00:00`);
+    start.setHours(Number.isFinite(hour) ? hour : 19, Number.isFinite(minute) ? minute : 0, 0, 0);
+    const dates: Date[] = [];
+    for (let i = 0; i < meetingsToSchedule; i += 1) {
+      if (i === 0) {
+        dates.push(new Date(start));
+      } else if (readingIntervalUnit === 'days') {
+        dates.push(addDays(start, readingIntervalValue * i));
+      } else if (readingIntervalUnit === 'weeks') {
+        dates.push(addWeeks(start, readingIntervalValue * i));
+      } else {
+        dates.push(addMonths(start, readingIntervalValue * i));
+      }
+    }
+    return dates;
+  };
+
+  const meetingDates = buildMeetingDates();
+
+  useEffect(() => {
+    if (meetingDates.length === 0) return;
+    setMeetingPlaces((prev) => {
+      const next = [...prev];
+      while (next.length < meetingDates.length) {
+        next.push({ text: '' });
+      }
+      return next.slice(0, meetingDates.length);
+    });
+  }, [firstMeetingDate, firstMeetingTime, readingIntervalUnit, readingIntervalValue]);
+
+  useEffect(() => {
+    if (!sameLocation) {
+      setMeetingPlaces((prev) => {
+        if (prev.length === 0) return prev;
+        if (prev[0]?.text) return prev;
+        return [
+          {
+            text: meetingLocation,
+            lat: meetingCoords?.lat,
+            lon: meetingCoords?.lon,
+          },
+          ...prev.slice(1),
+        ];
+      });
+    }
+  }, [sameLocation, meetingLocation, meetingCoords?.lat, meetingCoords?.lon]);
 
   // Book search
   const searchBooks = async (q?: string) => {
@@ -179,14 +237,14 @@ const GroupSetup = () => {
         .insert({ group_id: group.id, user_id: user.id });
       if (memberError) throw memberError;
 
-      // If book was pre-selected, auto-create season 1 with the book as a pick
-      if (clubType === 'book' && bookChoice === 'chosen' && selectedBook) {
+      if (clubType === 'book') {
+        const status = selectedBook ? 'watching' : 'picking';
         const { data: seasonData, error: seasonError } = await supabase
           .from('seasons')
           .insert({
             group_id: group.id,
             season_number: 1,
-            status: 'watching',
+            status,
             movies_per_member: 1,
             watch_interval_days: 7,
             guessing_enabled: false,
@@ -196,26 +254,66 @@ const GroupSetup = () => {
           .single();
         if (seasonError) throw seasonError;
 
-        // Add the admin as a season participant
         await supabase.from('season_participants').insert({
           season_id: seasonData.id,
           user_id: user.id,
         });
 
-        // Insert the selected book as a pick
-        const info = selectedBook.volumeInfo;
-        const coverUrl = info.imageLinks?.thumbnail?.replace('http:', 'https:') || null;
-        const year = info.publishedDate?.split('-')[0] || null;
-        await supabase.from('movie_picks').insert({
-          season_id: seasonData.id,
-          user_id: user.id,
-          tmdb_id: null,
-          title: info.title,
-          poster_url: coverUrl,
-          year,
-          overview: info.description?.substring(0, 500) || null,
-          watch_order: 0,
-        });
+        if (bookChoice === 'chosen' && selectedBook) {
+          const info = selectedBook.volumeInfo;
+          const coverUrl = info.imageLinks?.thumbnail?.replace('http:', 'https:') || null;
+          const year = info.publishedDate?.split('-')[0] || null;
+          await supabase.from('movie_picks').insert({
+            season_id: seasonData.id,
+            user_id: user.id,
+            tmdb_id: null,
+            title: info.title,
+            poster_url: coverUrl,
+            year,
+            overview: info.description?.substring(0, 500) || null,
+            watch_order: 0,
+          });
+        }
+
+        if (firstMeetingDate && firstMeetingTime) {
+          await supabase.from('meeting_settings').insert({
+            season_id: seasonData.id,
+            interval_value: readingIntervalValue,
+            interval_unit: readingIntervalUnit,
+            same_location: sameLocation,
+          });
+
+          const meetings = meetingDates.map((date, idx) => {
+            let locationText: string | null = null;
+            let locationLat: number | null = null;
+            let locationLon: number | null = null;
+            if (meetingType === 'in_person') {
+              if (sameLocation) {
+                locationText = meetingLocation.trim() || null;
+                locationLat = meetingCoords?.lat ?? null;
+                locationLon = meetingCoords?.lon ?? null;
+              } else {
+                const place = meetingPlaces[idx];
+                locationText = place?.text?.trim() || null;
+                locationLat = place?.lat ?? null;
+                locationLon = place?.lon ?? null;
+              }
+            }
+            return {
+              season_id: seasonData.id,
+              meeting_index: idx + 1,
+              meeting_at: date.toISOString(),
+              location_text: locationText,
+              location_lat: locationLat,
+              location_lon: locationLon,
+            };
+          });
+
+          if (meetings.length > 0) {
+            const { error: meetingError } = await supabase.from('club_meetings').insert(meetings);
+            if (meetingError) throw meetingError;
+          }
+        }
       }
 
       // Flag for walkthrough
@@ -675,6 +773,125 @@ const GroupSetup = () => {
                       📖 Chapter assignment will be available from the admin panel once your club is created. You'll be able to set chapter ranges for each due date there.
                     </p>
                   )}
+                </>
+              )}
+
+              {/* Step: Meeting Schedule (book clubs) */}
+              {createStep === 'schedule' && (
+                <>
+                  <div className="text-center">
+                    <h2 className="text-2xl font-display font-bold">Reading schedule</h2>
+                    <p className="text-muted-foreground mt-2">
+                      How often will readings be due, and when is your first meeting?
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Reading frequency</Label>
+                      <div className="flex flex-wrap gap-2">
+                        <Select value={readingIntervalUnit} onValueChange={(v) => setReadingIntervalUnit(v as typeof readingIntervalUnit)}>
+                          <SelectTrigger className="w-32 bg-muted/50">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="days">Days</SelectItem>
+                            <SelectItem value="weeks">Weeks</SelectItem>
+                            <SelectItem value="months">Months</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={String(readingIntervalValue)} onValueChange={(v) => setReadingIntervalValue(Number(v))}>
+                          <SelectTrigger className="w-32 bg-muted/50">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(readingIntervalUnit === 'days' ? [1, 2, 3, 4, 5, 6]
+                              : readingIntervalUnit === 'weeks' ? [1, 2, 3]
+                              : [1, 2]
+                            ).map((val) => (
+                              <SelectItem key={val} value={String(val)}>{val}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-xs text-muted-foreground self-center">per reading</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">First meeting date</Label>
+                        <Input type="date" value={firstMeetingDate} onChange={(e) => setFirstMeetingDate(e.target.value)} className="bg-muted/50" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">First meeting time</Label>
+                        <Input type="time" value={firstMeetingTime} onChange={(e) => setFirstMeetingTime(e.target.value)} className="bg-muted/50" />
+                      </div>
+                    </div>
+
+                    {meetingType === 'in_person' && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">First meeting location</Label>
+                        <PlacesAutocomplete
+                          value={meetingLocation}
+                          onChange={setMeetingLocation}
+                          placeholder="Search for a place..."
+                          onPlaceSelected={(place) => {
+                            if (place.lat && place.lon) {
+                              setMeetingCoords({ lat: Number(place.lat), lon: Number(place.lon) });
+                            }
+                          }}
+                        />
+                        {meetingCoords && (
+                          <MapPreview lat={meetingCoords.lat} lon={meetingCoords.lon} label={meetingLocation} />
+                        )}
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="checkbox"
+                            checked={sameLocation}
+                            onChange={(e) => setSameLocation(e.target.checked)}
+                            className="rounded border-border"
+                          />
+                          <span className="text-xs text-muted-foreground">All meetings at the same location</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {meetingType === 'in_person' && !sameLocation && meetingDates.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Meeting locations</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Add locations for your first {meetingDates.length} meetings. You can edit later.
+                        </p>
+                        <div className="space-y-3">
+                          {meetingDates.map((date, idx) => (
+                            <div key={idx} className="rounded-xl border border-border p-3 bg-muted/10 space-y-2">
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>Meeting {idx + 1}</span>
+                                <span>{format(date, 'EEE, MMM d · h:mm a')}</span>
+                              </div>
+                              <PlacesAutocomplete
+                                value={meetingPlaces[idx]?.text || ''}
+                                onChange={(val) => {
+                                  setMeetingPlaces((prev) => {
+                                    const next = [...prev];
+                                    next[idx] = { ...next[idx], text: val };
+                                    return next;
+                                  });
+                                }}
+                                placeholder="Search for a place..."
+                                onPlaceSelected={(place) => {
+                                  setMeetingPlaces((prev) => {
+                                    const next = [...prev];
+                                    next[idx] = { text: place.name || place.display_name, lat: Number(place.lat), lon: Number(place.lon) };
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 

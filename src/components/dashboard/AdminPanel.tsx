@@ -17,6 +17,7 @@ import AddPlaceholderDialog from './AddPlaceholderDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPreview from './MapPreview';
+import MeetingScheduleManager from './MeetingScheduleManager';
 
 // Collapsible dropdown panel for grouping admin actions
 function DropdownPanel({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -48,6 +49,7 @@ interface Props {
 const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, showPanel, setShowPanel }: Props & { showPanel: boolean; setShowPanel: (v: boolean) => void }) => {
   const labels = getClubLabels(group.club_type);
   const isBookClub = labels.type === 'book';
+  const showCallDate = group.meeting_type === 'remote' && !isBookClub;
   const [loading, setLoading] = useState(false);
   
   const [editingSeason, setEditingSeason] = useState(false);
@@ -62,6 +64,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const [editingLocation, setEditingLocation] = useState(false);
   const [locationValue, setLocationValue] = useState(group.meeting_location || '');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [currentReadingIndex, setCurrentReadingIndex] = useState<number | null>(null);
   const getProfileName = (userId: string) => profiles.find((p) => p.user_id === userId)?.display_name || 'Unknown';
 
   useEffect(() => {
@@ -87,6 +90,39 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     };
     fetchCoords();
   }, [group.meeting_location, group.meeting_type]);
+
+  useEffect(() => {
+    const fetchReadingIndex = async () => {
+      if (!isBookClub || !season) {
+        setCurrentReadingIndex(null);
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from('reading_assignments')
+          .select('order_index, due_date')
+          .eq('season_id', season.id)
+          .order('order_index', { ascending: true })
+          .order('due_date', { ascending: true });
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          setCurrentReadingIndex(null);
+          return;
+        }
+        const today = new Date();
+        const idx = data.findIndex((row) => {
+          if (!row.due_date) return false;
+          const due = new Date(`${row.due_date}T23:59:59`);
+          return due >= today;
+        });
+        const index = idx >= 0 ? idx : data.length - 1;
+        setCurrentReadingIndex(index + 1);
+      } catch {
+        setCurrentReadingIndex(null);
+      }
+    };
+    fetchReadingIndex();
+  }, [isBookClub, season?.id]);
 
   const copyJoinCode = () => {
     navigator.clipboard.writeText(group.join_code);
@@ -475,6 +511,10 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             </div>
           )}
 
+          {season && isBookClub && (
+            <MeetingScheduleManager seasonId={season.id} meetingType={group.meeting_type} />
+          )}
+
           {season && !editingSeason && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
@@ -572,7 +612,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm">
-                      <ListOrdered className="w-4 h-4 mr-1" /> {labels.Item} {season.current_movie_index + 1}/{moviePicks.length}
+                      <ListOrdered className="w-4 h-4 mr-1" /> {isBookClub ? `Assigned Reading${currentReadingIndex ? ` #${currentReadingIndex}` : ''}` : `${labels.Item} ${season.current_movie_index + 1}/${moviePicks.length}`}
                       <ChevronDown className="w-3 h-3 ml-1" />
                     </Button>
                   </PopoverTrigger>
@@ -631,7 +671,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                   </AlertDialog>
                 )}
 
-              {(() => {
+                {!isBookClub && (() => {
                   const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
                   const currentPick = sortedPicks[season.current_movie_index];
                   const isRevealed = currentPick?.revealed;
@@ -645,9 +685,11 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                     </Button>
                   );
                 })()}
-                <Button variant="outline" size="sm" onClick={startEditingCallDate} disabled={loading}>
-                  <CalendarClock className="w-4 h-4 mr-1" /> {season.next_call_date ? 'Change Call Date' : 'Set Call Date'}
-                </Button>
+                {showCallDate && (
+                  <Button variant="outline" size="sm" onClick={startEditingCallDate} disabled={loading}>
+                    <CalendarClock className="w-4 h-4 mr-1" /> {season.next_call_date ? 'Change Call Date' : 'Set Call Date'}
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={() => { setCallLinkValue(season.call_link || ''); setEditingCallLink(true); }} disabled={loading}>
                   <Play className="w-4 h-4 mr-1" /> {group.meeting_type === 'in_person' ? (season.call_link ? 'Edit Location' : 'Set Location') : (season.call_link ? 'Edit Call Link' : 'Add Call Link')}
                 </Button>
@@ -668,7 +710,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                     <Trash2 className="w-4 h-4 mr-1" /> Remove Call Link
                   </Button>
                 )}
-                {season.next_call_date && (
+                {showCallDate && season.next_call_date && (
                   <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={removeCallDate} disabled={loading}>
                     <Trash2 className="w-4 h-4 mr-1" /> Remove Call Date
                   </Button>
@@ -684,7 +726,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
           </div>
 
           {/* Call Date Editor */}
-          {editingCallDate && season && (
+          {showCallDate && editingCallDate && season && (
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2 flex-wrap">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Date</label>
@@ -789,12 +831,12 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             <DropdownPanel label="Import Past Info" icon={<Upload className="w-4 h-4 mr-1" />}>
               <div className="flex flex-wrap gap-2">
                 <ImportSeasonDialog group={group} profiles={profiles} existingSeasonCount={season?.season_number ?? 0} onImported={onUpdate} />
-                <ImportGuessesDialog group={group} profiles={profiles} onImported={onUpdate} />
+                {!isBookClub && <ImportGuessesDialog group={group} profiles={profiles} onImported={onUpdate} />}
               </div>
             </DropdownPanel>
 
             {/* Edit Current Season */}
-            {season && (
+            {season && !isBookClub && (
               <DropdownPanel label={`Edit Current ${labels.seasonNoun}`} icon={<PencilLine className="w-4 h-4 mr-1" />}>
                 <div className="flex flex-wrap gap-2">
                   <EditGuessesDialog group={group} profiles={profiles} onUpdated={onUpdate} />
