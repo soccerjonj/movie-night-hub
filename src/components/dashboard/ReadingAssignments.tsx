@@ -36,6 +36,7 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [keepOpen, setKeepOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [chapterStart, setChapterStart] = useState('');
   const [chapterEnd, setChapterEnd] = useState('');
@@ -43,12 +44,14 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
   const [endPage, setEndPage] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [meetingDates, setMeetingDates] = useState<{ meeting_index: number; meeting_at: string }[]>([]);
 
   const nextOrderIndex = useMemo(() => {
     return assignments.length > 0 ? Math.max(...assignments.map(a => a.order_index)) + 1 : 0;
   }, [assignments]);
 
   const resetForm = () => {
+    setEditingId(null);
     setTitle('');
     setChapterStart('');
     setChapterEnd('');
@@ -80,6 +83,18 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
     fetchAssignments();
   }, [seasonId]);
 
+  useEffect(() => {
+    const fetchMeetings = async () => {
+      const { data } = await supabase
+        .from('club_meetings')
+        .select('meeting_index, meeting_at')
+        .eq('season_id', seasonId)
+        .order('meeting_index', { ascending: true });
+      setMeetingDates((data || []) as { meeting_index: number; meeting_at: string }[]);
+    };
+    fetchMeetings();
+  }, [seasonId]);
+
   const handleSave = async () => {
     if (!chapterStart.trim() && !chapterEnd.trim() && !title.trim() && !startPage.trim() && !endPage.trim()) {
       toast.error('Add a chapter range, page range, or title');
@@ -94,7 +109,7 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
       const chapterRange = chapterStartNum || chapterEndNum
         ? `${chapterStartNum ?? '?'}–${chapterEndNum ?? '?'}`
         : null;
-      const { error } = await supabase.from('reading_assignments').insert({
+      const payload = {
         season_id: seasonId,
         title: title.trim() || null,
         chapter_range: chapterRange,
@@ -102,13 +117,26 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
         end_page: Number.isFinite(endPageNum) ? endPageNum : null,
         due_date: dueDate || null,
         notes: notes.trim() || null,
-        order_index: nextOrderIndex,
-      });
+        order_index: editingId ? undefined : nextOrderIndex,
+      };
+      const { error } = editingId
+        ? await supabase.from('reading_assignments').update(payload).eq('id', editingId)
+        : await supabase.from('reading_assignments').insert(payload);
       if (error) throw error;
-      toast.success('Reading assigned');
+      toast.success(editingId ? 'Reading updated' : 'Reading assigned');
       await fetchAssignments();
-      if (keepOpen) {
+      if (keepOpen && !editingId) {
         resetForm();
+        // Prefill next chapter/page starts
+        const last = assignments[assignments.length - 1];
+        if (last?.chapter_range) {
+          const parts = last.chapter_range.split('–').map(p => parseInt(p.trim(), 10));
+          const lastEnd = parts.length > 1 ? parts[1] : parts[0];
+          if (Number.isFinite(lastEnd)) setChapterStart(String(lastEnd + 1));
+        }
+        if (last?.end_page && Number.isFinite(last.end_page)) {
+          setStartPage(String(last.end_page + 1));
+        }
       } else {
         resetForm();
         setDialogOpen(false);
@@ -134,12 +162,48 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
     }
   };
 
+  const startEdit = (assignment: ReadingAssignment) => {
+    setEditingId(assignment.id);
+    setTitle(assignment.title ?? '');
+    if (assignment.chapter_range) {
+      const parts = assignment.chapter_range.split('–').map(p => p.trim());
+      setChapterStart(parts[0] ?? '');
+      setChapterEnd(parts[1] ?? '');
+    } else {
+      setChapterStart('');
+      setChapterEnd('');
+    }
+    setStartPage(assignment.start_page != null ? String(assignment.start_page) : '');
+    setEndPage(assignment.end_page != null ? String(assignment.end_page) : '');
+    setDueDate(assignment.due_date ?? '');
+    setNotes(assignment.notes ?? '');
+    setDialogOpen(true);
+  };
+
   const openAssignFirst = () => {
+    const last = assignments[assignments.length - 1];
+    if (last?.chapter_range) {
+      const parts = last.chapter_range.split('–').map(p => parseInt(p.trim(), 10));
+      const lastEnd = parts.length > 1 ? parts[1] : parts[0];
+      if (Number.isFinite(lastEnd)) setChapterStart(String(lastEnd + 1));
+    }
+    if (last?.end_page && Number.isFinite(last.end_page)) {
+      setStartPage(String(last.end_page + 1));
+    }
     setKeepOpen(false);
     setDialogOpen(true);
   };
 
   const openAssignAll = () => {
+    const last = assignments[assignments.length - 1];
+    if (last?.chapter_range) {
+      const parts = last.chapter_range.split('–').map(p => parseInt(p.trim(), 10));
+      const lastEnd = parts.length > 1 ? parts[1] : parts[0];
+      if (Number.isFinite(lastEnd)) setChapterStart(String(lastEnd + 1));
+    }
+    if (last?.end_page && Number.isFinite(last.end_page)) {
+      setStartPage(String(last.end_page + 1));
+    }
     setKeepOpen(true);
     setDialogOpen(true);
   };
@@ -160,7 +224,7 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[520px]">
               <DialogHeader>
-                <DialogTitle>Add reading assignment</DialogTitle>
+                <DialogTitle>{editingId ? 'Edit reading assignment' : 'Add reading assignment'}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" className="bg-muted/50" />
@@ -215,7 +279,7 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
                   <label htmlFor="keep-open" className="text-xs text-muted-foreground">Keep open to add another</label>
                 </div>
                 <Button variant="gold" onClick={handleSave} disabled={loading}>
-                  Save reading
+                  {editingId ? 'Save changes' : 'Save reading'}
                 </Button>
               </div>
             </DialogContent>
@@ -241,7 +305,7 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[520px]">
                   <DialogHeader>
-                    <DialogTitle>{keepOpen ? 'Assign readings' : 'Assign first reading'}</DialogTitle>
+                    <DialogTitle>{editingId ? 'Edit reading assignment' : keepOpen ? 'Assign readings' : 'Assign first reading'}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-3">
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" className="bg-muted/50" />
@@ -296,11 +360,45 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
                       <label htmlFor="keep-open-first" className="text-xs text-muted-foreground">Keep open to add another</label>
                     </div>
                     <Button variant="gold" onClick={handleSave} disabled={loading}>
-                      Save reading
+                      {editingId ? 'Save changes' : 'Save reading'}
                     </Button>
                   </div>
                 </DialogContent>
               </Dialog>
+              {meetingDates.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      const existing = new Set(assignments.map(a => a.order_index));
+                      const rows = meetingDates
+                        .filter((m) => !existing.has(m.meeting_index - 1))
+                        .map((m) => ({
+                          season_id: seasonId,
+                          order_index: m.meeting_index - 1,
+                          due_date: m.meeting_at.slice(0, 10),
+                          title: null,
+                        }));
+                      if (rows.length === 0) {
+                        toast.success('Readings already match meetings');
+                      } else {
+                        const { error } = await supabase.from('reading_assignments').insert(rows);
+                        if (error) throw error;
+                        toast.success('Readings generated from meetings');
+                      }
+                      await fetchAssignments();
+                    } catch (err: unknown) {
+                      toast.error(err instanceof Error ? err.message : 'Failed to generate readings');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  Generate from meetings
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -333,15 +431,25 @@ const ReadingAssignments = ({ seasonId, isAdmin }: Props) => {
                   )}
                 </div>
                 {isAdmin && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDelete(assignment.id)}
-                    disabled={loading}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => startEdit(assignment)}
+                      disabled={loading}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(assignment.id)}
+                      disabled={loading}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 )}
               </div>
             );
