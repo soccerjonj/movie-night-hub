@@ -578,7 +578,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                         <AlertDialogDescription>
                           There {moviePicks.length - 1 - season.current_movie_index === 1 ? 'is' : 'are'} still{' '}
                           <strong>{moviePicks.length - 1 - season.current_movie_index}</strong>{' '}
-                          unwatched movie{moviePicks.length - 1 - season.current_movie_index === 1 ? '' : 's'} remaining.
+                          un{labels.watched} {labels.item}{moviePicks.length - 1 - season.current_movie_index === 1 ? '' : 's'} remaining.
                           This will skip them and move directly to the season review phase.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
