@@ -322,7 +322,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
     if (hasHistory) {
       const secondConfirm = window.confirm(
-        `${memberName} already has movie picks/guesses. Deleting this member may remove historical links. Are you absolutely sure?`,
+        `${memberName} already has ${labels.item} picks/guesses. Deleting this member may remove historical links. Are you absolutely sure?`,
       );
       if (!secondConfirm) return;
     }
