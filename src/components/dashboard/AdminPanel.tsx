@@ -538,7 +538,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align="start" className="w-64 p-2 max-h-[300px] overflow-y-auto">
-                    <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Jump to movie:</p>
+                    <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Jump to {labels.item}:</p>
                     {[...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0)).map((pick, i) => (
                       <button
                         key={pick.id}
