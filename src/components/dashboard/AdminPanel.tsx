@@ -848,7 +848,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Go back to picking phase?</AlertDialogTitle>
-                          <AlertDialogDescription>This will move the season back to the picking phase. All guesses will be deleted. Movie picks will be kept.</AlertDialogDescription>
+                          <AlertDialogDescription>This will move the season back to the picking phase. All guesses will be deleted. {labels.Item} picks will be kept.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
