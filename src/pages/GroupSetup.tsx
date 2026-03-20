@@ -9,6 +9,7 @@ import { Users, Plus, ArrowRight, Ghost, UserCheck, Film, BookOpen, Video, MapPi
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
+import { GOOGLE_BOOKS_API_KEY } from '@/lib/apiKeys';
 import { motion, AnimatePresence } from 'framer-motion';
 import { groupNameSchema, joinCodeSchema, getSafeErrorMessage } from '@/lib/security';
 
@@ -117,8 +118,9 @@ const GroupSetup = () => {
     if (!term.trim()) { setBookResults([]); return; }
     setBookSearching(true);
     try {
+      const keyParam = GOOGLE_BOOKS_API_KEY ? `&key=${encodeURIComponent(GOOGLE_BOOKS_API_KEY)}` : '';
       const res = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=8&printType=books`
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=8&printType=books${keyParam}`
       );
       const data = await res.json();
       setBookResults((data.items || []) as GoogleBook[]);
