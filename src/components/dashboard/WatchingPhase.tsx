@@ -190,7 +190,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
             <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className="w-8 sm:w-10 rounded-lg object-cover shrink-0" />
           ) : (
             <div className="w-8 sm:w-10 h-11 sm:h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
-              <Film className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+              <ItemIcon className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
             </div>
           )}
 
