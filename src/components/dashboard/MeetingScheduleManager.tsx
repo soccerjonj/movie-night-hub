@@ -420,8 +420,8 @@ const MeetingScheduleManager = ({ seasonId, meetingType, allowEdit = false }: Pr
                     onChange={setMeetingLocation}
                     placeholder="Search for a place..."
                     onPlaceSelected={(place) => {
-                      setMeetingLocation(place.name || place.display_name);
-                      setMeetingCoords({ lat: Number(place.lat), lon: Number(place.lon) });
+                      setMeetingLocation(place.description);
+                      if (place.lat && place.lon) setMeetingCoords({ lat: place.lat, lon: place.lon });
                     }}
                   />
                   {meetingCoords && (
