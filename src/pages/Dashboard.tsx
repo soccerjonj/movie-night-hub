@@ -125,6 +125,17 @@ const Dashboard = () => {
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={() => setAdminViewAsMember(!adminViewAsMember)}
+                className={`h-8 w-8 ${adminViewAsMember ? 'text-primary' : 'text-muted-foreground/50 hover:text-muted-foreground'}`}
+                title={adminViewAsMember ? 'Viewing as member' : 'View as member'}
+              >
+                {adminViewAsMember ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowAdminPanel(!showAdminPanel)}
                 className="h-8 w-8 text-primary/70 hover:text-primary"
               >
