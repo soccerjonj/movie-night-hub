@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, Settings, ArrowLeft, DoorOpen } from 'lucide-react';
+import { LogOut, Settings, ArrowLeft, DoorOpen, Eye, EyeOff } from 'lucide-react';
 import AdminWalkthrough from '@/components/dashboard/AdminWalkthrough';
 import logo from '@/assets/logo.png';
 
