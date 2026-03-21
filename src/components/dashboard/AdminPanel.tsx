@@ -17,7 +17,7 @@ import AddPlaceholderDialog from './AddPlaceholderDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPreview from './MapPreview';
-import MeetingScheduleManager from './MeetingScheduleManager';
+
 
 // Collapsible dropdown panel for grouping admin actions
 function DropdownPanel({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -511,9 +511,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             </div>
           )}
 
-          {season && isBookClub && (
-            <MeetingScheduleManager seasonId={season.id} meetingType={group.meeting_type} allowEdit />
-          )}
+          
 
           {season && !editingSeason && (
             <div className="flex items-center gap-2">
