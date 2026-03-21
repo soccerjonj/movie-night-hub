@@ -511,9 +511,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             </div>
           )}
 
-          {season && isBookClub && (
-            <MeetingScheduleManager seasonId={season.id} meetingType={group.meeting_type} allowEdit />
-          )}
+          
 
           {season && !editingSeason && (
             <div className="flex items-center gap-2">
