@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, Settings, ArrowLeft, DoorOpen } from 'lucide-react';
+import { LogOut, Settings, ArrowLeft, DoorOpen, Eye, EyeOff } from 'lucide-react';
 import AdminWalkthrough from '@/components/dashboard/AdminWalkthrough';
 import logo from '@/assets/logo.png';
 
@@ -32,6 +32,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [tab, setTab] = useState<'current' | 'history'>('current');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminViewAsMember, setAdminViewAsMember] = useState(false);
   const [hasEverGuessed, setHasEverGuessed] = useState(false);
   const [openProfileUserId, setOpenProfileUserId] = useState<string | null>(null);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
@@ -120,6 +121,17 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setAdminViewAsMember(!adminViewAsMember)}
+                className={`h-8 w-8 ${adminViewAsMember ? 'text-primary' : 'text-muted-foreground/50 hover:text-muted-foreground'}`}
+                title={adminViewAsMember ? 'Viewing as member' : 'View as member'}
+              >
+                {adminViewAsMember ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </Button>
+            )}
             {isAdmin && (
               <Button
                 variant="ghost"
@@ -244,7 +256,7 @@ const Dashboard = () => {
                 <GuessingPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
               )}
               {season?.status === 'watching' && (
-                <WatchingPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} getProfile={getProfile} isAdmin={isAdmin} onUpdate={refetch} clubType={labels.type} meetingType={group.meeting_type} />
+                <WatchingPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} getProfile={getProfile} isAdmin={isAdmin && !adminViewAsMember} onUpdate={refetch} clubType={labels.type} meetingType={group.meeting_type} />
               )}
               {season?.status === 'reviewing' && (
                 <ReviewPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} onUpdate={refetch} clubType={labels.type} />
