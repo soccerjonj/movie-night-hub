@@ -28,10 +28,9 @@ const PlacesAutocomplete = ({ value, onChange, onPlaceSelected, placeholder = 'S
   const [showDropdown, setShowDropdown] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const containerRef = useRef<HTMLDivElement>(null);
-  const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null);
-  const detailsRef = useRef<google.maps.places.PlacesService | null>(null);
+  const serviceRef = useRef<any>(null);
+  const detailsRef = useRef<any>(null);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -51,12 +50,12 @@ const PlacesAutocomplete = ({ value, onChange, onPlaceSelected, placeholder = 'S
     try {
       await loadGoogleMaps();
       if (!serviceRef.current) {
-        serviceRef.current = new google.maps.places.AutocompleteService();
+        serviceRef.current = new (window as any).google.maps.places.AutocompleteService();
       }
       serviceRef.current.getPlacePredictions(
         { input: q, types: ['establishment', 'geocode'] },
-        (predictions) => {
-          const items = (predictions || []).slice(0, 6).map((p) => ({
+        (predictions: any[]) => {
+          const items = (predictions || []).slice(0, 6).map((p: any) => ({
             place_id: p.place_id,
             name: p.structured_formatting?.main_text || p.description,
             description: p.description,
@@ -87,31 +86,33 @@ const PlacesAutocomplete = ({ value, onChange, onPlaceSelected, placeholder = 'S
       await loadGoogleMaps();
       if (!detailsRef.current) {
         const dummy = document.createElement('div');
-        detailsRef.current = new google.maps.places.PlacesService(dummy);
+        detailsRef.current = new (window as any).google.maps.places.PlacesService(dummy);
       }
       detailsRef.current.getDetails(
         { placeId: place.place_id, fields: ['name', 'geometry', 'formatted_address', 'address_components'] },
-        (details) => {
+        (details: any) => {
           if (details?.geometry?.location) {
             const lat = details.geometry.location.lat();
             const lon = details.geometry.location.lng();
-            const shortAddress = (() => {
-              const components = details.address_components || [];
-              const get = (type: string) => components.find(c => c.types.includes(type))?.short_name;
-              const streetNumber = get('street_number');
-              const route = get('route');
-              const city = get('locality') || get('postal_town') || get('administrative_area_level_2');
-              const state = get('administrative_area_level_1');
-              const street = [streetNumber, route].filter(Boolean).join(' ');
-              return [street, city, state].filter(Boolean).join(', ');
-            })();
+            const components = details.address_components || [];
+            const get = (type: string) => components.find((c: any) => c.types.includes(type))?.short_name;
+            const streetNumber = get('street_number');
+            const route = get('route');
+            const city = get('locality') || get('postal_town') || get('administrative_area_level_2');
+            const state = get('administrative_area_level_1');
+            const street = [streetNumber, route].filter(Boolean).join(' ');
+            const shortAddress = [street, city, state].filter(Boolean).join(', ');
+
             const name = details.name || place.name;
             const formatted = details.formatted_address || place.description;
             const formattedShort = formatted
-              ? formatted.split(',').slice(0, 3).map((p) => p.trim()).filter(Boolean).join(', ')
+              ? formatted.split(',').slice(0, 3).map((p: string) => p.trim()).filter(Boolean).join(', ')
               : '';
             const addressPart = shortAddress || formattedShort || formatted;
-            const display = name && addressPart ? `${name}, ${addressPart}` : (addressPart || name || place.description);
+            const display = name && addressPart && !addressPart.startsWith(name)
+              ? `${name}, ${addressPart}`
+              : (addressPart || name || place.description);
+
             setQuery(display);
             onChange(display);
             onPlaceSelected?.({
