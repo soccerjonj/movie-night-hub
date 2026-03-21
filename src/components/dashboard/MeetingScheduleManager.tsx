@@ -298,8 +298,8 @@ const MeetingScheduleManager = ({ seasonId, meetingType, allowEdit = false }: Pr
             onChange={setSingleMeetingLocation}
             placeholder="Search for a place..."
             onPlaceSelected={(place) => {
-              setSingleMeetingLocation(place.name || place.display_name);
-              setSingleMeetingCoords({ lat: Number(place.lat), lon: Number(place.lon) });
+              setSingleMeetingLocation(place.description);
+              if (place.lat && place.lon) setSingleMeetingCoords({ lat: place.lat, lon: place.lon });
             }}
           />
           {singleMeetingCoords && (
