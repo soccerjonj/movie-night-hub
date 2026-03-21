@@ -460,7 +460,7 @@ const MeetingScheduleManager = ({ seasonId, meetingType, allowEdit = false }: Pr
                         onPlaceSelected={(place) => {
                           setMeetingPlaces((prev) => {
                             const next = [...prev];
-                            next[idx] = { text: place.name || place.display_name, lat: Number(place.lat), lon: Number(place.lon) };
+                            next[idx] = { text: place.description, lat: place.lat, lon: place.lon };
                             return next;
                           });
                         }}
