@@ -116,6 +116,8 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
     fetchReadingStatus();
   }, [clubType, season.id]);
 
+  const uniquePicks = moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i);
+
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -127,12 +129,12 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
           {season.status === 'watching'
             ? clubType === 'book'
               ? `Currently reading: ${readingStatus ?? 'Chapters TBD'}`
-              : `Currently ${labels.watching}: ${labels.Item} ${season.current_movie_index + 1} of ${moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length}`
+              : `Currently ${labels.watching}: ${labels.Item} ${season.current_movie_index + 1} of ${uniquePicks.length}`
             : labels.statusLabels[season.status]}
         </span>
       </div>
 
-      {season.status === 'watching' && currentMovie && (
+      {season.status === 'watching' && currentMovie && clubType !== 'book' && (
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 mt-4">
           <div className="flex flex-row sm:flex-col items-start gap-3 sm:gap-0 w-full sm:w-auto">
             {posterUrl ? (
@@ -146,12 +148,11 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
                 <ItemIcon className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/30" />
               </div>
             )}
-            {/* Title + year next to poster on mobile, hidden on desktop */}
             <div className="sm:hidden flex-1 min-w-0">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{labels.nowAction}</p>
               <h3 className="font-display text-lg font-bold">{currentMovie.title}</h3>
               {currentMovie.year && <p className="text-xs text-muted-foreground mt-0.5">{currentMovie.year}</p>}
-              {director && clubType !== 'book' && <p className="text-xs text-muted-foreground mt-0.5">Directed by {director}</p>}
+              {director && <p className="text-xs text-muted-foreground mt-0.5">Directed by {director}</p>}
               {currentMovie.revealed && (currentMovie.watch_order ?? 0) < season.current_movie_index && (
                 <p className="text-xs text-primary mt-1 flex items-center gap-1">
                   <Eye className="w-3 h-3" />
@@ -160,16 +161,14 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
               )}
             </div>
           </div>
-          {/* Description below poster row on mobile */}
           {currentMovie.overview && (
             <p className="text-xs text-muted-foreground sm:hidden">{currentMovie.overview}</p>
           )}
-          {/* Desktop layout */}
           <div className="flex-1 hidden sm:block text-left">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{labels.nowAction}</p>
             <h3 className="font-display text-2xl font-bold">{currentMovie.title}</h3>
             {currentMovie.year && <p className="text-sm text-muted-foreground mt-0.5">{currentMovie.year}</p>}
-            {director && clubType !== 'book' && <p className="text-sm text-muted-foreground mt-0.5">Directed by {director}</p>}
+            {director && <p className="text-sm text-muted-foreground mt-0.5">Directed by {director}</p>}
             {currentMovie.overview && (
               <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{currentMovie.overview}</p>
             )}
@@ -179,6 +178,27 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
                 Picked by {getProfile(currentMovie.user_id)?.display_name}
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Book club: compact cover + title, no description */}
+      {season.status === 'watching' && currentMovie && clubType === 'book' && (
+        <div className="flex items-center gap-3 mt-4">
+          {posterUrl ? (
+            <img
+              src={posterUrl}
+              alt={currentMovie.title}
+              className="w-12 sm:w-14 rounded-lg shadow-md ring-1 ring-border/20 shrink-0"
+            />
+          ) : (
+            <div className="w-12 sm:w-14 aspect-[2/3] rounded-lg bg-muted/30 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-muted-foreground/30" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <h3 className="font-display text-base sm:text-lg font-bold truncate">{currentMovie.title}</h3>
+            {currentMovie.year && <p className="text-xs text-muted-foreground">{currentMovie.year}</p>}
           </div>
         </div>
       )}
@@ -236,11 +256,11 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </div>
       )}
 
-      {season.status === 'watching' && (
+      {/* Progress bar - movie clubs only */}
+      {season.status === 'watching' && clubType !== 'book' && (
         <div className="mt-4">
           <div className="flex gap-1">
-            {moviePicks
-              .filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i)
+            {uniquePicks
               .sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0))
               .map((pick) => (
                 <div
@@ -256,7 +276,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
               ))}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {season.current_movie_index + 1} of {moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i).length} {labels.items}
+            {season.current_movie_index + 1} of {uniquePicks.length} {labels.items}
           </p>
         </div>
       )}

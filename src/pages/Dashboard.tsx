@@ -32,6 +32,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [tab, setTab] = useState<'current' | 'history'>('current');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminViewAsMember, setAdminViewAsMember] = useState(false);
   const [hasEverGuessed, setHasEverGuessed] = useState(false);
   const [openProfileUserId, setOpenProfileUserId] = useState<string | null>(null);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
