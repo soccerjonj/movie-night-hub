@@ -335,11 +335,9 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
   return (
     <>
       {clubType === 'book' && (
-        <>
-          <ReadingAssignments seasonId={season.id} isAdmin={isAdmin} />
-          <MeetingScheduleManager seasonId={season.id} meetingType={meetingType} allowEdit={false} />
-        </>
+        <ReadingAssignments seasonId={season.id} isAdmin={isAdmin} />
       )}
+      <MeetingScheduleManager seasonId={season.id} meetingType={meetingType} allowEdit={isAdmin} />
       <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
         <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">{labels.scheduleLabel}</h2>
 
