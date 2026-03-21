@@ -13,7 +13,7 @@ import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
 
 interface Props {
-  group: { id: string };
+  group: { id: string; club_type?: string };
   profiles: Profile[];
   members: { user_id: string }[];
 }

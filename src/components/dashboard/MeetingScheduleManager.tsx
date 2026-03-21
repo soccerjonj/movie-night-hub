@@ -636,9 +636,9 @@ const MeetingScheduleManager = ({ seasonId, meetingType, allowEdit = false }: Pr
                         value={editLocation}
                         onChange={setEditLocation}
                         placeholder="Search for a place..."
-                        onPlaceSelected={(place) => {
-                          setEditLocation(place.name || place.display_name);
-                          setEditCoords({ lat: Number(place.lat), lon: Number(place.lon) });
+                      onPlaceSelected={(place) => {
+                        setEditLocation(place.description);
+                        if (place.lat && place.lon) setEditCoords({ lat: place.lat, lon: place.lon });
                         }}
                       />
                       {editCoords && (
