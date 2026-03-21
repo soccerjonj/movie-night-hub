@@ -338,69 +338,11 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
         <ReadingAssignments seasonId={season.id} isAdmin={isAdmin} />
       )}
       <MeetingScheduleManager seasonId={season.id} meetingType={meetingType} allowEdit={isAdmin} />
-      <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
-        <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">{labels.scheduleLabel}</h2>
 
-        {clubType === 'book' ? (
-          <div className="space-y-2 sm:space-y-3">
-            {completedReadings.length > 0 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowWatched(!showWatched)}
-                  className="w-full justify-between text-muted-foreground hover:text-foreground"
-                >
-                  <span>{completedReadings.length} readings completed</span>
-                  {showWatched ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </Button>
-                {showWatched && completedReadings.map((reading, idx) => (
-                  <div key={reading.id} className="w-full flex items-center gap-3 rounded-xl p-2 sm:p-3 bg-muted/10 opacity-60">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-muted text-muted-foreground">
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">Reading {idx + 1}</p>
-                      <p className="text-xs text-muted-foreground">{formatReadingRange(reading)}</p>
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
-
-            {currentAndUpcomingReadings.length > 0 ? (
-              currentAndUpcomingReadings.map((reading, idx) => {
-                const actualIndex = currentReadingIndex >= 0 ? currentReadingIndex + idx : idx;
-                const isCurrent = actualIndex === currentReadingIndex;
-                return (
-                  <div
-                    key={reading.id}
-                    className={`w-full flex items-center gap-3 rounded-xl p-2 sm:p-3 ${
-                      isCurrent ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-muted/20'
-                    }`}
-                  >
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                      isCurrent ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {actualIndex + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">
-                        {isCurrent ? 'Current reading' : `Reading ${actualIndex + 1}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{formatReadingRange(reading)}</p>
-                      {reading.due_date && (
-                        <p className="text-[11px] text-muted-foreground">Due {reading.due_date}</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No readings assigned yet.</p>
-            )}
-          </div>
-        ) : (
+      {/* Movie schedule list - only for movie clubs */}
+      {clubType !== 'book' && (
+        <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
+          <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">{labels.scheduleLabel}</h2>
           <div className="space-y-2 sm:space-y-3">
             {watchedPicks.length > 0 && (
               <>
@@ -419,8 +361,8 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
 
             {currentAndUpcoming.map((pick) => renderPick(pick, sortedPicks.indexOf(pick)))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 };
