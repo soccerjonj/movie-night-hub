@@ -2,7 +2,7 @@ import { GOOGLE_MAPS_API_KEY } from './apiKeys';
 
 declare global {
   interface Window {
-    google?: typeof google;
+    google?: any;
   }
 }
 

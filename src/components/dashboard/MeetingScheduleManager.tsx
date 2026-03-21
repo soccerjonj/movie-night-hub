@@ -298,8 +298,8 @@ const MeetingScheduleManager = ({ seasonId, meetingType, allowEdit = false }: Pr
             onChange={setSingleMeetingLocation}
             placeholder="Search for a place..."
             onPlaceSelected={(place) => {
-              setSingleMeetingLocation(place.name || place.display_name);
-              setSingleMeetingCoords({ lat: Number(place.lat), lon: Number(place.lon) });
+              setSingleMeetingLocation(place.description);
+              if (place.lat && place.lon) setSingleMeetingCoords({ lat: place.lat, lon: place.lon });
             }}
           />
           {singleMeetingCoords && (
@@ -420,8 +420,8 @@ const MeetingScheduleManager = ({ seasonId, meetingType, allowEdit = false }: Pr
                     onChange={setMeetingLocation}
                     placeholder="Search for a place..."
                     onPlaceSelected={(place) => {
-                      setMeetingLocation(place.name || place.display_name);
-                      setMeetingCoords({ lat: Number(place.lat), lon: Number(place.lon) });
+                      setMeetingLocation(place.description);
+                      if (place.lat && place.lon) setMeetingCoords({ lat: place.lat, lon: place.lon });
                     }}
                   />
                   {meetingCoords && (
@@ -460,7 +460,7 @@ const MeetingScheduleManager = ({ seasonId, meetingType, allowEdit = false }: Pr
                         onPlaceSelected={(place) => {
                           setMeetingPlaces((prev) => {
                             const next = [...prev];
-                            next[idx] = { text: place.name || place.display_name, lat: Number(place.lat), lon: Number(place.lon) };
+                            next[idx] = { text: place.description, lat: place.lat, lon: place.lon };
                             return next;
                           });
                         }}
@@ -636,9 +636,9 @@ const MeetingScheduleManager = ({ seasonId, meetingType, allowEdit = false }: Pr
                         value={editLocation}
                         onChange={setEditLocation}
                         placeholder="Search for a place..."
-                        onPlaceSelected={(place) => {
-                          setEditLocation(place.name || place.display_name);
-                          setEditCoords({ lat: Number(place.lat), lon: Number(place.lon) });
+                      onPlaceSelected={(place) => {
+                        setEditLocation(place.description);
+                        if (place.lat && place.lon) setEditCoords({ lat: place.lat, lon: place.lon });
                         }}
                       />
                       {editCoords && (
