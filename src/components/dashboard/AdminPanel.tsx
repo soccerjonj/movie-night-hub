@@ -17,7 +17,7 @@ import AddPlaceholderDialog from './AddPlaceholderDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPreview from './MapPreview';
-import MeetingScheduleManager from './MeetingScheduleManager';
+
 
 // Collapsible dropdown panel for grouping admin actions
 function DropdownPanel({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
