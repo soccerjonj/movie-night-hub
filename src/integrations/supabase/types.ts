@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      club_meetings: {
+        Row: {
+          created_at: string
+          id: string
+          location_lat: number | null
+          location_lon: number | null
+          location_text: string | null
+          meeting_at: string
+          meeting_index: number
+          season_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lon?: number | null
+          location_text?: string | null
+          meeting_at: string
+          meeting_index: number
+          season_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lon?: number | null
+          location_text?: string | null
+          meeting_at?: string
+          meeting_index?: number
+          season_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_meetings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_members: {
         Row: {
           group_id: string
@@ -139,6 +180,41 @@ export type Database = {
           },
         ]
       }
+      meeting_settings: {
+        Row: {
+          created_at: string
+          id: string
+          interval_unit: string
+          interval_value: number
+          same_location: boolean
+          season_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interval_unit: string
+          interval_value: number
+          same_location?: boolean
+          season_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interval_unit?: string
+          interval_value?: number
+          same_location?: boolean
+          season_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_settings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: true
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movie_picks: {
         Row: {
           created_at: string
@@ -238,129 +314,6 @@ export type Database = {
           },
         ]
       }
-      meeting_settings: {
-        Row: {
-          id: string
-          season_id: string
-          interval_value: number
-          interval_unit: string
-          same_location: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          season_id: string
-          interval_value: number
-          interval_unit: string
-          same_location?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          season_id?: string
-          interval_value?: number
-          interval_unit?: string
-          same_location?: boolean
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "meeting_settings_season_id_fkey"
-            columns: ["season_id"]
-            isOneToOne: false
-            referencedRelation: "seasons"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      club_meetings: {
-        Row: {
-          id: string
-          season_id: string
-          meeting_index: number
-          meeting_at: string
-          location_text: string | null
-          location_lat: number | null
-          location_lon: number | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          season_id: string
-          meeting_index: number
-          meeting_at: string
-          location_text?: string | null
-          location_lat?: number | null
-          location_lon?: number | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          season_id?: string
-          meeting_index?: number
-          meeting_at?: string
-          location_text?: string | null
-          location_lat?: number | null
-          location_lon?: number | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "club_meetings_season_id_fkey"
-            columns: ["season_id"]
-            isOneToOne: false
-            referencedRelation: "seasons"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      reading_assignments: {
-        Row: {
-          id: string
-          season_id: string
-          title: string | null
-          chapter_range: string | null
-          start_page: number | null
-          end_page: number | null
-          due_date: string | null
-          notes: string | null
-          order_index: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          season_id: string
-          title?: string | null
-          chapter_range?: string | null
-          start_page?: number | null
-          end_page?: number | null
-          due_date?: string | null
-          notes?: string | null
-          order_index?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          season_id?: string
-          title?: string | null
-          chapter_range?: string | null
-          start_page?: number | null
-          end_page?: number | null
-          due_date?: string | null
-          notes?: string | null
-          order_index?: number
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reading_assignments_season_id_fkey"
-            columns: ["season_id"]
-            isOneToOne: false
-            referencedRelation: "seasons"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -390,6 +343,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reading_assignments: {
+        Row: {
+          chapter_range: string | null
+          created_at: string
+          due_date: string | null
+          end_page: number | null
+          id: string
+          notes: string | null
+          order_index: number
+          season_id: string
+          start_page: number | null
+          title: string | null
+        }
+        Insert: {
+          chapter_range?: string | null
+          created_at?: string
+          due_date?: string | null
+          end_page?: number | null
+          id?: string
+          notes?: string | null
+          order_index?: number
+          season_id: string
+          start_page?: number | null
+          title?: string | null
+        }
+        Update: {
+          chapter_range?: string | null
+          created_at?: string
+          due_date?: string | null
+          end_page?: number | null
+          id?: string
+          notes?: string | null
+          order_index?: number
+          season_id?: string
+          start_page?: number | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_assignments_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       season_participants: {
         Row: {
