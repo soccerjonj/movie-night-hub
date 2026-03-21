@@ -56,7 +56,7 @@ interface MovieDisplay {
   seasonId: string;
 }
 const History = ({ group, profiles, members }: Props) => {
-  const labels = getClubLabels(group.club_type);
+  const labels = getClubLabels((group.club_type || 'movie') as any);
   const isBookClub = labels.type === 'book';
   const [seasons, setSeasons] = useState<SeasonInfo[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>('all');
