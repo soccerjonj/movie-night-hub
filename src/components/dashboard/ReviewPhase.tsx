@@ -275,7 +275,14 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
 
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{movie.title}</p>
-                  {movie.year && <span className="text-xs text-muted-foreground">{movie.year}</span>}
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {movie.year && `${movie.year} · `}Picked by {
+                      moviePicks
+                        .filter(p => p.watch_order === movie.watch_order)
+                        .map(p => getProfile(p.user_id)?.display_name || '?')
+                        .join(' & ')
+                    }
+                  </p>
                 </div>
 
                 {index === 0 && <Star className="w-4 h-4 text-primary fill-primary shrink-0" />}
