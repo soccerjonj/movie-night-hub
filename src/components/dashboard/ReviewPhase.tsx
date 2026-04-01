@@ -172,11 +172,43 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
         <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
         <h2 className="font-display text-lg sm:text-xl font-bold">{clubType === 'book' ? 'Book Review' : 'Season Review'}</h2>
       </div>
-      <p className="text-xs sm:text-sm text-muted-foreground mb-4">
+      <p className="text-xs sm:text-sm text-muted-foreground mb-3">
         {submitted
           ? `You've submitted your rankings! ${everyoneSubmitted ? 'Results are in!' : `Waiting for others (${submittedCount}/${members.length}).`}`
           : `Drag to rank ${labels.items} from your favorite (#1) to least favorite.`}
       </p>
+
+      {/* Submission status */}
+      {!everyoneSubmitted && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {members.map(member => {
+            const profile = getProfile(member.user_id);
+            const hasSubmitted = !!allRankings[member.user_id];
+            return (
+              <div
+                key={member.user_id}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                  hasSubmitted
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted/30 text-muted-foreground'
+                }`}
+              >
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-4 h-4 rounded-full object-cover" />
+                ) : (
+                  <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${
+                    hasSubmitted ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                )}
+                <span className="truncate max-w-[80px]">{profile?.display_name || '?'}</span>
+                {hasSubmitted && <Check className="w-3 h-3 shrink-0" />}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Ranking UI */}
       {!everyoneSubmitted && (
