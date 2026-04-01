@@ -80,7 +80,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
       const isPickWatched = (pick: typeof fetchedPicks[0]) => {
         const s = sMap.get(pick.season_id);
         if (!s) return false;
-        if (s.status === 'completed') return true;
+        if (s.status === 'completed' || s.status === 'reviewing') return true;
         if (s.status === 'watching' && pick.watch_order != null) {
           return pick.watch_order < s.current_movie_index;
         }
@@ -138,7 +138,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
   const isPickWatchedCheck = (pick: typeof picks[0]) => {
     const s = seasonMap.get(pick.season_id);
     if (!s) return false;
-    if (s.status === 'completed') return true;
+    if (s.status === 'completed' || s.status === 'reviewing') return true;
     if (s.status === 'watching' && pick.watch_order != null) return pick.watch_order < s.current_movie_index;
     return false;
   };
