@@ -131,3 +131,17 @@ export function safeFilename(userId: string, extension = 'jpg'): string {
   const sanitizedId = userId.replace(/[^a-zA-Z0-9-]/g, '');
   return `${sanitizedId}/avatar.${extension}`;
 }
+
+/**
+ * Extract a storage path from an avatar URL or return the path if already stored as one.
+ */
+export function extractAvatarPath(avatarUrl: string | null): string | null {
+  if (!avatarUrl) return null;
+  const withoutQuery = avatarUrl.split('?')[0];
+  if (!withoutQuery) return null;
+  if (!withoutQuery.startsWith('http')) return withoutQuery;
+  const marker = '/avatars/';
+  const idx = withoutQuery.indexOf(marker);
+  if (idx === -1) return null;
+  return withoutQuery.slice(idx + marker.length);
+}

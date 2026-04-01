@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { extractAvatarPath } from '@/lib/security';
 
 export interface Group {
   id: string;
@@ -91,7 +92,21 @@ export function useGroup(groupId?: string) {
         setIsAdmin(groupRes.data.admin_user_id === user.id);
       }
       if (membersRes.data) setMembers(membersRes.data);
-      if (profilesRes.data) setProfiles(profilesRes.data as Profile[]);
+      if (profilesRes.data) {
+        const rawProfiles = profilesRes.data as Profile[];
+        const signedProfiles = await Promise.all(
+          rawProfiles.map(async (profile) => {
+            const path = extractAvatarPath(profile.avatar_url);
+            if (!path) return profile;
+            const { data, error } = await supabase.storage
+              .from('avatars')
+              .createSignedUrl(path, 60 * 60);
+            if (error || !data?.signedUrl) return { ...profile, avatar_url: null };
+            return { ...profile, avatar_url: data.signedUrl };
+          })
+        );
+        setProfiles(signedProfiles);
+      }
 
       // Get latest season
       const { data: seasonData } = await supabase

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import ReactCrop, { type Crop as CropType, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { validateImageFile, getSafeErrorMessage } from '@/lib/security';
+import { validateImageFile, getSafeErrorMessage, safeFilename } from '@/lib/security';
 
 interface Props {
   currentAvatarUrl: string | null;
@@ -56,9 +56,7 @@ const AvatarUpload = ({ currentAvatarUrl, displayName, onUploaded }: Props) => {
 
   const handleCropCurrentPhoto = () => {
     if (!currentAvatarUrl) return;
-    // Strip cache-busting param for fetch
-    const url = currentAvatarUrl.split('?')[0];
-    setImageSrc(url + '?t=' + Date.now());
+    setImageSrc(currentAvatarUrl);
     setCropDialogOpen(true);
   };
 
@@ -102,20 +100,15 @@ const AvatarUpload = ({ currentAvatarUrl, displayName, onUploaded }: Props) => {
       const blob = await getCroppedBlob();
       if (!blob) throw new Error('Failed to crop image');
 
-      const filePath = `${user.id}/avatar.jpg`;
+      const filePath = safeFilename(user.id, 'jpg');
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, blob, { upsert: true, contentType: 'image/jpeg' });
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: avatarUrl })
+        .update({ avatar_url: filePath })
         .eq('user_id', user.id);
       if (updateError) throw updateError;
 
