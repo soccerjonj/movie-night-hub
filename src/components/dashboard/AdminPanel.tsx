@@ -14,6 +14,7 @@ import ImportGuessesDialog from './ImportGuessesDialog';
 import EditGuessesDialog from './EditGuessesDialog';
 import EditPicksDialog from './EditPicksDialog';
 import AddPlaceholderDialog from './AddPlaceholderDialog';
+import EditMovieInfoDialog from './EditMovieInfoDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPreview from './MapPreview';
@@ -834,11 +835,12 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             </DropdownPanel>
 
             {/* Edit Current Season */}
-            {season && !isBookClub && (
+            {season && (
               <DropdownPanel label={`Edit Current ${labels.seasonNoun}`} icon={<PencilLine className="w-4 h-4 mr-1" />}>
                 <div className="flex flex-wrap gap-2">
-                  <EditGuessesDialog group={group} profiles={profiles} onUpdated={onUpdate} />
-                  <EditPicksDialog group={group} profiles={profiles} onUpdated={onUpdate} />
+                  {!isBookClub && <EditGuessesDialog group={group} profiles={profiles} onUpdated={onUpdate} />}
+                  {!isBookClub && <EditPicksDialog group={group} profiles={profiles} onUpdated={onUpdate} />}
+                  <EditMovieInfoDialog moviePicks={moviePicks} onUpdated={onUpdate} clubType={labels.type} />
                 </div>
               </DropdownPanel>
             )}
