@@ -337,8 +337,14 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
 
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{score.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Avg rank: {score.avg.toFixed(1)}
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Avg rank: {score.avg.toFixed(1)} · Picked by {
+                      moviePicks
+                        .filter(p => p.id === score.id || (movie && p.watch_order === movie.watch_order))
+                        .filter((p, i, arr) => arr.findIndex(x => x.user_id === p.user_id) === i)
+                        .map(p => getProfile(p.user_id)?.display_name || '?')
+                        .join(' & ')
+                    }
                   </p>
                 </div>
 
