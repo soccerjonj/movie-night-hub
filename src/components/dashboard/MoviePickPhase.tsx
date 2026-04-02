@@ -358,7 +358,6 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   <h3 className="font-display text-lg font-bold">{userPick.title}</h3>
                   {userPick.year && <p className="text-xs text-muted-foreground mt-0.5">{userPick.year}</p>}
                   {pickedDirector && <p className="text-xs text-muted-foreground mt-0.5">Directed by {pickedDirector}</p>}
-                  <p className="text-xs text-muted-foreground mt-2">Secret until revealed</p>
                 </div>
               </div>
               <div className="sm:hidden text-xs text-muted-foreground">
@@ -369,7 +368,6 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                 <h3 className="font-display text-2xl font-bold">{userPick.title}</h3>
                 {userPick.year && <p className="text-sm text-muted-foreground mt-0.5">{userPick.year}</p>}
                 {pickedDirector && <p className="text-sm text-muted-foreground mt-0.5">Directed by {pickedDirector}</p>}
-                <p className="text-sm text-muted-foreground mt-2">Secret until revealed</p>
                 <p className="text-sm text-muted-foreground mt-2">{userPick.overview || "No description available."}</p>
               </div>
             </div>
