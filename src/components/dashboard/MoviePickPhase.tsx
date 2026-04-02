@@ -51,6 +51,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const [director, setDirector] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [directorsMap, setDirectorsMap] = useState<Record<number, string>>({});
+  const [pickedDirector, setPickedDirector] = useState<string | null>(null);
   const [constraints, setConstraints] = useState<Record<string, string>>({});
 
   const userPick = moviePicks.find(p => p.user_id === user?.id);
@@ -90,6 +91,25 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     };
     fetchDirector();
   }, [selected]);
+
+  // Fetch director for the user's picked movie
+  useEffect(() => {
+    if (!userPick?.tmdb_id) { setPickedDirector(null); return; }
+    const fetchPickedDirector = async () => {
+      try {
+        const res = await fetch(
+          `https://api.themoviedb.org/3/movie/${userPick.tmdb_id}/credits?language=en-US`,
+          { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
+        );
+        const data = await res.json();
+        const dir = data.crew?.find((c: { job: string; name: string }) => c.job === 'Director');
+        setPickedDirector(dir?.name || null);
+      } catch {
+        setPickedDirector(null);
+      }
+    };
+    fetchPickedDirector();
+  }, [userPick?.tmdb_id]);
 
   const fetchDirectorsForMovies = async (movies: TMDBMovie[]) => {
     const idsToFetch = movies.filter(m => !directorsMap[m.id]).map(m => m.id);
@@ -277,33 +297,55 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       </div>
 
       {userPick && !editing ? (
-        <div className="flex items-center gap-3 bg-primary/5 rounded-xl p-4">
-          <Check className="w-5 h-5 text-primary shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="font-medium">You picked: {userPick.title}</p>
-            <p className="text-xs text-muted-foreground">Your pick is secret until revealed!</p>
-          </div>
-          <div className="flex gap-1.5 shrink-0">
-            <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-              Change
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={submitting}>
-                  Remove
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="flex flex-col sm:flex-row">
+            {userPick.poster_url ? (
+              <img
+                src={userPick.poster_url}
+                alt={userPick.title}
+                className="w-full sm:w-48 aspect-[2/3] object-cover"
+              />
+            ) : (
+              <div className="w-full sm:w-48 aspect-[2/3] bg-muted flex items-center justify-center">
+                <Film className="w-6 h-6 text-muted-foreground" />
+              </div>
+            )}
+            <div className="p-4 flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <Check className="w-4 h-4 text-primary" />
+                <p className="text-xs text-primary font-medium">Your pick (secret until revealed)</p>
+              </div>
+              <h3 className="font-display text-lg font-bold mb-1">{userPick.title}</h3>
+              <p className="text-xs text-muted-foreground mb-2">
+                {userPick.year || '—'}
+                {pickedDirector ? ` • ${pickedDirector}` : ''}
+              </p>
+              <p className="text-sm text-muted-foreground line-clamp-4">
+                {userPick.overview || 'No description available.'}
+              </p>
+              <div className="flex gap-2 mt-3">
+                <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                  Change
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Remove your pick?</AlertDialogTitle>
-                  <AlertDialogDescription>This will remove "{userPick.title}" as your pick. You can search and pick a new movie after.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={removePick} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Remove</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={submitting}>
+                      Remove
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remove your pick?</AlertDialogTitle>
+                      <AlertDialogDescription>This will remove "{userPick.title}" as your pick. You can search and pick a new movie after.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={removePick} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Remove</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
           </div>
         </div>
       ) : (
