@@ -333,66 +333,35 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       </div>
 
       {userPick && !editing ? (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="flex flex-row items-center sm:items-start gap-3 sm:gap-4 p-3 sm:p-4">
-            {userPick.poster_url ? (
-              <img
-                src={userPick.poster_url}
-                alt={userPick.title}
-                className="w-24 h-32 sm:w-48 sm:h-auto aspect-[2/3] object-cover rounded-lg shrink-0"
-              />
-            ) : (
-              <div className="w-24 h-32 sm:w-48 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center shrink-0">
-                <Film className="w-6 h-6 text-muted-foreground" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <Check className="w-4 h-4 text-primary" />
-                <p className="text-xs text-primary font-medium">Your pick (secret until revealed)</p>
-              </div>
-              <h3 className="font-display text-base sm:text-lg font-bold mb-1">{userPick.title}</h3>
-              <p className="text-xs text-muted-foreground mb-2">
-                {userPick.year || "—"}
-                {pickedDirector ? ` • ${pickedDirector}` : ""}
-              </p>
-              <p className="text-xs sm:text-sm text-muted-foreground line-clamp-5 sm:line-clamp-6">
-                {userPick.overview || "No description available."}
-              </p>
-              <div className="flex gap-2 mt-3 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                  Change
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      disabled={submitting}
-                    >
-                      Remove
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Remove your pick?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will remove "{userPick.title}" as your pick. You can search and pick a new movie after.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={removePick}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Remove
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+        <div className="flex items-start gap-3 sm:gap-4">
+          {userPick.poster_url ? (
+            <img
+              src={userPick.poster_url}
+              alt={userPick.title}
+              className="w-24 h-32 sm:w-48 sm:h-auto aspect-[2/3] object-cover rounded-lg shrink-0"
+            />
+          ) : (
+            <div className="w-24 h-32 sm:w-48 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center shrink-0">
+              <Film className="w-6 h-6 text-muted-foreground" />
+            </div>
+          )}
+          <div className="bg-card border border-border rounded-xl p-3 sm:p-4 flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <Check className="w-4 h-4 text-primary" />
+              <p className="text-xs text-primary font-medium">Your pick (secret until revealed)</p>
+            </div>
+            <h3 className="font-display text-base sm:text-lg font-bold mb-1">{userPick.title}</h3>
+            <p className="text-xs text-muted-foreground mb-1.5">
+              {userPick.year || "—"}
+              {pickedDirector ? ` • ${pickedDirector}` : ""}
+            </p>
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-3 sm:line-clamp-6">
+              {userPick.overview || "No description available."}
+            </p>
+            <div className="flex gap-2 mt-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                Change Pick
+              </Button>
             </div>
           </div>
         </div>
