@@ -557,7 +557,62 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'picking' && (
               <>
-                {!isBookClub && (season as any).guessing_enabled !== false ? (
+                {/* Toggle guessing on/off during picking */}
+                {!isBookClub && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const { error } = await supabase.from('seasons').update({ guessing_enabled: !season.guessing_enabled }).eq('id', season.id);
+                        if (error) throw error;
+                        toast.success(season.guessing_enabled ? 'Guessing round disabled' : 'Guessing round enabled');
+                        onUpdate();
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to update');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    {season.guessing_enabled ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+                    {season.guessing_enabled ? 'Disable Guessing' : 'Enable Guessing'}
+                  </Button>
+                )}
+
+                {/* Toggle constraint visibility */}
+                {(() => {
+                  // Check if season has any constraints
+                  const hasConstraints = moviePicks.length > 0 || true; // always show if season exists
+                  return hasConstraints ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        setLoading(true);
+                        try {
+                          const newVal = !(season as any).constraints_visible;
+                          const { error } = await supabase.from('seasons').update({ constraints_visible: newVal } as any).eq('id', season.id);
+                          if (error) throw error;
+                          toast.success(newVal ? 'Constraints now visible to all' : 'Constraints hidden from others');
+                          onUpdate();
+                        } catch (err: unknown) {
+                          toast.error(err instanceof Error ? err.message : 'Failed to update');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                    >
+                      <Tag className="w-4 h-4 mr-1" />
+                      {(season as any).constraints_visible !== false ? 'Hide Constraints' : 'Show Constraints'}
+                    </Button>
+                  ) : null;
+                })()}
+
+                {!isBookClub && season.guessing_enabled ? (
                   <Button variant="gold" size="sm" onClick={startGuessingRound} disabled={loading || moviePicks.length < members.length}>
                     <Shuffle className="w-4 h-4 mr-1" /> Start Guessing Round
                     {moviePicks.length < members.length && (
