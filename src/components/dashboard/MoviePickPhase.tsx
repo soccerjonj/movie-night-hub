@@ -340,27 +340,37 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
             <span className="text-muted-foreground">• secret until revealed</span>
           </div>
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="flex flex-row items-end gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5">
-              {userPick.poster_url ? (
-                <img
-                  src={userPick.poster_url}
-                  alt={userPick.title}
-                  className="w-24 h-32 sm:w-56 sm:h-auto aspect-[2/3] object-cover rounded-lg shrink-0"
-                />
-              ) : (
-                <div className="w-24 h-32 sm:w-56 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center shrink-0">
-                  <Film className="w-6 h-6 text-muted-foreground" />
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 px-4 sm:px-5 py-4 sm:py-5">
+              <div className="flex flex-row sm:flex-col items-start gap-3 sm:gap-0 w-full sm:w-auto">
+                {userPick.poster_url ? (
+                  <img
+                    src={userPick.poster_url}
+                    alt={userPick.title}
+                    className="w-28 sm:w-44 rounded-xl shadow-xl ring-1 ring-border/20 shrink-0"
+                  />
+                ) : (
+                  <div className="w-28 sm:w-44 aspect-[2/3] rounded-xl bg-muted/30 flex items-center justify-center shrink-0">
+                    <Film className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/30" />
+                  </div>
+                )}
+                <div className="sm:hidden flex-1 min-w-0">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Your pick</p>
+                  <h3 className="font-display text-lg font-bold">{userPick.title}</h3>
+                  {userPick.year && <p className="text-xs text-muted-foreground mt-0.5">{userPick.year}</p>}
+                  {pickedDirector && <p className="text-xs text-muted-foreground mt-0.5">Directed by {pickedDirector}</p>}
+                  <p className="text-xs text-muted-foreground mt-2">Secret until revealed</p>
                 </div>
-              )}
-              <div className="flex-1 min-w-0 self-start pt-0.5">
-                <h3 className="font-display text-base sm:text-lg font-bold mb-1">{userPick.title}</h3>
-                <p className="text-xs text-muted-foreground mb-1.5">
-                  {userPick.year || "—"}
-                  {pickedDirector ? ` • ${pickedDirector}` : ""}
-                </p>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  {userPick.overview || "No description available."}
-                </p>
+              </div>
+              <div className="sm:hidden text-xs text-muted-foreground">
+                {userPick.overview || "No description available."}
+              </div>
+              <div className="flex-1 hidden sm:block text-left">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Your pick</p>
+                <h3 className="font-display text-2xl font-bold">{userPick.title}</h3>
+                {userPick.year && <p className="text-sm text-muted-foreground mt-0.5">{userPick.year}</p>}
+                {pickedDirector && <p className="text-sm text-muted-foreground mt-0.5">Directed by {pickedDirector}</p>}
+                <p className="text-sm text-muted-foreground mt-2">Secret until revealed</p>
+                <p className="text-sm text-muted-foreground mt-2">{userPick.overview || "No description available."}</p>
               </div>
             </div>
           </div>
