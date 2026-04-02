@@ -77,6 +77,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const [seasons, setSeasons] = useState<SeasonInfo[]>([]);
   const [picks, setPicks] = useState<PickRow[]>([]);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
+  const [rankings, setRankings] = useState<{ user_id: string; movie_pick_id: string; rank: number; season_id: string }[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Crop state
