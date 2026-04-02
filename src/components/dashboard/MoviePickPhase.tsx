@@ -51,10 +51,28 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const [director, setDirector] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [directorsMap, setDirectorsMap] = useState<Record<number, string>>({});
+  const [constraints, setConstraints] = useState<Record<string, string>>({});
 
   const userPick = moviePicks.find(p => p.user_id === user?.id);
   const pickedCount = moviePicks.length;
   const totalMembers = members.length;
+  const userConstraint = user ? constraints[user.id] : null;
+
+  // Fetch participant constraints
+  useEffect(() => {
+    const fetchConstraints = async () => {
+      const { data } = await supabase
+        .from('season_participants')
+        .select('user_id, pick_constraint')
+        .eq('season_id', season.id);
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach(r => { if (r.pick_constraint) map[r.user_id] = r.pick_constraint; });
+        setConstraints(map);
+      }
+    };
+    fetchConstraints();
+  }, [season.id]);
 
   // Fetch director when a movie is selected
   useEffect(() => {
