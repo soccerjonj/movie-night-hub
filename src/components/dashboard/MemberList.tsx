@@ -367,19 +367,26 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         {/* Average Pick Score */}
         {(() => {
           // Compute avg rank for all picks this member made
-          const memberPickIds = picks.filter(p => p.user_id === selectedUserId).map(p => p.id);
-          const relevantRankings = rankings.filter(r => memberPickIds.includes(r.movie_pick_id));
-          if (relevantRankings.length === 0) return null;
-          
-          // Group by pick, compute per-pick avg, then overall avg
-          const pickAvgs = new Map<string, { total: number; count: number }>();
-          relevantRankings.forEach(r => {
-            if (!pickAvgs.has(r.movie_pick_id)) pickAvgs.set(r.movie_pick_id, { total: 0, count: 0 });
-            const e = pickAvgs.get(r.movie_pick_id)!;
-            e.total += r.rank;
-            e.count += 1;
+          const memberPicks = picks.filter(p => p.user_id === selectedUserId);
+          const pickById = new Map(picks.map(p => [p.id, p]));
+          const getSlotKey = (pick: PickRow) => `${pick.season_id}:${pick.watch_order ?? pick.id}`;
+          const memberSlotKeys = new Set(memberPicks.map(p => getSlotKey(p)));
+          const slotRankings = new Map<string, { total: number; count: number }>();
+
+          rankings.forEach(r => {
+            const pick = pickById.get(r.movie_pick_id);
+            if (!pick) return;
+            const slotKey = getSlotKey(pick);
+            if (!memberSlotKeys.has(slotKey)) return;
+            if (!slotRankings.has(slotKey)) slotRankings.set(slotKey, { total: 0, count: 0 });
+            const entry = slotRankings.get(slotKey)!;
+            entry.total += r.rank;
+            entry.count += 1;
           });
-          const perPickAvgs = Array.from(pickAvgs.values()).map(v => v.total / v.count);
+
+          const perPickAvgs = Array.from(slotRankings.values()).map(v => v.total / v.count);
+          if (perPickAvgs.length === 0) return null;
+          
           const overallAvg = perPickAvgs.reduce((s, v) => s + v, 0) / perPickAvgs.length;
           
           return (
