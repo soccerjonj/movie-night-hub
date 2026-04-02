@@ -354,41 +354,44 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
           const isExpanded = autoExpandSinglePick || expandedRankingPick === detailKey;
           const detail = rankingDetails[pick.slotKey];
           const rankingsByUser = new Map(detail?.rankings.map(r => [r.user_id, r.rank]));
+          const hidePickRow = autoExpandSinglePick;
           return (
             <div key={i}>
-              <button
-                onClick={() => {
-                  if (autoExpandSinglePick) return;
-                  if (pick.revealed) setExpandedRankingPick(isExpanded ? null : detailKey);
-                }}
-                className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-left ${
-                  pick.revealed ? (autoExpandSinglePick ? 'bg-muted/20' : 'bg-muted/20 hover:bg-muted/30') : 'bg-muted/10 cursor-default'
-                }`}
-              >
-                {pick.revealed ? (
-                  <>
-                    {pick.poster_url ? (
-                      <img src={pick.poster_url} alt={pick.title} className="w-5 h-7 rounded object-cover shrink-0" />
-                    ) : (
-                      <div className="w-5 h-7 rounded bg-muted flex items-center justify-center shrink-0">
-                        <Film className="w-2.5 h-2.5 text-muted-foreground" />
+              {!hidePickRow && (
+                <button
+                  onClick={() => {
+                    if (autoExpandSinglePick) return;
+                    if (pick.revealed) setExpandedRankingPick(isExpanded ? null : detailKey);
+                  }}
+                  className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-left ${
+                    pick.revealed ? (autoExpandSinglePick ? 'bg-muted/20' : 'bg-muted/20 hover:bg-muted/30') : 'bg-muted/10 cursor-default'
+                  }`}
+                >
+                  {pick.revealed ? (
+                    <>
+                      {pick.poster_url ? (
+                        <img src={pick.poster_url} alt={pick.title} className="w-5 h-7 rounded object-cover shrink-0" />
+                      ) : (
+                        <div className="w-5 h-7 rounded bg-muted flex items-center justify-center shrink-0">
+                          <Film className="w-2.5 h-2.5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <span className="font-medium truncate flex-1">{pick.title}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Star className="w-2.5 h-2.5 text-primary fill-primary" />
+                        <span className="font-semibold text-primary">{pick.avgRank.toFixed(1)}</span>
                       </div>
-                    )}
-                    <span className="font-medium truncate flex-1">{pick.title}</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Star className="w-2.5 h-2.5 text-primary fill-primary" />
-                      <span className="font-semibold text-primary">{pick.avgRank.toFixed(1)}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-5 h-7 rounded bg-muted/60 flex items-center justify-center shrink-0">
-                      <span className="text-[9px] text-muted-foreground font-bold">?</span>
-                    </div>
-                    <span className="text-muted-foreground italic truncate flex-1">Not yet revealed</span>
-                  </>
-                )}
-              </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-5 h-7 rounded bg-muted/60 flex items-center justify-center shrink-0">
+                        <span className="text-[9px] text-muted-foreground font-bold">?</span>
+                      </div>
+                      <span className="text-muted-foreground italic truncate flex-1">Not yet revealed</span>
+                    </>
+                  )}
+                </button>
+              )}
 
               <AnimatePresence>
                 {pick.revealed && isExpanded && detail && (
