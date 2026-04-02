@@ -154,8 +154,8 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       setHasMoreResults(page < (data.total_pages || 1));
       // Fetch directors in background
       fetchDirectorsForMovies(newResults);
-    } catch {
-      toast.error('Failed to search movies');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to search movies');
     } finally {
       setSearching(false);
     }
