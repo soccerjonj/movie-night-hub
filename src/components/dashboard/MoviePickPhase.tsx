@@ -298,15 +298,15 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
 
       {userPick && !editing ? (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 sm:p-4">
+          <div className="flex flex-row gap-3 sm:gap-4 p-3 sm:p-4">
             {userPick.poster_url ? (
               <img
                 src={userPick.poster_url}
                 alt={userPick.title}
-                className="w-full sm:w-48 aspect-[2/3] object-cover rounded-lg"
+                className="w-20 h-28 sm:w-48 sm:h-auto aspect-[2/3] object-cover rounded-lg shrink-0"
               />
             ) : (
-              <div className="w-full sm:w-48 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center">
+              <div className="w-20 h-28 sm:w-48 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center shrink-0">
                 <Film className="w-6 h-6 text-muted-foreground" />
               </div>
             )}
