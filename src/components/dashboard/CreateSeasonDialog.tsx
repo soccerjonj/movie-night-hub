@@ -191,6 +191,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
         season_id: seasonData.id,
         user_id: p.userId,
         pick_group: p.pickGroup,
+        pick_constraint: constraintsEnabled && p.constraint ? p.constraint : null,
       }));
 
       const { error: partError } = await supabase
