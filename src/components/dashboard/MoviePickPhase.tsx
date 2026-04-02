@@ -99,6 +99,10 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const searchMovies = async (q?: string, page = 1) => {
     const term = q ?? query;
     if (!term.trim()) { setResults([]); setHasMoreResults(false); return; }
+    if (!TMDB_API_TOKEN) {
+      toast.error('TMDB API token is missing. Set VITE_TMDB_API_TOKEN and try again.');
+      return;
+    }
     setSearching(true);
     setSelected(null);
     try {
@@ -111,6 +115,10 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
           },
         }
       );
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`TMDB search failed (${res.status}). ${errText.slice(0, 200)}`);
+      }
       const data = await res.json();
       const newResults = ((data.results || []) as TMDBMovie[]).sort((a, b) => {
         // Weight by vote_count (well-known films) and popularity
