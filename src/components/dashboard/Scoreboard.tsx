@@ -149,33 +149,41 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
           
           const rankings = rankingsData || [];
           
-          // Group picks by picker user_id, compute avg rank for each pick
-          // A pick's avg rank = average of all members' rank for that pick
-          const pickAvgRanks = new Map<string, { total: number; count: number }>();
+          const pickById = new Map(fetchedPicks.map(p => [p.id, p]));
+          const getSlotKey = (pick: typeof fetchedPicks[0]) =>
+            `${pick.season_id}:${pick.watch_order ?? pick.id}`;
+
+          // Group rankings by slot (co-picks share the same watch_order)
+          const slotAvgRanks = new Map<string, { total: number; count: number }>();
           rankings.forEach(r => {
-            if (!pickAvgRanks.has(r.movie_pick_id)) pickAvgRanks.set(r.movie_pick_id, { total: 0, count: 0 });
-            const entry = pickAvgRanks.get(r.movie_pick_id)!;
+            const pick = pickById.get(r.movie_pick_id);
+            if (!pick) return;
+            const key = getSlotKey(pick);
+            if (!slotAvgRanks.has(key)) slotAvgRanks.set(key, { total: 0, count: 0 });
+            const entry = slotAvgRanks.get(key)!;
             entry.total += r.rank;
             entry.count += 1;
           });
 
           // Group by picker
           const pickerMap = new Map<string, RankingEntry>();
+          const pickerSlotSeen = new Map<string, Set<string>>();
           members.forEach(m => {
             pickerMap.set(m.user_id, { user_id: m.user_id, avgRank: 0, totalPicks: 0, picks: [] });
+            pickerSlotSeen.set(m.user_id, new Set());
           });
 
           fetchedPicks.forEach(pick => {
             if (!rankableSeasonIds.includes(pick.season_id)) return;
-            const avgData = pickAvgRanks.get(pick.id);
+            const slotKey = getSlotKey(pick);
+            const avgData = slotAvgRanks.get(slotKey);
             if (!avgData || avgData.count === 0) return;
             
             const pickerEntry = pickerMap.get(pick.user_id);
             if (!pickerEntry) return;
-            
-            // Avoid duplicating co-picks
-            const existing = pickerEntry.picks.find(p => p.title === pick.title);
-            if (existing) return;
+            const seenSlots = pickerSlotSeen.get(pick.user_id);
+            if (seenSlots?.has(slotKey)) return;
+            seenSlots?.add(slotKey);
             
             const avg = avgData.total / avgData.count;
             pickerEntry.picks.push({
