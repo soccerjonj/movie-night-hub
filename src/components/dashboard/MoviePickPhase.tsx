@@ -357,14 +357,14 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   {userPick.year || "—"}
                   {pickedDirector ? ` • ${pickedDirector}` : ""}
                 </p>
-                <p className="text-xs sm:text-sm text-muted-foreground line-clamp-3 sm:line-clamp-6">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   {userPick.overview || "No description available."}
                 </p>
               </div>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="xs" onClick={() => setEditing(true)}>
+            <Button variant="outline" size="xs" className="text-[11px]" onClick={() => setEditing(true)}>
               Change Pick
             </Button>
           </div>
