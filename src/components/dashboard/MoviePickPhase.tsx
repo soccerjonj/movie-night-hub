@@ -303,10 +303,10 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
               <img
                 src={userPick.poster_url}
                 alt={userPick.title}
-                className="w-20 h-28 sm:w-48 sm:h-auto aspect-[2/3] object-cover rounded-lg shrink-0 self-start mt-1.5 sm:mt-0"
+                className="w-20 h-28 sm:w-48 sm:h-auto aspect-[2/3] object-cover rounded-lg shrink-0 self-start translate-y-2 sm:translate-y-0"
               />
             ) : (
-              <div className="w-20 h-28 sm:w-48 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center shrink-0 self-start mt-1.5 sm:mt-0">
+              <div className="w-20 h-28 sm:w-48 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center shrink-0 self-start translate-y-2 sm:translate-y-0">
                 <Film className="w-6 h-6 text-muted-foreground" />
               </div>
             )}
