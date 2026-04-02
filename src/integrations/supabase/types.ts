@@ -429,6 +429,7 @@ export type Database = {
       seasons: {
         Row: {
           call_link: string | null
+          constraints_visible: boolean
           created_at: string
           current_movie_index: number
           group_id: string
@@ -445,6 +446,7 @@ export type Database = {
         }
         Insert: {
           call_link?: string | null
+          constraints_visible?: boolean
           created_at?: string
           current_movie_index?: number
           group_id: string
@@ -461,6 +463,7 @@ export type Database = {
         }
         Update: {
           call_link?: string | null
+          constraints_visible?: boolean
           created_at?: string
           current_movie_index?: number
           group_id?: string
