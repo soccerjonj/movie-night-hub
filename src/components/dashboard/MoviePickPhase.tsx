@@ -340,7 +340,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
             <span className="text-muted-foreground">• secret until revealed</span>
           </div>
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="flex flex-row items-end gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5">
+            <div className="flex flex-row items-start gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5">
               {userPick.poster_url ? (
                 <img
                   src={userPick.poster_url}
@@ -352,7 +352,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   <Film className="w-6 h-6 text-muted-foreground" />
                 </div>
               )}
-              <div className="flex-1 min-w-0 pt-0.5">
+              <div className="flex-1 min-w-0 self-start pt-0.5">
                 <h3 className="font-display text-base sm:text-lg font-bold mb-1">{userPick.title}</h3>
                 <p className="text-xs text-muted-foreground mb-1.5">
                   {userPick.year || "—"}
