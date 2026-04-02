@@ -73,7 +73,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
 
   const toggleMember = (userId: string) => {
     setParticipants(prev => prev.map(p =>
-      p.userId === userId ? { ...p, selected: !p.selected, pickGroup: !p.selected ? p.pickGroup : null } : p
+      p.userId === userId ? { ...p, selected: !p.selected, pickGroup: !p.selected ? p.pickGroup : null, constraint: !p.selected ? p.constraint : '' } : p
     ));
   };
 
