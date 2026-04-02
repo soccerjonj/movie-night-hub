@@ -345,19 +345,24 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
   const renderUserPickRankings = (entry: RankingEntry) => {
     if (entry.picks.length === 0) return <p className="text-xs text-muted-foreground italic py-2">No ranked picks yet</p>;
 
+    const autoExpandSinglePick = view === 'season' && entry.picks.length <= 1;
+
     return (
       <div className="space-y-1 py-2">
         {entry.picks.map((pick, i) => {
           const detailKey = `${entry.user_id}:${pick.slotKey}`;
-          const isExpanded = expandedRankingPick === detailKey;
+          const isExpanded = autoExpandSinglePick || expandedRankingPick === detailKey;
           const detail = rankingDetails[pick.slotKey];
           const rankingsByUser = new Map(detail?.rankings.map(r => [r.user_id, r.rank]));
           return (
             <div key={i}>
               <button
-                onClick={() => pick.revealed && setExpandedRankingPick(isExpanded ? null : detailKey)}
+                onClick={() => {
+                  if (autoExpandSinglePick) return;
+                  if (pick.revealed) setExpandedRankingPick(isExpanded ? null : detailKey);
+                }}
                 className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-left ${
-                  pick.revealed ? 'bg-muted/20 hover:bg-muted/30' : 'bg-muted/10 cursor-default'
+                  pick.revealed ? (autoExpandSinglePick ? 'bg-muted/20' : 'bg-muted/20 hover:bg-muted/30') : 'bg-muted/10 cursor-default'
                 }`}
               >
                 {pick.revealed ? (
