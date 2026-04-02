@@ -182,7 +182,8 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
           movies_per_member: moviesPerMember,
           watch_interval_days: watchIntervalDays,
           guessing_enabled: guessingEnabled,
-        })
+          constraints_visible: constraintsVisible,
+        } as any)
         .select('id')
         .single();
 
