@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered } from 'lucide-react';
+import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -77,6 +77,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const [seasons, setSeasons] = useState<SeasonInfo[]>([]);
   const [picks, setPicks] = useState<PickRow[]>([]);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
+  const [rankings, setRankings] = useState<{ user_id: string; movie_pick_id: string; rank: number; season_id: string }[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Crop state
@@ -213,12 +214,14 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         return;
       }
 
-      const [picksRes, guessesRes] = await Promise.all([
+      const [picksRes, guessesRes, rankingsRes] = await Promise.all([
         supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed').in('season_id', seasonIds),
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
+        supabase.from('movie_rankings').select('user_id, movie_pick_id, rank, season_id').in('season_id', seasonIds),
       ]);
       setPicks((picksRes.data || []) as PickRow[]);
       setGuesses((guessesRes.data || []) as GuessRow[]);
+      setRankings(rankingsRes.data || []);
       setLoading(false);
     };
     fetchData();
@@ -360,6 +363,36 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             <p className="text-xs text-muted-foreground">Accuracy</p>
           </div>
         </div>
+
+        {/* Average Pick Score */}
+        {(() => {
+          // Compute avg rank for all picks this member made
+          const memberPickIds = picks.filter(p => p.user_id === selectedUserId).map(p => p.id);
+          const relevantRankings = rankings.filter(r => memberPickIds.includes(r.movie_pick_id));
+          if (relevantRankings.length === 0) return null;
+          
+          // Group by pick, compute per-pick avg, then overall avg
+          const pickAvgs = new Map<string, { total: number; count: number }>();
+          relevantRankings.forEach(r => {
+            if (!pickAvgs.has(r.movie_pick_id)) pickAvgs.set(r.movie_pick_id, { total: 0, count: 0 });
+            const e = pickAvgs.get(r.movie_pick_id)!;
+            e.total += r.rank;
+            e.count += 1;
+          });
+          const perPickAvgs = Array.from(pickAvgs.values()).map(v => v.total / v.count);
+          const overallAvg = perPickAvgs.reduce((s, v) => s + v, 0) / perPickAvgs.length;
+          
+          return (
+            <div className="bg-primary/5 rounded-xl p-3 flex items-center gap-3">
+              <Star className="w-5 h-5 text-primary fill-primary shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold">Avg Pick Ranking</p>
+                <p className="text-xs text-muted-foreground">{perPickAvgs.length} pick{perPickAvgs.length !== 1 ? 's' : ''} ranked by the group</p>
+              </div>
+              <p className="font-display text-2xl font-bold text-primary">{overallAvg.toFixed(1)}</p>
+            </div>
+          );
+        })()}
 
         {/* Add Past Rankings button - own profile only, if there are unranked seasons */}
         {isOwnProfile && hasUnrankedSeasons && (

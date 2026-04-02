@@ -4,7 +4,7 @@ import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup
 import { getClubLabels } from '@/lib/clubTypes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown, ListOrdered, MapPin } from 'lucide-react';
+import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown, ListOrdered, MapPin, Tag } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
@@ -557,7 +557,62 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'picking' && (
               <>
-                {!isBookClub && (season as any).guessing_enabled !== false ? (
+                {/* Toggle guessing on/off during picking */}
+                {!isBookClub && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const { error } = await supabase.from('seasons').update({ guessing_enabled: !season.guessing_enabled }).eq('id', season.id);
+                        if (error) throw error;
+                        toast.success(season.guessing_enabled ? 'Guessing round disabled' : 'Guessing round enabled');
+                        onUpdate();
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to update');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    {season.guessing_enabled ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+                    {season.guessing_enabled ? 'Disable Guessing' : 'Enable Guessing'}
+                  </Button>
+                )}
+
+                {/* Toggle constraint visibility */}
+                {(() => {
+                  // Check if season has any constraints
+                  const hasConstraints = moviePicks.length > 0 || true; // always show if season exists
+                  return hasConstraints ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        setLoading(true);
+                        try {
+                          const newVal = !(season as any).constraints_visible;
+                          const { error } = await supabase.from('seasons').update({ constraints_visible: newVal } as any).eq('id', season.id);
+                          if (error) throw error;
+                          toast.success(newVal ? 'Constraints now visible to all' : 'Constraints hidden from others');
+                          onUpdate();
+                        } catch (err: unknown) {
+                          toast.error(err instanceof Error ? err.message : 'Failed to update');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                    >
+                      <Tag className="w-4 h-4 mr-1" />
+                      {(season as any).constraints_visible !== false ? 'Hide Constraints' : 'Show Constraints'}
+                    </Button>
+                  ) : null;
+                })()}
+
+                {!isBookClub && season.guessing_enabled ? (
                   <Button variant="gold" size="sm" onClick={startGuessingRound} disabled={loading || moviePicks.length < members.length}>
                     <Shuffle className="w-4 h-4 mr-1" /> Start Guessing Round
                     {moviePicks.length < members.length && (

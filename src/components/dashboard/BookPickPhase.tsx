@@ -197,6 +197,8 @@ const BookPickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
           const profile = profiles.find(p => p.user_id === member.user_id);
           const hasPicked = moviePicks.some(p => p.user_id === member.user_id);
           const memberConstraint = constraints[member.user_id];
+          const isOwnConstraint = user?.id === member.user_id;
+          const showConstraint = memberConstraint && (isOwnConstraint || (season as any).constraints_visible !== false);
           return (
             <div
               key={member.id}
@@ -207,7 +209,7 @@ const BookPickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
             >
               {hasPicked ? <Check className="w-3 h-3" /> : <span className="w-3 h-3 rounded-full border border-current opacity-40" />}
               {profile?.display_name || 'Unknown'}
-              {memberConstraint && <span className="text-[10px] opacity-70">({memberConstraint})</span>}
+              {showConstraint && <span className="text-[10px] opacity-70">({memberConstraint})</span>}
             </div>
           );
         })}

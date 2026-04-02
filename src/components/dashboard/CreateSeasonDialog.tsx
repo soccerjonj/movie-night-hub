@@ -44,6 +44,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
 
   // Constraints
   const [constraintsEnabled, setConstraintsEnabled] = useState(false);
+  const [constraintsVisible, setConstraintsVisible] = useState(true);
   const [constraintValues, setConstraintValues] = useState<string[]>(['']);
   const [newConstraint, setNewConstraint] = useState('');
 
@@ -58,6 +59,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
     setWatchDeadlineTime('19:30');
     setNextGroupId(1);
     setConstraintsEnabled(false);
+    setConstraintsVisible(true);
     setConstraintValues(['']);
     setNewConstraint('');
     // Initialize all members as selected, no groups
@@ -180,7 +182,8 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
           movies_per_member: moviesPerMember,
           watch_interval_days: watchIntervalDays,
           guessing_enabled: guessingEnabled,
-        })
+          constraints_visible: constraintsVisible,
+        } as any)
         .select('id')
         .single();
 
@@ -307,6 +310,13 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
                 <p className="text-xs text-muted-foreground">
                   Define constraints (e.g. decades, genres, directors) and assign one to each member.
                 </p>
+                <div className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium">Visible to all members</p>
+                    <p className="text-xs text-muted-foreground">Let everyone see each other's constraints</p>
+                  </div>
+                  <Switch checked={constraintsVisible} onCheckedChange={setConstraintsVisible} />
+                </div>
                 <div className="space-y-1.5">
                   {constraintValues.filter(v => v).map((val, i) => (
                     <div key={i} className="flex items-center gap-2 bg-background rounded-md px-2.5 py-1.5">
