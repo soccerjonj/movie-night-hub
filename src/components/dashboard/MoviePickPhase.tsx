@@ -1,13 +1,23 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Check, Film, Star, ExternalLink, X } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
-import { TMDB_API_TOKEN } from '@/lib/apiKeys';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { Season, MoviePick, GroupMember, Profile } from "@/hooks/useGroup";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, Check, Film, Star, ExternalLink, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { TMDB_API_TOKEN } from "@/lib/apiKeys";
 
 interface Props {
   season: Season;
@@ -29,8 +39,8 @@ interface TMDBMovie {
   popularity: number;
 }
 
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
-const TMDB_IMAGE_LG = 'https://image.tmdb.org/t/p/w500';
+const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w200";
+const TMDB_IMAGE_LG = "https://image.tmdb.org/t/p/w500";
 
 const getLetterboxdUrl = (title: string, year?: string) => {
   const q = encodeURIComponent(year ? `${title} ${year}` : title);
@@ -39,12 +49,12 @@ const getLetterboxdUrl = (title: string, year?: string) => {
 
 const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Props) => {
   const { user } = useAuth();
-  const [query, setQuery] = useState('');
-  const [yearFilter, setYearFilter] = useState('');
+  const [query, setQuery] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
   const [results, setResults] = useState<TMDBMovie[]>([]);
   const [searchPage, setSearchPage] = useState(1);
   const [hasMoreResults, setHasMoreResults] = useState(false);
-  const [lastSearchTerm, setLastSearchTerm] = useState('');
+  const [lastSearchTerm, setLastSearchTerm] = useState("");
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selected, setSelected] = useState<TMDBMovie | null>(null);
@@ -54,7 +64,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const [pickedDirector, setPickedDirector] = useState<string | null>(null);
   const [constraints, setConstraints] = useState<Record<string, string>>({});
 
-  const userPick = moviePicks.find(p => p.user_id === user?.id);
+  const userPick = moviePicks.find((p) => p.user_id === user?.id);
   const pickedCount = moviePicks.length;
   const totalMembers = members.length;
   const userConstraint = user ? constraints[user.id] : null;
@@ -63,12 +73,14 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   useEffect(() => {
     const fetchConstraints = async () => {
       const { data } = await supabase
-        .from('season_participants')
-        .select('user_id, pick_constraint')
-        .eq('season_id', season.id);
+        .from("season_participants")
+        .select("user_id, pick_constraint")
+        .eq("season_id", season.id);
       if (data) {
         const map: Record<string, string> = {};
-        data.forEach(r => { if (r.pick_constraint) map[r.user_id] = r.pick_constraint; });
+        data.forEach((r) => {
+          if (r.pick_constraint) map[r.user_id] = r.pick_constraint;
+        });
         setConstraints(map);
       }
     };
@@ -77,32 +89,38 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
 
   // Fetch director when a movie is selected
   useEffect(() => {
-    if (!selected) { setDirector(null); return; }
+    if (!selected) {
+      setDirector(null);
+      return;
+    }
     const fetchDirector = async () => {
       try {
-        const res = await fetch(
-          `https://api.themoviedb.org/3/movie/${selected.id}/credits?language=en-US`,
-          { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
-        );
+        const res = await fetch(`https://api.themoviedb.org/3/movie/${selected.id}/credits?language=en-US`, {
+          headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: "application/json" },
+        });
         const data = await res.json();
-        const dir = data.crew?.find((c: { job: string; name: string }) => c.job === 'Director');
+        const dir = data.crew?.find((c: { job: string; name: string }) => c.job === "Director");
         setDirector(dir?.name || null);
-      } catch { setDirector(null); }
+      } catch {
+        setDirector(null);
+      }
     };
     fetchDirector();
   }, [selected]);
 
   // Fetch director for the user's picked movie
   useEffect(() => {
-    if (!userPick?.tmdb_id) { setPickedDirector(null); return; }
+    if (!userPick?.tmdb_id) {
+      setPickedDirector(null);
+      return;
+    }
     const fetchPickedDirector = async () => {
       try {
-        const res = await fetch(
-          `https://api.themoviedb.org/3/movie/${userPick.tmdb_id}/credits?language=en-US`,
-          { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
-        );
+        const res = await fetch(`https://api.themoviedb.org/3/movie/${userPick.tmdb_id}/credits?language=en-US`, {
+          headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: "application/json" },
+        });
         const data = await res.json();
-        const dir = data.crew?.find((c: { job: string; name: string }) => c.job === 'Director');
+        const dir = data.crew?.find((c: { job: string; name: string }) => c.job === "Director");
         setPickedDirector(dir?.name || null);
       } catch {
         setPickedDirector(null);
@@ -112,46 +130,53 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   }, [userPick?.tmdb_id]);
 
   const fetchDirectorsForMovies = async (movies: TMDBMovie[]) => {
-    const idsToFetch = movies.filter(m => !directorsMap[m.id]).map(m => m.id);
+    const idsToFetch = movies.filter((m) => !directorsMap[m.id]).map((m) => m.id);
     if (idsToFetch.length === 0) return;
     const entries = await Promise.all(
       idsToFetch.map(async (id) => {
         try {
-          const res = await fetch(
-            `https://api.themoviedb.org/3/movie/${id}/credits?language=en-US`,
-            { headers: { 'Authorization': `Bearer ${TMDB_API_TOKEN}`, 'Accept': 'application/json' } }
-          );
+          const res = await fetch(`https://api.themoviedb.org/3/movie/${id}/credits?language=en-US`, {
+            headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: "application/json" },
+          });
           const data = await res.json();
-          const dir = data.crew?.find((c: { job: string; name: string }) => c.job === 'Director');
-          return [id, dir?.name || ''] as const;
-        } catch { return [id, ''] as const; }
-      })
+          const dir = data.crew?.find((c: { job: string; name: string }) => c.job === "Director");
+          return [id, dir?.name || ""] as const;
+        } catch {
+          return [id, ""] as const;
+        }
+      }),
     );
-    setDirectorsMap(prev => {
+    setDirectorsMap((prev) => {
       const updated = { ...prev };
-      entries.forEach(([id, name]) => { updated[id] = name; });
+      entries.forEach(([id, name]) => {
+        updated[id] = name;
+      });
       return updated;
     });
   };
 
   const searchMovies = async (q?: string, page = 1) => {
     const term = q ?? query;
-    if (!term.trim()) { setResults([]); setHasMoreResults(false); return; }
+    if (!term.trim()) {
+      setResults([]);
+      setHasMoreResults(false);
+      return;
+    }
     if (!TMDB_API_TOKEN) {
-      toast.error('TMDB API token is missing. Set VITE_TMDB_API_TOKEN and try again.');
+      toast.error("TMDB API token is missing. Set VITE_TMDB_API_TOKEN and try again.");
       return;
     }
     setSearching(true);
     setSelected(null);
     try {
       const res = await fetch(
-        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(term)}&include_adult=false&language=en-US&page=${page}${yearFilter ? `&year=${yearFilter}` : ''}`,
+        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(term)}&include_adult=false&language=en-US&page=${page}${yearFilter ? `&year=${yearFilter}` : ""}`,
         {
           headers: {
-            'Authorization': `Bearer ${TMDB_API_TOKEN}`,
-            'Accept': 'application/json',
+            Authorization: `Bearer ${TMDB_API_TOKEN}`,
+            Accept: "application/json",
           },
-        }
+        },
       );
       if (!res.ok) {
         const errText = await res.text();
@@ -167,7 +192,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       if (page === 1) {
         setResults(newResults);
       } else {
-        setResults(prev => [...prev, ...newResults]);
+        setResults((prev) => [...prev, ...newResults]);
       }
       setSearchPage(page);
       setLastSearchTerm(term);
@@ -175,7 +200,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       // Fetch directors in background
       fetchDirectorsForMovies(newResults);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to search movies');
+      toast.error(err instanceof Error ? err.message : "Failed to search movies");
     } finally {
       setSearching(false);
     }
@@ -189,7 +214,11 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
 
   // Auto-search as user types (debounced)
   useEffect(() => {
-    if (!query.trim()) { setResults([]); setHasMoreResults(false); return; }
+    if (!query.trim()) {
+      setResults([]);
+      setHasMoreResults(false);
+      return;
+    }
     const timer = setTimeout(() => searchMovies(query, 1), 350);
     return () => clearTimeout(timer);
   }, [query, yearFilter]);
@@ -200,35 +229,38 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     try {
       if (userPick) {
         // Update existing pick
-        const { error } = await supabase.from('movie_picks').update({
-          tmdb_id: movie.id,
-          title: movie.title,
-          poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
-          year: movie.release_date?.split('-')[0] || null,
-          overview: movie.overview || null,
-        }).eq('id', userPick.id);
+        const { error } = await supabase
+          .from("movie_picks")
+          .update({
+            tmdb_id: movie.id,
+            title: movie.title,
+            poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
+            year: movie.release_date?.split("-")[0] || null,
+            overview: movie.overview || null,
+          })
+          .eq("id", userPick.id);
         if (error) throw error;
         toast.success(`Pick changed to "${movie.title}"!`);
       } else {
-        const { error } = await supabase.from('movie_picks').insert({
+        const { error } = await supabase.from("movie_picks").insert({
           season_id: season.id,
           user_id: user.id,
           tmdb_id: movie.id,
           title: movie.title,
           poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
-          year: movie.release_date?.split('-')[0] || null,
+          year: movie.release_date?.split("-")[0] || null,
           overview: movie.overview || null,
         });
         if (error) throw error;
         toast.success(`"${movie.title}" picked!`);
       }
       setResults([]);
-      setQuery('');
+      setQuery("");
       setSelected(null);
       setEditing(false);
       onUpdate();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save movie pick');
+      toast.error(err instanceof Error ? err.message : "Failed to save movie pick");
     } finally {
       setSubmitting(false);
     }
@@ -238,13 +270,13 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     if (!userPick || !user) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('movie_picks').delete().eq('id', userPick.id);
+      const { error } = await supabase.from("movie_picks").delete().eq("id", userPick.id);
       if (error) throw error;
-      toast.success('Pick removed');
+      toast.success("Pick removed");
       setEditing(false);
       onUpdate();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to remove pick');
+      toast.error(err instanceof Error ? err.message : "Failed to remove pick");
     } finally {
       setSubmitting(false);
     }
@@ -275,8 +307,8 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       {/* Member pick status */}
       <div className="flex flex-wrap gap-1.5 mb-4">
         {members.map((member) => {
-          const profile = profiles.find(p => p.user_id === member.user_id);
-          const hasPicked = moviePicks.some(p => p.user_id === member.user_id);
+          const profile = profiles.find((p) => p.user_id === member.user_id);
+          const hasPicked = moviePicks.some((p) => p.user_id === member.user_id);
           const memberConstraint = constraints[member.user_id];
           const isOwnConstraint = user?.id === member.user_id;
           const showConstraint = memberConstraint && (isOwnConstraint || (season as any).constraints_visible !== false);
@@ -284,12 +316,16 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
             <div
               key={member.id}
               className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${
-                hasPicked ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground'
+                hasPicked ? "bg-primary/10 text-primary" : "bg-muted/20 text-muted-foreground"
               }`}
               title={memberConstraint ? `Constraint: ${memberConstraint}` : undefined}
             >
-              {hasPicked ? <Check className="w-3 h-3" /> : <span className="w-3 h-3 rounded-full border border-current opacity-40" />}
-              {profile?.display_name || 'Unknown'}
+              {hasPicked ? (
+                <Check className="w-3 h-3" />
+              ) : (
+                <span className="w-3 h-3 rounded-full border border-current opacity-40" />
+              )}
+              {profile?.display_name || "Unknown"}
               {showConstraint && <span className="text-[10px] opacity-70">({memberConstraint})</span>}
             </div>
           );
@@ -317,11 +353,11 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
               </div>
               <h3 className="font-display text-base sm:text-lg font-bold mb-1">{userPick.title}</h3>
               <p className="text-xs text-muted-foreground mb-2">
-                {userPick.year || '—'}
-                {pickedDirector ? ` • ${pickedDirector}` : ''}
+                {userPick.year || "—"}
+                {pickedDirector ? ` • ${pickedDirector}` : ""}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground line-clamp-5 sm:line-clamp-6">
-                {userPick.overview || 'No description available.'}
+                {userPick.overview || "No description available."}
               </p>
               <div className="flex gap-2 mt-3 flex-wrap">
                 <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
@@ -329,18 +365,30 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={submitting}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      disabled={submitting}
+                    >
                       Remove
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Remove your pick?</AlertDialogTitle>
-                      <AlertDialogDescription>This will remove "{userPick.title}" as your pick. You can search and pick a new movie after.</AlertDialogDescription>
+                      <AlertDialogDescription>
+                        This will remove "{userPick.title}" as your pick. You can search and pick a new movie after.
+                      </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={removePick} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Remove</AlertDialogAction>
+                      <AlertDialogAction
+                        onClick={removePick}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Remove
+                      </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -356,11 +404,11 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for a movie..."
               className="bg-muted/50 border-border flex-1"
-              onKeyDown={(e) => e.key === 'Enter' && searchMovies(undefined, 1)}
+              onKeyDown={(e) => e.key === "Enter" && searchMovies(undefined, 1)}
             />
             <Input
               value={yearFilter}
-              onChange={(e) => setYearFilter(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              onChange={(e) => setYearFilter(e.target.value.replace(/\D/g, "").slice(0, 4))}
               placeholder="Year"
               className="bg-muted/50 border-border w-20"
             />
@@ -389,7 +437,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                     <div>
                       <h3 className="font-display text-lg font-bold">{selected.title}</h3>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm text-muted-foreground">{selected.release_date?.split('-')[0]}</p>
+                        <p className="text-sm text-muted-foreground">{selected.release_date?.split("-")[0]}</p>
                         {director && (
                           <>
                             <span className="text-sm text-muted-foreground">·</span>
@@ -408,7 +456,9 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                       <Star className="w-4 h-4 text-primary fill-primary" />
                       <span className="text-sm font-semibold">{selected.vote_average.toFixed(1)}</span>
                       <span className="text-xs text-muted-foreground">/ 10</span>
-                      <span className="text-xs text-muted-foreground ml-1">({selected.vote_count.toLocaleString()} votes)</span>
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({selected.vote_count.toLocaleString()} votes)
+                      </span>
                     </div>
                   )}
 
@@ -421,7 +471,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                       Pick This Movie
                     </Button>
                     <a
-                      href={getLetterboxdUrl(selected.title, selected.release_date?.split('-')[0])}
+                      href={getLetterboxdUrl(selected.title, selected.release_date?.split("-")[0])}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors px-3 py-2 rounded-lg border border-border hover:border-primary/30"
@@ -458,7 +508,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{movie.title}</p>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs text-muted-foreground">{movie.release_date?.split('-')[0]}</span>
+                      <span className="text-xs text-muted-foreground">{movie.release_date?.split("-")[0]}</span>
                       {directorsMap[movie.id] && (
                         <span className="text-xs text-muted-foreground">· {directorsMap[movie.id]}</span>
                       )}
@@ -478,7 +528,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   disabled={searching}
                   className="w-full text-center text-sm text-primary hover:text-primary/80 py-2 font-medium"
                 >
-                  {searching ? 'Loading...' : 'Load more results'}
+                  {searching ? "Loading..." : "Load more results"}
                 </button>
               )}
             </div>
