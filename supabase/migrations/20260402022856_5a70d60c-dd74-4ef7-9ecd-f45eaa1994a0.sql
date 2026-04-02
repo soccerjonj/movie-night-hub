@@ -1,0 +1,1 @@
+ALTER TABLE public.season_participants ADD COLUMN pick_constraint text DEFAULT NULL;
