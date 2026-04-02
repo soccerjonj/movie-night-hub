@@ -236,20 +236,31 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
         {pickedCount} of {totalMembers} members have picked
       </p>
 
+      {/* User's constraint callout */}
+      {userConstraint && !userPick && (
+        <div className="mb-3 p-2.5 rounded-lg bg-accent/10 border border-accent/20 text-center">
+          <p className="text-xs uppercase tracking-wider text-accent-foreground/60 mb-0.5">Your Constraint</p>
+          <p className="text-sm font-semibold text-accent-foreground">{userConstraint}</p>
+        </div>
+      )}
+
       {/* Member pick status */}
       <div className="flex flex-wrap gap-1.5 mb-4">
         {members.map((member) => {
           const profile = profiles.find(p => p.user_id === member.user_id);
           const hasPicked = moviePicks.some(p => p.user_id === member.user_id);
+          const memberConstraint = constraints[member.user_id];
           return (
             <div
               key={member.id}
               className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${
                 hasPicked ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground'
               }`}
+              title={memberConstraint ? `Constraint: ${memberConstraint}` : undefined}
             >
               {hasPicked ? <Check className="w-3 h-3" /> : <span className="w-3 h-3 rounded-full border border-current opacity-40" />}
               {profile?.display_name || 'Unknown'}
+              {memberConstraint && <span className="text-[10px] opacity-70">({memberConstraint})</span>}
             </div>
           );
         })}
