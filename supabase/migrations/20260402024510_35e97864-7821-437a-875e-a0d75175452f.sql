@@ -1,0 +1,1 @@
+ALTER TABLE public.seasons ADD COLUMN constraints_visible boolean NOT NULL DEFAULT true;
