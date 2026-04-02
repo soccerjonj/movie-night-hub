@@ -214,12 +214,14 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         return;
       }
 
-      const [picksRes, guessesRes] = await Promise.all([
+      const [picksRes, guessesRes, rankingsRes] = await Promise.all([
         supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed').in('season_id', seasonIds),
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
+        supabase.from('movie_rankings').select('user_id, movie_pick_id, rank, season_id').in('season_id', seasonIds),
       ]);
       setPicks((picksRes.data || []) as PickRow[]);
       setGuesses((guessesRes.data || []) as GuessRow[]);
+      setRankings(rankingsRes.data || []);
       setLoading(false);
     };
     fetchData();
