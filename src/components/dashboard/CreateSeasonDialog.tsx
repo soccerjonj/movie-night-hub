@@ -44,6 +44,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
 
   // Constraints
   const [constraintsEnabled, setConstraintsEnabled] = useState(false);
+  const [constraintsVisible, setConstraintsVisible] = useState(true);
   const [constraintValues, setConstraintValues] = useState<string[]>(['']);
   const [newConstraint, setNewConstraint] = useState('');
 
