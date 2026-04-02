@@ -122,6 +122,43 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
   const uniqueGroups = [...new Set(selectedParticipants.filter(p => p.pickGroup !== null).map(p => p.pickGroup))];
   const totalPickSlots = (soloCount + uniqueGroups.length) * moviesPerMember;
 
+  // Constraint helpers
+  const addConstraint = () => {
+    const val = newConstraint.trim();
+    if (!val) return;
+    if (constraintValues.includes(val)) { toast.error('Duplicate constraint'); return; }
+    setConstraintValues(prev => [...prev.filter(v => v), val]);
+    setNewConstraint('');
+  };
+
+  const removeConstraint = (index: number) => {
+    const removed = constraintValues[index];
+    setConstraintValues(prev => prev.filter((_, i) => i !== index));
+    // Clear from any participants who had it
+    setParticipants(prev => prev.map(p => p.constraint === removed ? { ...p, constraint: '' } : p));
+  };
+
+  const assignConstraintToParticipant = (userId: string, value: string) => {
+    setParticipants(prev => prev.map(p => p.userId === userId ? { ...p, constraint: value } : p));
+  };
+
+  const randomizeConstraints = () => {
+    const validConstraints = constraintValues.filter(v => v.trim());
+    if (validConstraints.length === 0) { toast.error('Add constraints first'); return; }
+    // Shuffle constraints and assign round-robin to selected participants
+    const shuffled = [...validConstraints].sort(() => Math.random() - 0.5);
+    setParticipants(prev => {
+      let idx = 0;
+      return prev.map(p => {
+        if (!p.selected) return p;
+        const constraint = shuffled[idx % shuffled.length];
+        idx++;
+        return { ...p, constraint };
+      });
+    });
+    toast.success('Constraints randomized!');
+  };
+
   const handleCreate = async () => {
     if (selectedParticipants.length < 1) {
       toast.error('Select at least one member');
