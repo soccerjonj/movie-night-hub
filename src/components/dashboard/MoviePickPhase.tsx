@@ -298,32 +298,32 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
 
       {userPick && !editing ? (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="flex flex-col sm:flex-row">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 sm:p-4">
             {userPick.poster_url ? (
               <img
                 src={userPick.poster_url}
                 alt={userPick.title}
-                className="w-full sm:w-48 aspect-[2/3] object-cover"
+                className="w-full sm:w-48 aspect-[2/3] object-cover rounded-lg"
               />
             ) : (
-              <div className="w-full sm:w-48 aspect-[2/3] bg-muted flex items-center justify-center">
+              <div className="w-full sm:w-48 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center">
                 <Film className="w-6 h-6 text-muted-foreground" />
               </div>
             )}
-            <div className="p-4 flex-1 min-w-0">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <Check className="w-4 h-4 text-primary" />
                 <p className="text-xs text-primary font-medium">Your pick (secret until revealed)</p>
               </div>
-              <h3 className="font-display text-lg font-bold mb-1">{userPick.title}</h3>
+              <h3 className="font-display text-base sm:text-lg font-bold mb-1">{userPick.title}</h3>
               <p className="text-xs text-muted-foreground mb-2">
                 {userPick.year || '—'}
                 {pickedDirector ? ` • ${pickedDirector}` : ''}
               </p>
-              <p className="text-sm text-muted-foreground line-clamp-4">
+              <p className="text-xs sm:text-sm text-muted-foreground line-clamp-5 sm:line-clamp-6">
                 {userPick.overview || 'No description available.'}
               </p>
-              <div className="flex gap-2 mt-3">
+              <div className="flex gap-2 mt-3 flex-wrap">
                 <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                   Change
                 </Button>
