@@ -602,6 +602,8 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                   {rankingScores.map((entry, i) => {
                     const profile = getProfile(entry.user_id);
                     const isExpanded = expandedUser === entry.user_id;
+                    const showInlinePick = view === 'season' && entry.picks.length <= 1;
+                    const inlinePick = showInlinePick ? entry.picks[0] : undefined;
                     return (
                       <div key={entry.user_id}>
                         <button
@@ -613,9 +615,30 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                           <span className="text-lg w-8 text-center">{getMedal(i)}</span>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {entry.totalPicks} pick{entry.totalPicks !== 1 ? 's' : ''} ranked
-                            </p>
+                            {showInlinePick ? (
+                              inlinePick ? (
+                                inlinePick.revealed ? (
+                                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                                    {inlinePick.poster_url ? (
+                                      <img src={inlinePick.poster_url} alt={inlinePick.title} className="w-5 h-7 rounded object-cover shrink-0" />
+                                    ) : (
+                                      <div className="w-5 h-7 rounded bg-muted flex items-center justify-center shrink-0">
+                                        <Film className="w-2.5 h-2.5 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                    <span className="truncate">{inlinePick.title}</span>
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground italic mt-1">Not yet revealed</p>
+                                )
+                              ) : (
+                                <p className="text-xs text-muted-foreground italic mt-1">No pick yet</p>
+                              )
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                {entry.totalPicks} pick{entry.totalPicks !== 1 ? 's' : ''} ranked
+                              </p>
+                            )}
                           </div>
                           <div className="text-right">
                             <p className="font-display text-lg font-bold text-primary">{entry.avgRank.toFixed(1)}</p>
