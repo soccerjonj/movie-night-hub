@@ -30,7 +30,7 @@ interface RankingEntry {
   user_id: string;
   avgRank: number;
   totalPicks: number;
-  picks: { title: string; poster_url: string | null; avgRank: number; revealed: boolean }[];
+  picks: { title: string; poster_url: string | null; avgRank: number; revealed: boolean; slotKey: string }[];
 }
 
 const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Props) => {
@@ -38,6 +38,8 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
   const [mode, setMode] = useState<'guesses' | 'rankings'>('guesses');
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [rankingScores, setRankingScores] = useState<RankingEntry[]>([]);
+  const [rankingDetails, setRankingDetails] = useState<Record<string, { avgRank: number; rankings: { user_id: string; rank: number }[] }>>({});
+  const [expandedRankingPick, setExpandedRankingPick] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
@@ -154,15 +156,16 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
             `${pick.season_id}:${pick.watch_order ?? pick.id}`;
 
           // Group rankings by slot (co-picks share the same watch_order)
-          const slotAvgRanks = new Map<string, { total: number; count: number }>();
+          const slotAvgRanks = new Map<string, { total: number; count: number; rankings: { user_id: string; rank: number }[] }>();
           rankings.forEach(r => {
             const pick = pickById.get(r.movie_pick_id);
             if (!pick) return;
             const key = getSlotKey(pick);
-            if (!slotAvgRanks.has(key)) slotAvgRanks.set(key, { total: 0, count: 0 });
+            if (!slotAvgRanks.has(key)) slotAvgRanks.set(key, { total: 0, count: 0, rankings: [] });
             const entry = slotAvgRanks.get(key)!;
             entry.total += r.rank;
             entry.count += 1;
+            entry.rankings.push({ user_id: r.user_id, rank: r.rank });
           });
 
           // Group by picker
@@ -191,6 +194,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
               poster_url: pick.poster_url,
               avgRank: avg,
               revealed: pick.revealed || isPickWatched(pick),
+              slotKey,
             });
           });
 
@@ -206,9 +210,15 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
           });
 
           rankingEntries.sort((a, b) => a.avgRank - b.avgRank);
+          const details: Record<string, { avgRank: number; rankings: { user_id: string; rank: number }[] }> = {};
+          slotAvgRanks.forEach((val, key) => {
+            details[key] = { avgRank: val.total / val.count, rankings: val.rankings };
+          });
+          setRankingDetails(details);
           setRankingScores(rankingEntries);
         } else {
           setRankingScores([]);
+          setRankingDetails({});
         }
       }
     } catch (err) {
@@ -308,36 +318,93 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
 
     return (
       <div className="space-y-1 py-2">
-        {entry.picks.map((pick, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] bg-muted/20"
-          >
-            {pick.revealed ? (
-              <>
-                {pick.poster_url ? (
-                  <img src={pick.poster_url} alt={pick.title} className="w-5 h-7 rounded object-cover shrink-0" />
+        {entry.picks.map((pick, i) => {
+          const detailKey = `${entry.user_id}:${pick.slotKey}`;
+          const isExpanded = expandedRankingPick === detailKey;
+          const detail = rankingDetails[pick.slotKey];
+          const rankingsByUser = new Map(detail?.rankings.map(r => [r.user_id, r.rank]));
+          return (
+            <div key={i}>
+              <button
+                onClick={() => pick.revealed && setExpandedRankingPick(isExpanded ? null : detailKey)}
+                className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-left ${
+                  pick.revealed ? 'bg-muted/20 hover:bg-muted/30' : 'bg-muted/10 cursor-default'
+                }`}
+              >
+                {pick.revealed ? (
+                  <>
+                    {pick.poster_url ? (
+                      <img src={pick.poster_url} alt={pick.title} className="w-5 h-7 rounded object-cover shrink-0" />
+                    ) : (
+                      <div className="w-5 h-7 rounded bg-muted flex items-center justify-center shrink-0">
+                        <Film className="w-2.5 h-2.5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <span className="font-medium truncate flex-1">{pick.title}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Star className="w-2.5 h-2.5 text-primary fill-primary" />
+                      <span className="font-semibold text-primary">{pick.avgRank.toFixed(1)}</span>
+                    </div>
+                  </>
                 ) : (
-                  <div className="w-5 h-7 rounded bg-muted flex items-center justify-center shrink-0">
-                    <Film className="w-2.5 h-2.5 text-muted-foreground" />
-                  </div>
+                  <>
+                    <div className="w-5 h-7 rounded bg-muted/60 flex items-center justify-center shrink-0">
+                      <span className="text-[9px] text-muted-foreground font-bold">?</span>
+                    </div>
+                    <span className="text-muted-foreground italic truncate flex-1">Not yet revealed</span>
+                  </>
                 )}
-                <span className="font-medium truncate flex-1">{pick.title}</span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Star className="w-2.5 h-2.5 text-primary fill-primary" />
-                  <span className="font-semibold text-primary">{pick.avgRank.toFixed(1)}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="w-5 h-7 rounded bg-muted/60 flex items-center justify-center shrink-0">
-                  <span className="text-[9px] text-muted-foreground font-bold">?</span>
-                </div>
-                <span className="text-muted-foreground italic truncate flex-1">Not yet revealed</span>
-              </>
-            )}
-          </div>
-        ))}
+              </button>
+
+              <AnimatePresence>
+                {pick.revealed && isExpanded && detail && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="ml-6 pl-3 border-l-2 border-border/30 mt-1 mb-2">
+                      <p className="text-xs text-muted-foreground mb-2">Everyone&apos;s rankings</p>
+                      <div className="text-xs mb-2">
+                        <span className="text-primary font-semibold">{detail.avgRank.toFixed(1)} avg rank</span>
+                        <span className="text-muted-foreground"> ({detail.rankings.length}/{members.length} ranked)</span>
+                      </div>
+                      <div className="space-y-1">
+                        {members.map((m, idx) => {
+                          const name = getProfile(m.user_id)?.display_name || 'Unknown';
+                          const rank = rankingsByUser.get(m.user_id);
+                          const hasRank = typeof rank === 'number';
+                          const rowClass = hasRank && rank === 1 ? 'bg-green-500/10' : hasRank ? 'bg-muted/20' : 'bg-muted/10';
+                          return (
+                            <motion.div
+                              key={m.user_id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.05 + idx * 0.03 }}
+                              className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs ${rowClass}`}
+                            >
+                              <span className="font-medium">{name}</span>
+                              <div className="flex items-center gap-1">
+                                <span className="text-muted-foreground">ranked</span>
+                                <span className={`font-medium ${hasRank ? (rank === 1 ? 'text-green-400' : 'text-foreground') : 'text-muted-foreground italic'}`}>
+                                  {hasRank ? `${rank}` : '—'}
+                                </span>
+                                {hasRank && rank === 1 && <Check className="w-3 h-3 text-green-400" />}
+                                {!hasRank && <X className="w-3 h-3 text-destructive/50" />}
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
       </div>
     );
   };
