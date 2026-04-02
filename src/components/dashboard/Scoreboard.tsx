@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Trophy, TrendingUp, Check, X, Film, ChevronUp } from 'lucide-react';
+import { Trophy, TrendingUp, Check, X, Film, ChevronUp, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -26,24 +26,32 @@ interface ScoreEntry {
   total: number;
 }
 
+interface RankingEntry {
+  user_id: string;
+  avgRank: number;
+  totalPicks: number;
+  picks: { title: string; poster_url: string | null; avgRank: number; revealed: boolean }[];
+}
+
 const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Props) => {
   const [view, setView] = useState<'season' | 'alltime'>('season');
+  const [mode, setMode] = useState<'guesses' | 'rankings'>('guesses');
   const [scores, setScores] = useState<ScoreEntry[]>([]);
+  const [rankingScores, setRankingScores] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
-  const [picks, setPicks] = useState<{ id: string; user_id: string; season_id: string; watch_order: number | null; title: string; poster_url: string | null }[]>([]);
+  const [picks, setPicks] = useState<{ id: string; user_id: string; season_id: string; watch_order: number | null; title: string; poster_url: string | null; revealed: boolean }[]>([]);
   const [seasonMap, setSeasonMap] = useState<Map<string, { id: string; status: string; current_movie_index: number; season_number: number }>>(new Map());
   const [isOpen, setIsOpen] = useState(!collapsed);
 
   useEffect(() => {
     fetchScores();
-  }, [view, season?.id, group.id]);
+  }, [view, season?.id, group.id, mode]);
 
   const fetchScores = async () => {
     setLoading(true);
     try {
-      // Get all seasons for the group (or just current)
       let seasonData: { id: string; status: string; current_movie_index: number; season_number: number }[] = [];
       if (view === 'season' && season) {
         seasonData = [{ id: season.id, status: season.status, current_movie_index: season.current_movie_index, season_number: season.season_number }];
@@ -58,6 +66,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
       const seasonIds = seasonData.map(s => s.id);
       if (seasonIds.length === 0) {
         setScores([]);
+        setRankingScores([]);
         setLoading(false);
         return;
       }
@@ -65,7 +74,6 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
       const sMap = new Map(seasonData.map(s => [s.id, s]));
       setSeasonMap(sMap);
 
-      // Fetch guesses and movie picks for those seasons
       const [guessesRes, picksRes] = await Promise.all([
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
         supabase.from('movie_picks').select('id, user_id, season_id, revealed, watch_order, title, poster_url').in('season_id', seasonIds),
@@ -76,7 +84,6 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
       setGuesses(fetchedGuesses);
       setPicks(fetchedPicks as typeof picks);
 
-      // Determine which picks are "watched" based on season status and current_movie_index
       const isPickWatched = (pick: typeof fetchedPicks[0]) => {
         const s = sMap.get(pick.season_id);
         if (!s) return false;
@@ -87,6 +94,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
         return false;
       };
 
+      // Guessing scores
       const coPickGroups = new Map<string, string[]>();
       fetchedPicks.forEach(p => {
         if (isPickWatched(p) && p.watch_order != null) {
@@ -126,6 +134,75 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
         .sort((a, b) => b.correct - a.correct || (b.total > 0 ? b.correct / b.total : 0) - (a.total > 0 ? a.correct / a.total : 0));
 
       setScores(entries);
+
+      // Rankings scores - fetch rankings for relevant seasons
+      if (mode === 'rankings') {
+        const rankableSeasonIds = seasonData
+          .filter(s => s.status === 'reviewing' || s.status === 'completed')
+          .map(s => s.id);
+        
+        if (rankableSeasonIds.length > 0) {
+          const { data: rankingsData } = await supabase
+            .from('movie_rankings')
+            .select('user_id, movie_pick_id, rank, season_id')
+            .in('season_id', rankableSeasonIds);
+          
+          const rankings = rankingsData || [];
+          
+          // Group picks by picker user_id, compute avg rank for each pick
+          // A pick's avg rank = average of all members' rank for that pick
+          const pickAvgRanks = new Map<string, { total: number; count: number }>();
+          rankings.forEach(r => {
+            if (!pickAvgRanks.has(r.movie_pick_id)) pickAvgRanks.set(r.movie_pick_id, { total: 0, count: 0 });
+            const entry = pickAvgRanks.get(r.movie_pick_id)!;
+            entry.total += r.rank;
+            entry.count += 1;
+          });
+
+          // Group by picker
+          const pickerMap = new Map<string, RankingEntry>();
+          members.forEach(m => {
+            pickerMap.set(m.user_id, { user_id: m.user_id, avgRank: 0, totalPicks: 0, picks: [] });
+          });
+
+          fetchedPicks.forEach(pick => {
+            if (!rankableSeasonIds.includes(pick.season_id)) return;
+            const avgData = pickAvgRanks.get(pick.id);
+            if (!avgData || avgData.count === 0) return;
+            
+            const pickerEntry = pickerMap.get(pick.user_id);
+            if (!pickerEntry) return;
+            
+            // Avoid duplicating co-picks
+            const existing = pickerEntry.picks.find(p => p.title === pick.title);
+            if (existing) return;
+            
+            const avg = avgData.total / avgData.count;
+            pickerEntry.picks.push({
+              title: pick.title,
+              poster_url: pick.poster_url,
+              avgRank: avg,
+              revealed: pick.revealed || isPickWatched(pick),
+            });
+          });
+
+          // Calculate overall avg for each picker
+          const rankingEntries: RankingEntry[] = [];
+          pickerMap.forEach(entry => {
+            if (entry.picks.length === 0) return;
+            const totalAvg = entry.picks.reduce((sum, p) => sum + p.avgRank, 0) / entry.picks.length;
+            entry.avgRank = totalAvg;
+            entry.totalPicks = entry.picks.length;
+            entry.picks.sort((a, b) => a.avgRank - b.avgRank);
+            rankingEntries.push(entry);
+          });
+
+          rankingEntries.sort((a, b) => a.avgRank - b.avgRank);
+          setRankingScores(rankingEntries);
+        } else {
+          setRankingScores([]);
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch scores:', err);
     } finally {
@@ -161,7 +238,6 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
       return (b.watch_order ?? 0) - (a.watch_order ?? 0);
     });
 
-    // Deduplicate by watch_order (co-picks)
     const seen = new Set<string>();
     const uniquePicks = watchedPicks.filter(p => {
       const key = `${p.season_id}:${p.watch_order}`;
@@ -176,7 +252,6 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
       <div className="space-y-1 py-2">
         {uniquePicks.map(pick => {
           const guess = userGuesses.find(g => g.movie_pick_id === pick.id);
-          // For co-picks, also check sibling pick IDs
           const siblingPicks = picks.filter(p => p.season_id === pick.season_id && p.watch_order === pick.watch_order);
           const guessForSlot = guess || userGuesses.find(g => siblingPicks.some(sp => sp.id === g.movie_pick_id));
           const actualGuess = guess || (guessForSlot ? userGuesses.find(g => siblingPicks.some(sp => sp.id === g.movie_pick_id)) : undefined);
@@ -220,6 +295,45 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
     );
   };
 
+  const renderUserPickRankings = (entry: RankingEntry) => {
+    if (entry.picks.length === 0) return <p className="text-xs text-muted-foreground italic py-2">No ranked picks yet</p>;
+
+    return (
+      <div className="space-y-1 py-2">
+        {entry.picks.map((pick, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] bg-muted/20"
+          >
+            {pick.revealed ? (
+              <>
+                {pick.poster_url ? (
+                  <img src={pick.poster_url} alt={pick.title} className="w-5 h-7 rounded object-cover shrink-0" />
+                ) : (
+                  <div className="w-5 h-7 rounded bg-muted flex items-center justify-center shrink-0">
+                    <Film className="w-2.5 h-2.5 text-muted-foreground" />
+                  </div>
+                )}
+                <span className="font-medium truncate flex-1">{pick.title}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Star className="w-2.5 h-2.5 text-primary fill-primary" />
+                  <span className="font-semibold text-primary">{pick.avgRank.toFixed(1)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-5 h-7 rounded bg-muted/60 flex items-center justify-center shrink-0">
+                  <span className="text-[9px] text-muted-foreground font-bold">?</span>
+                </div>
+                <span className="text-muted-foreground italic truncate flex-1">Not yet revealed</span>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
       <button
@@ -247,7 +361,27 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
+              {/* Mode toggle */}
+              <div className="flex gap-1 bg-muted/30 rounded-lg p-1">
+                <Button
+                  variant={mode === 'guesses' ? 'gold' : 'ghost'}
+                  size="sm"
+                  className="text-xs h-7 px-3"
+                  onClick={() => setMode('guesses')}
+                >
+                  Guesses
+                </Button>
+                <Button
+                  variant={mode === 'rankings' ? 'gold' : 'ghost'}
+                  size="sm"
+                  className="text-xs h-7 px-3"
+                  onClick={() => setMode('rankings')}
+                >
+                  Pick Rankings
+                </Button>
+              </div>
+              {/* Season/All-time toggle */}
               <div className="flex gap-1 bg-muted/30 rounded-lg p-1">
                 <Button
                   variant={view === 'season' ? 'gold' : 'ghost'}
@@ -270,57 +404,113 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
 
             {loading ? (
               <div className="text-center text-muted-foreground py-8">Loading scores...</div>
-            ) : scores.every(s => s.total === 0) ? (
-              <div className="text-center text-muted-foreground py-8">
-                <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p>No guesses scored yet</p>
-                <p className="text-xs mt-1">Scores update as pickers are revealed</p>
-              </div>
+            ) : mode === 'guesses' ? (
+              // Guesses mode
+              scores.every(s => s.total === 0) ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p>No guesses scored yet</p>
+                  <p className="text-xs mt-1">Scores update as pickers are revealed</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {scores.map((entry, i) => {
+                    const profile = getProfile(entry.user_id);
+                    const pct = entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
+                    const isExpanded = expandedUser === entry.user_id;
+                    return (
+                      <div key={entry.user_id}>
+                        <button
+                          onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
+                          className={`w-full flex items-center gap-3 rounded-xl p-3 transition-colors text-left ${
+                            i === 0 && entry.correct > 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20 hover:bg-muted/30'
+                          }`}
+                        >
+                          <span className="text-lg w-8 text-center">{getMedal(i)}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {entry.correct}/{entry.total} correct ({pct}%)
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-display text-lg font-bold text-primary">{entry.correct}</p>
+                            <p className="text-xs text-muted-foreground">pts</p>
+                          </div>
+                        </button>
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="ml-10 pl-3 border-l-2 border-border/30 mt-1 mb-2">
+                                {renderUserGuesses(entry.user_id)}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             ) : (
-              <div className="space-y-2">
-                {scores.map((entry, i) => {
-                  const profile = getProfile(entry.user_id);
-                  const pct = entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
-                  const isExpanded = expandedUser === entry.user_id;
-                  return (
-                    <div key={entry.user_id}>
-                      <button
-                        onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
-                        className={`w-full flex items-center gap-3 rounded-xl p-3 transition-colors text-left ${
-                          i === 0 && entry.correct > 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20 hover:bg-muted/30'
-                        }`}
-                      >
-                        <span className="text-lg w-8 text-center">{getMedal(i)}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {entry.correct}/{entry.total} correct ({pct}%)
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-display text-lg font-bold text-primary">{entry.correct}</p>
-                          <p className="text-xs text-muted-foreground">pts</p>
-                        </div>
-                      </button>
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="ml-10 pl-3 border-l-2 border-border/30 mt-1 mb-2">
-                              {renderUserGuesses(entry.user_id)}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                })}
-              </div>
+              // Rankings mode
+              rankingScores.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <Star className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p>No rankings yet</p>
+                  <p className="text-xs mt-1">Rankings appear after members submit their reviews</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {rankingScores.map((entry, i) => {
+                    const profile = getProfile(entry.user_id);
+                    const isExpanded = expandedUser === entry.user_id;
+                    return (
+                      <div key={entry.user_id}>
+                        <button
+                          onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
+                          className={`w-full flex items-center gap-3 rounded-xl p-3 transition-colors text-left ${
+                            i === 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20 hover:bg-muted/30'
+                          }`}
+                        >
+                          <span className="text-lg w-8 text-center">{getMedal(i)}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {entry.totalPicks} pick{entry.totalPicks !== 1 ? 's' : ''} ranked
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-display text-lg font-bold text-primary">{entry.avgRank.toFixed(1)}</p>
+                            <p className="text-xs text-muted-foreground">avg rank</p>
+                          </div>
+                        </button>
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="ml-10 pl-3 border-l-2 border-border/30 mt-1 mb-2">
+                                {renderUserPickRankings(entry)}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             )}
           </motion.div>
         )}
