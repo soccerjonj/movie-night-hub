@@ -80,11 +80,39 @@ const History = ({ group, profiles, members }: Props) => {
         .select('id, season_number, title, status, current_movie_index')
         .eq('group_id', group.id)
         .order('season_number', { ascending: false });
-      setSeasons((data || []) as SeasonInfo[]);
+      const seasonRows = (data || []) as SeasonInfo[];
+
+      if (seasonRows.length > 0) {
+        const seasonIds = seasonRows.map(s => s.id);
+        const { data: picksData } = await supabase
+          .from('movie_picks')
+          .select('season_id, user_id')
+          .in('season_id', seasonIds);
+
+        const pickCounts = new Map<string, Set<string>>();
+        (picksData || []).forEach((p: { season_id: string; user_id: string }) => {
+          if (!pickCounts.has(p.season_id)) pickCounts.set(p.season_id, new Set());
+          pickCounts.get(p.season_id)!.add(p.user_id);
+        });
+
+        const eligibleSeasons = seasonRows.filter(s => {
+          if (s.status === 'picking') return false;
+          if (members.length === 0) return true;
+          const count = pickCounts.get(s.id)?.size ?? 0;
+          return count >= members.length;
+        });
+
+        setSeasons(eligibleSeasons);
+        if (selectedSeasonId !== 'all' && !eligibleSeasons.some(s => s.id === selectedSeasonId)) {
+          setSelectedSeasonId('all');
+        }
+      } else {
+        setSeasons([]);
+      }
       setLoading(false);
     };
     fetch();
-  }, [group.id]);
+  }, [group.id, members.length, selectedSeasonId]);
 
   // Fetch picks when season changes
   useEffect(() => {

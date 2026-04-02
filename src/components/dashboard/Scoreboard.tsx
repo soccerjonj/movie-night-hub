@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
 import { Trophy, TrendingUp, Check, X, Film, ChevronUp, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface Props {
@@ -46,29 +47,57 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
   const [picks, setPicks] = useState<{ id: string; user_id: string; season_id: string; watch_order: number | null; title: string; poster_url: string | null; revealed: boolean }[]>([]);
   const [seasonMap, setSeasonMap] = useState<Map<string, { id: string; status: string; current_movie_index: number; season_number: number }>>(new Map());
   const [isOpen, setIsOpen] = useState(!collapsed);
+  const [availableSeasons, setAvailableSeasons] = useState<{ id: string; status: string; current_movie_index: number; season_number: number }[]>([]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
+  const userViewOverride = useRef(false);
 
   useEffect(() => {
     fetchScores();
-  }, [view, season?.id, group.id, mode]);
+  }, [view, season?.id, group.id, mode, selectedSeasonId]);
+
+  const setViewWithOverride = (next: 'season' | 'alltime') => {
+    userViewOverride.current = true;
+    setView(next);
+  };
 
   const fetchScores = async () => {
     setLoading(true);
     try {
-      let seasonData: { id: string; status: string; current_movie_index: number; season_number: number }[] = [];
-      if (view === 'season' && season) {
-        seasonData = [{ id: season.id, status: season.status, current_movie_index: season.current_movie_index, season_number: season.season_number }];
+      const { data: seasons } = await supabase
+        .from('seasons')
+        .select('id, status, current_movie_index, season_number')
+        .eq('group_id', group.id);
+
+      const allSeasons = (seasons || []) as { id: string; status: string; current_movie_index: number; season_number: number }[];
+      const eligibleSeasons = allSeasons
+        .filter(s => s.status === 'watching' || s.status === 'reviewing' || s.status === 'completed')
+        .sort((a, b) => b.season_number - a.season_number);
+
+      setAvailableSeasons(eligibleSeasons);
+
+      const watchingSeason = eligibleSeasons.find(s => s.status === 'watching') ?? null;
+
+      if (!userViewOverride.current) {
+        setView(watchingSeason ? 'season' : 'alltime');
+      }
+
+      let seasonData: typeof eligibleSeasons = [];
+      if (view === 'season') {
+        const desiredId = selectedSeasonId || watchingSeason?.id || eligibleSeasons[0]?.id || '';
+        if (desiredId && desiredId !== selectedSeasonId) {
+          setSelectedSeasonId(desiredId);
+        }
+        const selected = eligibleSeasons.find(s => s.id === (desiredId || selectedSeasonId));
+        seasonData = selected ? [selected] : [];
       } else {
-        const { data: seasons } = await supabase
-          .from('seasons')
-          .select('id, status, current_movie_index, season_number')
-          .eq('group_id', group.id);
-        seasonData = (seasons || []) as typeof seasonData;
+        seasonData = eligibleSeasons;
       }
 
       const seasonIds = seasonData.map(s => s.id);
       if (seasonIds.length === 0) {
         setScores([]);
         setRankingScores([]);
+        setRankingDetails({});
         setLoading(false);
         return;
       }
@@ -372,14 +401,24 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                         <span className="text-muted-foreground"> ({detail.rankings.length}/{members.length} ranked)</span>
                       </div>
                       <div className="space-y-1">
-                        {members.map((m, idx) => {
-                          const name = getProfile(m.user_id)?.display_name || 'Unknown';
-                          const rank = rankingsByUser.get(m.user_id);
-                          const hasRank = typeof rank === 'number';
-                          const rowClass = hasRank && rank === 1 ? 'bg-green-500/10' : hasRank ? 'bg-muted/20' : 'bg-muted/10';
+                        {[...members]
+                          .map(m => {
+                            const rank = rankingsByUser.get(m.user_id);
+                            return { user_id: m.user_id, rank: typeof rank === 'number' ? rank : null };
+                          })
+                          .sort((a, b) => {
+                            if (a.rank === null && b.rank === null) return 0;
+                            if (a.rank === null) return 1;
+                            if (b.rank === null) return -1;
+                            return a.rank - b.rank;
+                          })
+                          .map((item, idx) => {
+                            const name = getProfile(item.user_id)?.display_name || 'Unknown';
+                            const hasRank = item.rank !== null;
+                            const rowClass = hasRank && item.rank === 1 ? 'bg-green-500/10' : hasRank ? 'bg-muted/20' : 'bg-muted/10';
                           return (
                             <motion.div
-                              key={m.user_id}
+                              key={item.user_id}
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: 0.05 + idx * 0.03 }}
@@ -388,10 +427,10 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                               <span className="font-medium">{name}</span>
                               <div className="flex items-center gap-1">
                                 <span className="text-muted-foreground">ranked</span>
-                                <span className={`font-medium ${hasRank ? (rank === 1 ? 'text-green-400' : 'text-foreground') : 'text-muted-foreground italic'}`}>
-                                  {hasRank ? `${rank}` : '—'}
+                                <span className={`font-medium ${hasRank ? (item.rank === 1 ? 'text-green-400' : 'text-foreground') : 'text-muted-foreground italic'}`}>
+                                  {hasRank ? `${item.rank}` : '—'}
                                 </span>
-                                {hasRank && rank === 1 && <Check className="w-3 h-3 text-green-400" />}
+                                {hasRank && item.rank === 1 && <Check className="w-3 h-3 text-green-400" />}
                                 {!hasRank && <X className="w-3 h-3 text-destructive/50" />}
                               </div>
                             </motion.div>
@@ -462,7 +501,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                   variant={view === 'season' ? 'gold' : 'ghost'}
                   size="sm"
                   className="text-xs h-7 px-3"
-                  onClick={() => setView('season')}
+                  onClick={() => setViewWithOverride('season')}
                 >
                   Season
                 </Button>
@@ -470,12 +509,29 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                   variant={view === 'alltime' ? 'gold' : 'ghost'}
                   size="sm"
                   className="text-xs h-7 px-3"
-                  onClick={() => setView('alltime')}
+                  onClick={() => setViewWithOverride('alltime')}
                 >
                   All-Time
                 </Button>
               </div>
             </div>
+            {view === 'season' && availableSeasons.length > 0 && (
+              <div className="mb-4">
+                <Select value={selectedSeasonId} onValueChange={setSelectedSeasonId}>
+                  <SelectTrigger className="h-8 text-xs bg-muted/20 border-muted/40">
+                    <SelectValue placeholder="Select season" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSeasons.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        Season {s.season_number}
+                        {s.status === 'watching' ? ' • Watching' : s.status === 'reviewing' ? ' • Reviewing' : s.status === 'completed' ? ' • Completed' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {loading ? (
               <div className="text-center text-muted-foreground py-8">Loading scores...</div>
