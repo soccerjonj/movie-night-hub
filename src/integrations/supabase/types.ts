@@ -395,6 +395,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          pick_constraint: string | null
           pick_group: number | null
           season_id: string
           user_id: string
@@ -402,6 +403,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          pick_constraint?: string | null
           pick_group?: number | null
           season_id: string
           user_id: string
@@ -409,6 +411,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          pick_constraint?: string | null
           pick_group?: number | null
           season_id?: string
           user_id?: string

@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Users, Link, Unlink, Sparkles } from 'lucide-react';
+import { Plus, Users, Link, Unlink, Sparkles, Shuffle, Tag, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -23,6 +23,7 @@ interface ParticipantConfig {
   userId: string;
   selected: boolean;
   pickGroup: number | null; // null = solo, number = shared group
+  constraint: string; // assigned constraint value
 }
 
 const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onCreated }: Props) => {
@@ -41,6 +42,11 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
   const [participants, setParticipants] = useState<ParticipantConfig[]>([]);
   const [nextGroupId, setNextGroupId] = useState(1);
 
+  // Constraints
+  const [constraintsEnabled, setConstraintsEnabled] = useState(false);
+  const [constraintValues, setConstraintValues] = useState<string[]>(['']);
+  const [newConstraint, setNewConstraint] = useState('');
+
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
   const resetForm = () => {
@@ -51,9 +57,12 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
     setWatchDeadlineDay('monday');
     setWatchDeadlineTime('19:30');
     setNextGroupId(1);
+    setConstraintsEnabled(false);
+    setConstraintValues(['']);
+    setNewConstraint('');
     // Initialize all members as selected, no groups
     setParticipants(
-      members.map(m => ({ userId: m.user_id, selected: true, pickGroup: null }))
+      members.map(m => ({ userId: m.user_id, selected: true, pickGroup: null, constraint: '' }))
     );
   };
 
@@ -64,7 +73,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
 
   const toggleMember = (userId: string) => {
     setParticipants(prev => prev.map(p =>
-      p.userId === userId ? { ...p, selected: !p.selected, pickGroup: !p.selected ? p.pickGroup : null } : p
+      p.userId === userId ? { ...p, selected: !p.selected, pickGroup: !p.selected ? p.pickGroup : null, constraint: !p.selected ? p.constraint : '' } : p
     ));
   };
 
@@ -113,6 +122,43 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
   const uniqueGroups = [...new Set(selectedParticipants.filter(p => p.pickGroup !== null).map(p => p.pickGroup))];
   const totalPickSlots = (soloCount + uniqueGroups.length) * moviesPerMember;
 
+  // Constraint helpers
+  const addConstraint = () => {
+    const val = newConstraint.trim();
+    if (!val) return;
+    if (constraintValues.includes(val)) { toast.error('Duplicate constraint'); return; }
+    setConstraintValues(prev => [...prev.filter(v => v), val]);
+    setNewConstraint('');
+  };
+
+  const removeConstraint = (index: number) => {
+    const removed = constraintValues[index];
+    setConstraintValues(prev => prev.filter((_, i) => i !== index));
+    // Clear from any participants who had it
+    setParticipants(prev => prev.map(p => p.constraint === removed ? { ...p, constraint: '' } : p));
+  };
+
+  const assignConstraintToParticipant = (userId: string, value: string) => {
+    setParticipants(prev => prev.map(p => p.userId === userId ? { ...p, constraint: value } : p));
+  };
+
+  const randomizeConstraints = () => {
+    const validConstraints = constraintValues.filter(v => v.trim());
+    if (validConstraints.length === 0) { toast.error('Add constraints first'); return; }
+    // Shuffle constraints and assign round-robin to selected participants
+    const shuffled = [...validConstraints].sort(() => Math.random() - 0.5);
+    setParticipants(prev => {
+      let idx = 0;
+      return prev.map(p => {
+        if (!p.selected) return p;
+        const constraint = shuffled[idx % shuffled.length];
+        idx++;
+        return { ...p, constraint };
+      });
+    });
+    toast.success('Constraints randomized!');
+  };
+
   const handleCreate = async () => {
     if (selectedParticipants.length < 1) {
       toast.error('Select at least one member');
@@ -145,6 +191,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
         season_id: seasonData.id,
         user_id: p.userId,
         pick_group: p.pickGroup,
+        pick_constraint: constraintsEnabled && p.constraint ? p.constraint : null,
       }));
 
       const { error: partError } = await supabase
@@ -245,6 +292,76 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
               <Link className="w-3 h-3 mr-1" /> Create Co-Pick Group
             </Button>
             <p className="text-xs text-muted-foreground">Members in the same group share a single pick.</p>
+          </div>
+
+          {/* Pick Constraints */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold flex items-center gap-1.5">
+                <Tag className="w-4 h-4 text-primary" /> Pick Constraints
+              </Label>
+              <Switch checked={constraintsEnabled} onCheckedChange={setConstraintsEnabled} />
+            </div>
+            {constraintsEnabled && (
+              <div className="space-y-3 bg-muted/10 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">
+                  Define constraints (e.g. decades, genres, directors) and assign one to each member.
+                </p>
+                <div className="space-y-1.5">
+                  {constraintValues.filter(v => v).map((val, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-background rounded-md px-2.5 py-1.5">
+                      <span className="text-sm flex-1">{val}</span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeConstraint(i)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newConstraint}
+                    onChange={(e) => setNewConstraint(e.target.value)}
+                    placeholder="e.g. 1980s, Horror, Spielberg..."
+                    className="bg-background text-sm flex-1"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addConstraint(); } }}
+                  />
+                  <Button variant="outline" size="sm" onClick={addConstraint} disabled={!newConstraint.trim()}>
+                    <Plus className="w-3 h-3 mr-1" /> Add
+                  </Button>
+                </div>
+                {constraintValues.filter(v => v).length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">Assign to members</span>
+                      <Button variant="outline" size="sm" onClick={randomizeConstraints} className="text-xs h-7">
+                        <Shuffle className="w-3 h-3 mr-1" /> Randomize
+                      </Button>
+                    </div>
+                    <div className="space-y-1.5">
+                      {selectedParticipants.map((p) => {
+                        const profile = getProfile(p.userId);
+                        const validConstraints = constraintValues.filter(v => v.trim());
+                        return (
+                          <div key={p.userId} className="flex items-center gap-2">
+                            <span className="text-sm truncate flex-1 min-w-0">{profile?.display_name || 'Unknown'}</span>
+                            <Select value={p.constraint || ''} onValueChange={(v) => assignConstraintToParticipant(p.userId, v)}>
+                              <SelectTrigger className="w-36 h-8 text-xs">
+                                <SelectValue placeholder="Unassigned" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {validConstraints.map((c) => (
+                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Movies Per Member */}

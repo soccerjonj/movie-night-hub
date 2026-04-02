@@ -51,10 +51,28 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const [director, setDirector] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [directorsMap, setDirectorsMap] = useState<Record<number, string>>({});
+  const [constraints, setConstraints] = useState<Record<string, string>>({});
 
   const userPick = moviePicks.find(p => p.user_id === user?.id);
   const pickedCount = moviePicks.length;
   const totalMembers = members.length;
+  const userConstraint = user ? constraints[user.id] : null;
+
+  // Fetch participant constraints
+  useEffect(() => {
+    const fetchConstraints = async () => {
+      const { data } = await supabase
+        .from('season_participants')
+        .select('user_id, pick_constraint')
+        .eq('season_id', season.id);
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach(r => { if (r.pick_constraint) map[r.user_id] = r.pick_constraint; });
+        setConstraints(map);
+      }
+    };
+    fetchConstraints();
+  }, [season.id]);
 
   // Fetch director when a movie is selected
   useEffect(() => {
@@ -218,20 +236,31 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
         {pickedCount} of {totalMembers} members have picked
       </p>
 
+      {/* User's constraint callout */}
+      {userConstraint && !userPick && (
+        <div className="mb-3 p-2.5 rounded-lg bg-accent/10 border border-accent/20 text-center">
+          <p className="text-xs uppercase tracking-wider text-accent-foreground/60 mb-0.5">Your Constraint</p>
+          <p className="text-sm font-semibold text-accent-foreground">{userConstraint}</p>
+        </div>
+      )}
+
       {/* Member pick status */}
       <div className="flex flex-wrap gap-1.5 mb-4">
         {members.map((member) => {
           const profile = profiles.find(p => p.user_id === member.user_id);
           const hasPicked = moviePicks.some(p => p.user_id === member.user_id);
+          const memberConstraint = constraints[member.user_id];
           return (
             <div
               key={member.id}
               className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${
                 hasPicked ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground'
               }`}
+              title={memberConstraint ? `Constraint: ${memberConstraint}` : undefined}
             >
               {hasPicked ? <Check className="w-3 h-3" /> : <span className="w-3 h-3 rounded-full border border-current opacity-40" />}
               {profile?.display_name || 'Unknown'}
+              {memberConstraint && <span className="text-[10px] opacity-70">({memberConstraint})</span>}
             </div>
           );
         })}
