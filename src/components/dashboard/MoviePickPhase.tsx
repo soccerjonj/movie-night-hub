@@ -350,7 +350,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
                   <Check className="w-4 h-4 text-primary" />
-                  <p className="text-xs text-primary font-medium">Your pick (secret until revealed)</p>
+                <p className="text-xs text-primary font-medium whitespace-nowrap">Your pick (secret until revealed)</p>
                 </div>
                 <h3 className="font-display text-base sm:text-lg font-bold mb-1">{userPick.title}</h3>
                 <p className="text-xs text-muted-foreground mb-1.5">
