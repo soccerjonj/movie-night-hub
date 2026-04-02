@@ -57,9 +57,12 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
     setWatchDeadlineDay('monday');
     setWatchDeadlineTime('19:30');
     setNextGroupId(1);
+    setConstraintsEnabled(false);
+    setConstraintValues(['']);
+    setNewConstraint('');
     // Initialize all members as selected, no groups
     setParticipants(
-      members.map(m => ({ userId: m.user_id, selected: true, pickGroup: null }))
+      members.map(m => ({ userId: m.user_id, selected: true, pickGroup: null, constraint: '' }))
     );
   };
 
