@@ -42,6 +42,11 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
   const [participants, setParticipants] = useState<ParticipantConfig[]>([]);
   const [nextGroupId, setNextGroupId] = useState(1);
 
+  // Constraints
+  const [constraintsEnabled, setConstraintsEnabled] = useState(false);
+  const [constraintValues, setConstraintValues] = useState<string[]>(['']);
+  const [newConstraint, setNewConstraint] = useState('');
+
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
   const resetForm = () => {
