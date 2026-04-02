@@ -395,6 +395,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          pick_constraint: string | null
           pick_group: number | null
           season_id: string
           user_id: string
@@ -402,6 +403,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          pick_constraint?: string | null
           pick_group?: number | null
           season_id: string
           user_id: string
@@ -409,6 +411,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          pick_constraint?: string | null
           pick_group?: number | null
           season_id?: string
           user_id?: string
@@ -426,6 +429,7 @@ export type Database = {
       seasons: {
         Row: {
           call_link: string | null
+          constraints_visible: boolean
           created_at: string
           current_movie_index: number
           group_id: string
@@ -442,6 +446,7 @@ export type Database = {
         }
         Insert: {
           call_link?: string | null
+          constraints_visible?: boolean
           created_at?: string
           current_movie_index?: number
           group_id: string
@@ -458,6 +463,7 @@ export type Database = {
         }
         Update: {
           call_link?: string | null
+          constraints_visible?: boolean
           created_at?: string
           current_movie_index?: number
           group_id?: string
