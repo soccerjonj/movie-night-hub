@@ -23,6 +23,7 @@ interface ParticipantConfig {
   userId: string;
   selected: boolean;
   pickGroup: number | null; // null = solo, number = shared group
+  constraint: string; // assigned constraint value
 }
 
 const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onCreated }: Props) => {
