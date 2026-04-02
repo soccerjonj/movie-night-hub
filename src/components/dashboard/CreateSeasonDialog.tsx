@@ -294,6 +294,76 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
             <p className="text-xs text-muted-foreground">Members in the same group share a single pick.</p>
           </div>
 
+          {/* Pick Constraints */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold flex items-center gap-1.5">
+                <Tag className="w-4 h-4 text-primary" /> Pick Constraints
+              </Label>
+              <Switch checked={constraintsEnabled} onCheckedChange={setConstraintsEnabled} />
+            </div>
+            {constraintsEnabled && (
+              <div className="space-y-3 bg-muted/10 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">
+                  Define constraints (e.g. decades, genres, directors) and assign one to each member.
+                </p>
+                <div className="space-y-1.5">
+                  {constraintValues.filter(v => v).map((val, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-background rounded-md px-2.5 py-1.5">
+                      <span className="text-sm flex-1">{val}</span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeConstraint(i)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newConstraint}
+                    onChange={(e) => setNewConstraint(e.target.value)}
+                    placeholder="e.g. 1980s, Horror, Spielberg..."
+                    className="bg-background text-sm flex-1"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addConstraint(); } }}
+                  />
+                  <Button variant="outline" size="sm" onClick={addConstraint} disabled={!newConstraint.trim()}>
+                    <Plus className="w-3 h-3 mr-1" /> Add
+                  </Button>
+                </div>
+                {constraintValues.filter(v => v).length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">Assign to members</span>
+                      <Button variant="outline" size="sm" onClick={randomizeConstraints} className="text-xs h-7">
+                        <Shuffle className="w-3 h-3 mr-1" /> Randomize
+                      </Button>
+                    </div>
+                    <div className="space-y-1.5">
+                      {selectedParticipants.map((p) => {
+                        const profile = getProfile(p.userId);
+                        const validConstraints = constraintValues.filter(v => v.trim());
+                        return (
+                          <div key={p.userId} className="flex items-center gap-2">
+                            <span className="text-sm truncate flex-1 min-w-0">{profile?.display_name || 'Unknown'}</span>
+                            <Select value={p.constraint || ''} onValueChange={(v) => assignConstraintToParticipant(p.userId, v)}>
+                              <SelectTrigger className="w-36 h-8 text-xs">
+                                <SelectValue placeholder="Unassigned" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {validConstraints.map((c) => (
+                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Movies Per Member */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">{labels.Items} Per Pick Slot</Label>
