@@ -335,15 +335,15 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       {userPick && !editing ? (
         <div className="space-y-2">
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="flex flex-row items-center sm:items-start gap-3 sm:gap-4 p-3 sm:p-4">
+            <div className="flex flex-row items-center sm:items-start gap-3 sm:gap-4 p-4 sm:p-5">
               {userPick.poster_url ? (
                 <img
                   src={userPick.poster_url}
                   alt={userPick.title}
-                  className="w-24 h-32 sm:w-48 sm:h-auto aspect-[2/3] object-cover rounded-lg shrink-0"
+                  className="w-24 h-32 sm:w-56 sm:h-auto aspect-[2/3] object-cover rounded-lg shrink-0"
                 />
               ) : (
-                <div className="w-24 h-32 sm:w-48 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center shrink-0">
+                <div className="w-24 h-32 sm:w-56 aspect-[2/3] bg-muted rounded-lg flex items-center justify-center shrink-0">
                   <Film className="w-6 h-6 text-muted-foreground" />
                 </div>
               )}
@@ -364,7 +364,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+            <Button variant="outline" size="xs" onClick={() => setEditing(true)}>
               Change Pick
             </Button>
           </div>
