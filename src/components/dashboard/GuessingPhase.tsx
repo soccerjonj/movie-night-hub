@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock, Pencil, PartyPopper } from 'lucide-react';
+import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock, Pencil, PartyPopper, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -289,21 +289,36 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                       )}
                     </div>
                   </div>
-                  <Select
-                    value={guesses[pick.id] || ''}
-                    onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
-                  >
-                    <SelectTrigger className="w-full sm:w-40 bg-muted/50 h-9 text-sm">
-                      <SelectValue placeholder="Who picked this?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableMembers(pick.id).map((member) => (
-                        <SelectItem key={member.user_id} value={member.user_id}>
-                          {getProfile(member.user_id)?.display_name || 'Unknown'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-1.5">
+                    <Select
+                      value={guesses[pick.id] || ''}
+                      onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
+                    >
+                      <SelectTrigger className="w-full sm:w-40 bg-muted/50 h-9 text-sm">
+                        <SelectValue placeholder="Who picked this?" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getAvailableMembers(pick.id).map((member) => (
+                          <SelectItem key={member.user_id} value={member.user_id}>
+                            {getProfile(member.user_id)?.display_name || 'Unknown'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {guesses[pick.id] && (
+                      <button
+                        onClick={() => setGuesses(prev => {
+                          const next = { ...prev };
+                          delete next[pick.id];
+                          return next;
+                        })}
+                        className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-muted/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Clear guess"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
