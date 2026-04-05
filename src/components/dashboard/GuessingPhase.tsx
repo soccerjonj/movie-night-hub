@@ -30,6 +30,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   const [editing, setEditing] = useState(false);
   const [hasUsedEdit, setHasUsedEdit] = useState(false);
   const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [showGuessDetail, setShowGuessDetail] = useState(false);
 
   const storageKey = `${STORAGE_KEY_PREFIX}${season.id}_${user?.id}`;
 
