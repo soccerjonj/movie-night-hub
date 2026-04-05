@@ -22,6 +22,7 @@ import MemberList from '@/components/dashboard/MemberList';
 import Scoreboard from '@/components/dashboard/Scoreboard';
 import History from '@/components/dashboard/History';
 import MovieRevealDialog from '@/components/dashboard/MovieRevealDialog';
+import UnrankedSeasonsReminder from '@/components/dashboard/UnrankedSeasonsReminder';
 import { getClubLabels } from '@/lib/clubTypes';
 
 const Dashboard = () => {
@@ -269,6 +270,9 @@ const Dashboard = () => {
 
               {/* Members */}
               <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} externalSelectedUserId={openProfileUserId} onExternalSelectedClear={() => setOpenProfileUserId(null)} />
+
+              {/* Unranked seasons reminder */}
+              <UnrankedSeasonsReminder groupId={groupId!} profiles={profiles} onUpdate={refetch} />
 
               {/* No season yet */}
               {!season && !isAdmin && (
