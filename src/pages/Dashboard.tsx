@@ -271,6 +271,9 @@ const Dashboard = () => {
               {/* Members */}
               <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} externalSelectedUserId={openProfileUserId} onExternalSelectedClear={() => setOpenProfileUserId(null)} />
 
+              {/* Unranked seasons reminder */}
+              <UnrankedSeasonsReminder groupId={groupId!} profiles={profiles} onUpdate={refetch} />
+
               {/* No season yet */}
               {!season && !isAdmin && (
                 <div className="glass-card rounded-2xl p-12 text-center">
