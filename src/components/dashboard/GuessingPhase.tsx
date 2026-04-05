@@ -149,76 +149,78 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
       </p>
 
       {/* Submission status */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-1.5 mb-4">
         {guessingMembers.map((member) => {
           const profile = getProfile(member.user_id);
           const hasSubmitted = submittedMembers.has(member.user_id);
           return (
             <div
               key={member.user_id}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${
+              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border ${
                 hasSubmitted
                   ? 'bg-primary/10 border-primary/30 text-primary'
                   : 'bg-muted/30 border-border text-muted-foreground'
               }`}
             >
-              <Avatar className="w-4 h-4">
+              <Avatar className="w-3.5 h-3.5">
                 <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="text-[8px]">
+                <AvatarFallback className="text-[7px]">
                   {(profile?.display_name || '?')[0]}
                 </AvatarFallback>
               </Avatar>
-              <span>{profile?.display_name || 'Unknown'}</span>
+              <span className="max-w-[60px] truncate sm:max-w-none">{profile?.display_name || 'Unknown'}</span>
               {hasSubmitted ? (
-                <CheckCircle2 className="w-3 h-3 text-primary" />
+                <CheckCircle2 className="w-3 h-3 text-primary flex-shrink-0" />
               ) : (
-                <Clock className="w-3 h-3 text-muted-foreground" />
+                <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
               )}
             </div>
           );
         })}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {otherPicks.map((pick) => {
           const isLong = (pick.overview?.length || 0) > TRUNCATE_LEN;
           const expanded = expandedOverviews[pick.id];
           return (
-            <div key={pick.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 bg-muted/20 rounded-xl p-3">
-              {pick.poster_url ? (
-                <img src={pick.poster_url} alt={pick.title} className="w-12 h-18 rounded-lg object-cover flex-shrink-0" />
-              ) : (
-                <div className="w-12 h-18 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                  <Film className="w-5 h-5 text-muted-foreground" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm">{pick.title}</p>
-                {pick.year && <p className="text-xs text-muted-foreground">{pick.year}</p>}
-                {pick.overview && (
-                  <div className="mt-1">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {expanded || !isLong ? pick.overview : pick.overview.slice(0, TRUNCATE_LEN).trimEnd() + '…'}
-                    </p>
-                    {isLong && (
-                      <button
-                        onClick={() => toggleOverview(pick.id)}
-                        className="text-xs text-primary hover:underline mt-0.5 flex items-center gap-0.5"
-                      >
-                        {expanded ? 'Show less' : 'Read more'}
-                        {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      </button>
-                    )}
+            <div key={pick.id} className="bg-muted/20 rounded-xl p-3 space-y-2">
+              <div className="flex items-start gap-3">
+                {pick.poster_url ? (
+                  <img src={pick.poster_url} alt={pick.title} className="w-10 h-[60px] sm:w-12 sm:h-18 rounded-lg object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-10 h-[60px] sm:w-12 sm:h-18 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                    <Film className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                   </div>
                 )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm leading-tight">{pick.title}</p>
+                  {pick.year && <p className="text-[11px] text-muted-foreground">{pick.year}</p>}
+                  {pick.overview && (
+                    <div className="mt-1">
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        {expanded || !isLong ? pick.overview : pick.overview.slice(0, TRUNCATE_LEN).trimEnd() + '…'}
+                      </p>
+                      {isLong && (
+                        <button
+                          onClick={() => toggleOverview(pick.id)}
+                          className="text-[11px] text-primary hover:underline mt-0.5 flex items-center gap-0.5"
+                        >
+                          {expanded ? 'Show less' : 'Read more'}
+                          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               <Select
                 value={guesses[pick.id] || ''}
                 onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
                 disabled={submitted}
               >
-                <SelectTrigger className="w-full sm:w-40 bg-muted/50 flex-shrink-0">
-                  <SelectValue placeholder="Who picked?" />
+                <SelectTrigger className="w-full sm:w-40 bg-muted/50 h-9 text-sm">
+                  <SelectValue placeholder="Who picked this?" />
                 </SelectTrigger>
                 <SelectContent>
                   {getAvailableMembers(pick.id).map((member) => (
