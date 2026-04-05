@@ -255,6 +255,17 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
             {otherPicks.length > 3 && !showAllInline && (
               <p className="text-[11px] text-muted-foreground text-center">+{otherPicks.length - 3} more</p>
             )}
+            {showAllInline && myPicks.length > 0 && (
+              <>
+                <div className="border-t border-border/30 my-1.5" />
+                {myPicks.map((pick) => (
+                  <div key={pick.id} className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-lg text-xs">
+                    <span className="truncate flex-1 text-muted-foreground">{pick.title}</span>
+                    <span className="shrink-0 text-[10px] font-medium text-primary bg-primary/10 rounded-full px-1.5 py-0.5">Your Pick</span>
+                  </div>
+                ))}
+              </>
+            )}
             {showAllInline && otherPicks.length > 3 && (
               <p
                 className="text-[11px] text-primary text-center cursor-pointer hover:underline"
