@@ -4,8 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, HelpCircle, Film } from 'lucide-react';
+import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface Props {
   season: Season;
@@ -15,36 +16,21 @@ interface Props {
   onUpdate: () => void;
 }
 
-interface Guess {
-  movie_pick_id: string;
-  guessed_user_id: string;
-}
-
 const STORAGE_KEY_PREFIX = 'guessing_draft_';
+const TRUNCATE_LEN = 100;
 
 const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Props) => {
   const { user } = useAuth();
   const [guesses, setGuesses] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [expandedOverviews, setExpandedOverviews] = useState<Record<string, boolean>>({});
+  const [submittedMembers, setSubmittedMembers] = useState<Set<string>>(new Set());
 
   const storageKey = `${STORAGE_KEY_PREFIX}${season.id}_${user?.id}`;
 
-  // Count how many picks each member (excluding self) has
   const memberPickCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    moviePicks.forEach(pick => {
-      if (pick.user_id !== user?.id) return; // we skip own picks from guessing anyway
-      // Actually we need to count picks by OTHER members (those who are guess targets)
-    });
-    // Count picks per member that are NOT the current user's
-    const otherPicks = moviePicks.filter(p => p.user_id !== user?.id);
-    otherPicks.forEach(pick => {
-      // The pick belongs to pick.user_id, but we don't know who picked — that's the point of guessing
-      // We need to count how many picks each MEMBER has (as potential guesses)
-    });
-    // Actually: the constraint is about how many times a member CAN be guessed.
-    // Each member made N picks (movies_per_member), so they can be selected N times max.
     members.forEach(m => {
       if (m.user_id === user?.id) return;
       const pickCount = moviePicks.filter(p => p.user_id === m.user_id).length;
@@ -53,7 +39,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     return counts;
   }, [moviePicks, members, user?.id]);
 
-  // Load from DB first, fall back to localStorage draft
+  // Load guesses from DB or localStorage, and fetch who has submitted
   useEffect(() => {
     const loadGuesses = async () => {
       if (!user) return;
@@ -68,19 +54,29 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
         data.forEach(g => { map[g.movie_pick_id] = g.guessed_user_id; });
         setGuesses(map);
       } else {
-        // Load draft from localStorage
         try {
           const draft = localStorage.getItem(storageKey);
-          if (draft) {
-            setGuesses(JSON.parse(draft));
-          }
+          if (draft) setGuesses(JSON.parse(draft));
         } catch { /* ignore */ }
       }
     };
+
+    const loadSubmissionStatus = async () => {
+      // Get distinct guesser_ids who have submitted guesses for this season
+      const { data } = await supabase
+        .from('guesses')
+        .select('guesser_id')
+        .eq('season_id', season.id);
+      if (data) {
+        const ids = new Set(data.map(g => g.guesser_id));
+        setSubmittedMembers(ids);
+      }
+    };
+
     loadGuesses();
+    loadSubmissionStatus();
   }, [season.id, user, storageKey]);
 
-  // Save draft to localStorage on change (only if not submitted)
   useEffect(() => {
     if (!submitted && user) {
       localStorage.setItem(storageKey, JSON.stringify(guesses));
@@ -89,7 +85,6 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
-  // Count how many times each member is already guessed
   const guessCountPerMember = useMemo(() => {
     const counts: Record<string, number> = {};
     Object.values(guesses).forEach(userId => {
@@ -98,22 +93,19 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     return counts;
   }, [guesses]);
 
-  // Get available members for a specific pick's dropdown
   const getAvailableMembers = (pickId: string) => {
     return members
       .filter(m => m.user_id !== user?.id)
       .filter(m => {
         const maxSlots = memberPickCounts[m.user_id] || 0;
         const usedSlots = guessCountPerMember[m.user_id] || 0;
-        // Allow if this pick already has this member selected, or if slots remain
         if (guesses[pickId] === m.user_id) return true;
         return usedSlots < maxSlots;
       });
   };
 
-  const truncate = (text: string, maxLen = 100) => {
-    if (text.length <= maxLen) return text;
-    return text.slice(0, maxLen).trimEnd() + '…';
+  const toggleOverview = (pickId: string) => {
+    setExpandedOverviews(prev => ({ ...prev, [pickId]: !prev[pickId] }));
   };
 
   const submitGuesses = async () => {
@@ -131,6 +123,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
       toast.success('Guesses submitted!');
       setSubmitted(true);
       localStorage.removeItem(storageKey);
+      setSubmittedMembers(prev => new Set(prev).add(user.id));
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to submit guesses');
@@ -142,6 +135,9 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   const otherPicks = moviePicks.filter(p => p.user_id !== user?.id);
   const allGuessed = otherPicks.every(p => guesses[p.id]);
 
+  // Members who need to guess (everyone except those whose picks are being guessed — i.e. all members)
+  const guessingMembers = members.filter(m => !profiles.find(p => p.user_id === m.user_id)?.is_placeholder);
+
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
       <div className="flex items-center gap-2 mb-1">
@@ -152,43 +148,89 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
         {submitted ? "You've submitted your guesses!" : 'For each movie, guess which member picked it.'}
       </p>
 
-      <div className="space-y-4">
-        {otherPicks.map((pick) => (
-          <div key={pick.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 bg-muted/20 rounded-xl p-3">
-            {pick.poster_url ? (
-              <img src={pick.poster_url} alt={pick.title} className="w-12 h-18 rounded-lg object-cover flex-shrink-0" />
-            ) : (
-              <div className="w-12 h-18 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                <Film className="w-5 h-5 text-muted-foreground" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm">{pick.title}</p>
-              {pick.year && <p className="text-xs text-muted-foreground">{pick.year}</p>}
-              {pick.overview && (
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  {truncate(pick.overview)}
-                </p>
+      {/* Submission status */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {guessingMembers.map((member) => {
+          const profile = getProfile(member.user_id);
+          const hasSubmitted = submittedMembers.has(member.user_id);
+          return (
+            <div
+              key={member.user_id}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${
+                hasSubmitted
+                  ? 'bg-primary/10 border-primary/30 text-primary'
+                  : 'bg-muted/30 border-border text-muted-foreground'
+              }`}
+            >
+              <Avatar className="w-4 h-4">
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback className="text-[8px]">
+                  {(profile?.display_name || '?')[0]}
+                </AvatarFallback>
+              </Avatar>
+              <span>{profile?.display_name || 'Unknown'}</span>
+              {hasSubmitted ? (
+                <CheckCircle2 className="w-3 h-3 text-primary" />
+              ) : (
+                <Clock className="w-3 h-3 text-muted-foreground" />
               )}
             </div>
-            <Select
-              value={guesses[pick.id] || ''}
-              onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
-              disabled={submitted}
-            >
-              <SelectTrigger className="w-full sm:w-40 bg-muted/50 flex-shrink-0">
-                <SelectValue placeholder="Who picked?" />
-              </SelectTrigger>
-              <SelectContent>
-                {getAvailableMembers(pick.id).map((member) => (
-                  <SelectItem key={member.user_id} value={member.user_id}>
-                    {getProfile(member.user_id)?.display_name || 'Unknown'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ))}
+          );
+        })}
+      </div>
+
+      <div className="space-y-4">
+        {otherPicks.map((pick) => {
+          const isLong = (pick.overview?.length || 0) > TRUNCATE_LEN;
+          const expanded = expandedOverviews[pick.id];
+          return (
+            <div key={pick.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 bg-muted/20 rounded-xl p-3">
+              {pick.poster_url ? (
+                <img src={pick.poster_url} alt={pick.title} className="w-12 h-18 rounded-lg object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-12 h-18 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                  <Film className="w-5 h-5 text-muted-foreground" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{pick.title}</p>
+                {pick.year && <p className="text-xs text-muted-foreground">{pick.year}</p>}
+                {pick.overview && (
+                  <div className="mt-1">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {expanded || !isLong ? pick.overview : pick.overview.slice(0, TRUNCATE_LEN).trimEnd() + '…'}
+                    </p>
+                    {isLong && (
+                      <button
+                        onClick={() => toggleOverview(pick.id)}
+                        className="text-xs text-primary hover:underline mt-0.5 flex items-center gap-0.5"
+                      >
+                        {expanded ? 'Show less' : 'Read more'}
+                        {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <Select
+                value={guesses[pick.id] || ''}
+                onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
+                disabled={submitted}
+              >
+                <SelectTrigger className="w-full sm:w-40 bg-muted/50 flex-shrink-0">
+                  <SelectValue placeholder="Who picked?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getAvailableMembers(pick.id).map((member) => (
+                    <SelectItem key={member.user_id} value={member.user_id}>
+                      {getProfile(member.user_id)?.display_name || 'Unknown'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          );
+        })}
       </div>
 
       {!submitted && (
