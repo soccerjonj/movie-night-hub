@@ -61,34 +61,46 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
         return;
       }
 
-      // Aggregate rankings per movie_pick_id
-      const scoreMap: Record<string, { total: number; count: number }> = {};
+      // Group co-picks by (season_id, watch_order) so they merge into one entry
+      const coPickGroups = new Map<string, typeof picks>();
+      picks.forEach(p => {
+        const key = `${p.season_id}::${p.watch_order ?? p.id}`;
+        if (!coPickGroups.has(key)) coPickGroups.set(key, []);
+        coPickGroups.get(key)!.push(p);
+      });
+
+      // Build a map from movie_pick_id to its co-pick group key
+      const pickIdToGroupKey = new Map<string, string>();
+      coPickGroups.forEach((group, key) => {
+        group.forEach(p => pickIdToGroupKey.set(p.id, key));
+      });
+
+      // Aggregate rankings per co-pick group (not per individual pick id)
+      const scoreMap: Record<string, { total: number; count: number; pickIds: Set<string> }> = {};
       rankings.forEach(r => {
-        if (!scoreMap[r.movie_pick_id]) scoreMap[r.movie_pick_id] = { total: 0, count: 0 };
-        scoreMap[r.movie_pick_id].total += r.rank;
-        scoreMap[r.movie_pick_id].count += 1;
+        const groupKey = pickIdToGroupKey.get(r.movie_pick_id) || r.movie_pick_id;
+        if (!scoreMap[groupKey]) scoreMap[groupKey] = { total: 0, count: 0, pickIds: new Set() };
+        scoreMap[groupKey].total += r.rank;
+        scoreMap[groupKey].count += 1;
+        scoreMap[groupKey].pickIds.add(r.movie_pick_id);
       });
 
       // Build ranked list
-      const pickMap = new Map(picks.map(p => [p.id, p]));
       const ranked: RankedMovie[] = Object.entries(scoreMap)
-        .map(([moviePickId, { total, count }]) => {
-          const pick = pickMap.get(moviePickId);
-          // For co-picks, find all pickers with same watch_order
-          let pickerName = '?';
-          if (pick) {
-            const coPicks = picks.filter(
-              p => p.season_id === pick.season_id && p.watch_order === pick.watch_order
-            );
-            pickerName = coPicks
-              .map(p => getProfile(p.user_id)?.display_name || '?')
-              .join(' & ');
-          }
+        .map(([groupKey, { total, count, pickIds }]) => {
+          const group = coPickGroups.get(groupKey);
+          const primaryPick = group?.[0];
+          const pickerName = group
+            ? group.map(p => getProfile(p.user_id)?.display_name || '?').join(' & ')
+            : '?';
+          // Use first pick id as the canonical id; store all pick ids for ranking lookup
+          const canonicalId = primaryPick?.id || [...pickIds][0];
           return {
-            moviePickId,
-            title: pick?.title || '?',
-            posterUrl: pick?.poster_url || null,
-            year: pick?.year || null,
+            moviePickId: canonicalId,
+            _allPickIds: [...pickIds],
+            title: primaryPick?.title || '?',
+            posterUrl: primaryPick?.poster_url || null,
+            year: primaryPick?.year || null,
             avgRank: total / count,
             rankCount: count,
             pickerName,
