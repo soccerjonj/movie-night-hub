@@ -70,12 +70,9 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     };
 
     const loadSubmissionStatus = async () => {
-      const { data } = await supabase
-        .from('guesses')
-        .select('guesser_id')
-        .eq('season_id', season.id);
+      const { data } = await supabase.rpc('get_season_guess_submitters', { _season_id: season.id });
       if (data) {
-        const ids = new Set(data.map(g => g.guesser_id));
+        const ids = new Set((data as { guesser_id: string }[]).map(r => r.guesser_id));
         setSubmittedMembers(ids);
       }
     };
