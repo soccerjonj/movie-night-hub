@@ -536,6 +536,12 @@ export type Database = {
           id: string
         }[]
       }
+      get_season_guess_submitters: {
+        Args: { _season_id: string }
+        Returns: {
+          guesser_id: string
+        }[]
+      }
       is_group_admin: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
