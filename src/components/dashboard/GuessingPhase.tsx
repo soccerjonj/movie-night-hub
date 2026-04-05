@@ -4,9 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react';
+import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock, Pencil, PartyPopper } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Props {
   season: Season;
@@ -26,6 +27,9 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   const [submitted, setSubmitted] = useState(false);
   const [expandedOverviews, setExpandedOverviews] = useState<Record<string, boolean>>({});
   const [submittedMembers, setSubmittedMembers] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState(false);
+  const [hasUsedEdit, setHasUsedEdit] = useState(false);
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
 
   const storageKey = `${STORAGE_KEY_PREFIX}${season.id}_${user?.id}`;
 
@@ -39,7 +43,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     return counts;
   }, [moviePicks, members, user?.id]);
 
-  // Load guesses from DB or localStorage, and fetch who has submitted
+  // Load guesses from DB or localStorage, submission status, and edit status
   useEffect(() => {
     const loadGuesses = async () => {
       if (!user) return;
@@ -62,7 +66,6 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     };
 
     const loadSubmissionStatus = async () => {
-      // Get distinct guesser_ids who have submitted guesses for this season
       const { data } = await supabase
         .from('guesses')
         .select('guesser_id')
@@ -73,15 +76,28 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
       }
     };
 
+    const loadEditStatus = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('guess_edits')
+        .select('id')
+        .eq('season_id', season.id)
+        .eq('user_id', user.id);
+      if (data && data.length > 0) {
+        setHasUsedEdit(true);
+      }
+    };
+
     loadGuesses();
     loadSubmissionStatus();
+    loadEditStatus();
   }, [season.id, user, storageKey]);
 
   useEffect(() => {
-    if (!submitted && user) {
+    if (!submitted && !editing && user) {
       localStorage.setItem(storageKey, JSON.stringify(guesses));
     }
-  }, [guesses, submitted, storageKey, user]);
+  }, [guesses, submitted, editing, storageKey, user]);
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
@@ -108,6 +124,35 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     setExpandedOverviews(prev => ({ ...prev, [pickId]: !prev[pickId] }));
   };
 
+  const handleEditClick = () => {
+    setShowEditConfirm(true);
+  };
+
+  const confirmEdit = async () => {
+    if (!user) return;
+    setShowEditConfirm(false);
+    // Record the edit usage
+    await supabase.from('guess_edits').insert({
+      season_id: season.id,
+      user_id: user.id,
+    });
+    setHasUsedEdit(true);
+    // Delete existing guesses so user can re-submit
+    await supabase
+      .from('guesses')
+      .delete()
+      .eq('season_id', season.id)
+      .eq('guesser_id', user.id);
+    setSubmitted(false);
+    setEditing(true);
+    setSubmittedMembers(prev => {
+      const next = new Set(prev);
+      next.delete(user.id);
+      return next;
+    });
+    toast.info('You can now edit your guesses. This is your only edit!');
+  };
+
   const submitGuesses = async () => {
     if (!user) return;
     setSubmitting(true);
@@ -122,6 +167,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
       if (error) throw error;
       toast.success('Guesses submitted!');
       setSubmitted(true);
+      setEditing(false);
       localStorage.removeItem(storageKey);
       setSubmittedMembers(prev => new Set(prev).add(user.id));
       onUpdate();
@@ -134,9 +180,9 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
 
   const otherPicks = moviePicks.filter(p => p.user_id !== user?.id);
   const allGuessed = otherPicks.every(p => guesses[p.id]);
-
-  // Members who need to guess (everyone except those whose picks are being guessed — i.e. all members)
   const guessingMembers = members.filter(m => !profiles.find(p => p.user_id === m.user_id)?.is_placeholder);
+
+  const showForm = !submitted || editing;
 
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
@@ -145,7 +191,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
         <h2 className="font-display text-lg sm:text-xl font-bold">Guess Who Picked What</h2>
       </div>
       <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
-        {submitted ? "You've submitted your guesses!" : 'For each movie, guess which member picked it.'}
+        {submitted && !editing ? "You've submitted your guesses!" : 'For each movie, guess which member picked it.'}
       </p>
 
       {/* Submission status */}
@@ -179,73 +225,120 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
         })}
       </div>
 
-      <div className="space-y-3">
-        {otherPicks.map((pick) => {
-          const isLong = (pick.overview?.length || 0) > TRUNCATE_LEN;
-          const expanded = expandedOverviews[pick.id];
-          return (
-            <div key={pick.id} className="bg-muted/20 rounded-xl p-3 space-y-2">
-              <div className="flex items-start gap-3">
-                {pick.poster_url ? (
-                  <img src={pick.poster_url} alt={pick.title} className="w-10 h-[60px] sm:w-12 sm:h-18 rounded-lg object-cover flex-shrink-0" />
-                ) : (
-                  <div className="w-10 h-[60px] sm:w-12 sm:h-18 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                    <Film className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm leading-tight">{pick.title}</p>
-                  {pick.year && <p className="text-[11px] text-muted-foreground">{pick.year}</p>}
-                  {pick.overview && (
-                    <div
-                      className={`mt-1 ${isLong ? 'cursor-pointer' : ''}`}
-                      onClick={() => isLong && toggleOverview(pick.id)}
-                    >
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        {expanded || !isLong ? pick.overview : pick.overview.slice(0, TRUNCATE_LEN).trimEnd() + '…'}
-                      </p>
-                      {isLong && (
-                        <span className="text-[11px] text-primary hover:underline mt-0.5 inline-flex items-center gap-0.5">
-                          {expanded ? 'Show less' : 'Read more'}
-                          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </span>
+      {/* Submitted state - collapsed */}
+      {submitted && !editing && (
+        <div className="text-center py-6 space-y-4">
+          <div className="flex items-center justify-center gap-2 text-primary">
+            <PartyPopper className="w-8 h-8" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">All guesses submitted!</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              You guessed for {otherPicks.length} {otherPicks.length === 1 ? 'movie' : 'movies'}. Results will be revealed later.
+            </p>
+          </div>
+          {hasUsedEdit ? (
+            <Button variant="outline" size="sm" disabled className="opacity-50">
+              <Pencil className="w-3.5 h-3.5 mr-1.5" />
+              Edit Used
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleEditClick}>
+              <Pencil className="w-3.5 h-3.5 mr-1.5" />
+              Edit Guesses
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Movie list - shown when not submitted or editing */}
+      {showForm && (
+        <>
+          <div className="space-y-3">
+            {otherPicks.map((pick) => {
+              const isLong = (pick.overview?.length || 0) > TRUNCATE_LEN;
+              const expanded = expandedOverviews[pick.id];
+              return (
+                <div key={pick.id} className="bg-muted/20 rounded-xl p-3 space-y-2">
+                  <div className="flex items-start gap-3">
+                    {pick.poster_url ? (
+                      <img src={pick.poster_url} alt={pick.title} className="w-10 h-[60px] sm:w-12 sm:h-18 rounded-lg object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-10 h-[60px] sm:w-12 sm:h-18 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <Film className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm leading-tight">{pick.title}</p>
+                      {pick.year && <p className="text-[11px] text-muted-foreground">{pick.year}</p>}
+                      {pick.overview && (
+                        <div
+                          className={`mt-1 ${isLong ? 'cursor-pointer' : ''}`}
+                          onClick={() => isLong && toggleOverview(pick.id)}
+                        >
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            {expanded || !isLong ? pick.overview : pick.overview.slice(0, TRUNCATE_LEN).trimEnd() + '…'}
+                          </p>
+                          {isLong && (
+                            <span className="text-[11px] text-primary hover:underline mt-0.5 inline-flex items-center gap-0.5">
+                              {expanded ? 'Show less' : 'Read more'}
+                              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
+                  </div>
+                  <Select
+                    value={guesses[pick.id] || ''}
+                    onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
+                  >
+                    <SelectTrigger className="w-full sm:w-40 bg-muted/50 h-9 text-sm">
+                      <SelectValue placeholder="Who picked this?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableMembers(pick.id).map((member) => (
+                        <SelectItem key={member.user_id} value={member.user_id}>
+                          {getProfile(member.user_id)?.display_name || 'Unknown'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-              <Select
-                value={guesses[pick.id] || ''}
-                onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
-                disabled={submitted}
-              >
-                <SelectTrigger className="w-full sm:w-40 bg-muted/50 h-9 text-sm">
-                  <SelectValue placeholder="Who picked this?" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getAvailableMembers(pick.id).map((member) => (
-                    <SelectItem key={member.user_id} value={member.user_id}>
-                      {getProfile(member.user_id)?.display_name || 'Unknown'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
 
-      {!submitted && (
-        <Button
-          variant="gold"
-          className="mt-6 w-full"
-          onClick={submitGuesses}
-          disabled={!allGuessed || submitting}
-        >
-          <Check className="w-4 h-4 mr-2" />
-          {submitting ? 'Submitting...' : 'Submit Guesses'}
-        </Button>
+          <Button
+            variant="gold"
+            className="mt-6 w-full"
+            onClick={submitGuesses}
+            disabled={!allGuessed || submitting}
+          >
+            <Check className="w-4 h-4 mr-2" />
+            {submitting ? 'Submitting...' : editing ? 'Re-Submit Guesses' : 'Submit Guesses'}
+          </Button>
+        </>
       )}
+
+      {/* Edit confirmation dialog */}
+      <AlertDialog open={showEditConfirm} onOpenChange={setShowEditConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit Your Guesses?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">This is your <strong className="text-foreground">only chance</strong> to edit your guesses. Once you use this edit, you won't be able to change them again.</span>
+              <span className="block text-destructive font-medium">Are you sure you want to proceed?</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmEdit} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              Yes, Edit Guesses
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
