@@ -197,18 +197,18 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                   <p className="font-medium text-sm leading-tight">{pick.title}</p>
                   {pick.year && <p className="text-[11px] text-muted-foreground">{pick.year}</p>}
                   {pick.overview && (
-                    <div className="mt-1">
+                    <div
+                      className={`mt-1 ${isLong ? 'cursor-pointer' : ''}`}
+                      onClick={() => isLong && toggleOverview(pick.id)}
+                    >
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
                         {expanded || !isLong ? pick.overview : pick.overview.slice(0, TRUNCATE_LEN).trimEnd() + '…'}
                       </p>
                       {isLong && (
-                        <button
-                          onClick={() => toggleOverview(pick.id)}
-                          className="text-[11px] text-primary hover:underline mt-0.5 flex items-center gap-0.5"
-                        >
+                        <span className="text-[11px] text-primary hover:underline mt-0.5 inline-flex items-center gap-0.5">
                           {expanded ? 'Show less' : 'Read more'}
                           {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </button>
+                        </span>
                       )}
                     </div>
                   )}
