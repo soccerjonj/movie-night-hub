@@ -242,7 +242,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
 
           {/* Compact inline summary */}
           <div className="space-y-1">
-            {otherPicks.slice(0, 3).map((pick) => {
+            {(showAllInline ? otherPicks : otherPicks.slice(0, 3)).map((pick) => {
               const guessedProfile = guesses[pick.id] ? getProfile(guesses[pick.id]) : null;
               return (
                 <div key={pick.id} className="flex items-center gap-2 px-3 py-1.5 bg-muted/20 rounded-lg text-xs">
@@ -251,24 +251,39 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                 </div>
               );
             })}
-            {otherPicks.length > 3 && (
-              <p className="text-[11px] text-muted-foreground text-center">+{otherPicks.length - 3} more</p>
+            {otherPicks.length > 3 && !showAllInline && (
+              <div
+                onClick={() => setShowAllInline(true)}
+                className="flex items-center justify-center gap-1 px-3 py-2 bg-muted/10 hover:bg-muted/30 rounded-lg cursor-pointer transition-colors"
+              >
+                <span className="text-[11px] text-primary font-medium">Show all {otherPicks.length} guesses</span>
+                <ChevronDown className="w-3 h-3 text-primary" />
+              </div>
+            )}
+            {showAllInline && otherPicks.length > 3 && (
+              <div
+                onClick={() => setShowAllInline(false)}
+                className="flex items-center justify-center gap-1 px-3 py-1.5 bg-muted/10 hover:bg-muted/30 rounded-lg cursor-pointer transition-colors"
+              >
+                <span className="text-[11px] text-primary font-medium">Show less</span>
+                <ChevronUp className="w-3 h-3 text-primary" />
+              </div>
             )}
           </div>
 
           <div className="flex items-center justify-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowGuessDetail(true)}>
-              <Eye className="w-3.5 h-3.5 mr-1.5" />
-              View All Guesses
+            <Button variant="outline" size="sm" className="h-7 text-[11px] px-2.5" onClick={() => setShowGuessDetail(true)}>
+              <Film className="w-3 h-3 mr-1" />
+              Movie Details
             </Button>
             {hasUsedEdit ? (
-              <Button variant="outline" size="sm" disabled className="opacity-50">
-                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+              <Button variant="outline" size="sm" className="h-7 text-[11px] px-2.5 opacity-50" disabled>
+                <Pencil className="w-3 h-3 mr-1" />
                 Edit Used
               </Button>
             ) : (
-              <Button variant="outline" size="sm" onClick={handleEditClick}>
-                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+              <Button variant="outline" size="sm" className="h-7 text-[11px] px-2.5" onClick={handleEditClick}>
+                <Pencil className="w-3 h-3 mr-1" />
                 Edit Guesses
               </Button>
             )}
@@ -276,38 +291,50 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
         </div>
       )}
 
-      {/* Full guesses dialog */}
+      {/* Movie details dialog */}
       <Dialog open={showGuessDetail} onOpenChange={setShowGuessDetail}>
         <DialogContent className="max-w-sm max-h-[80vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <HelpCircle className="w-4 h-4 text-primary" />
-              Your Guesses
+              <Film className="w-4 h-4 text-primary" />
+              Movie Details
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto space-y-1.5 mt-2">
             {otherPicks.map((pick) => {
               const guessedProfile = guesses[pick.id] ? getProfile(guesses[pick.id]) : null;
+              const isExpanded = expandedDetailId === pick.id;
               return (
-                <div key={pick.id} className="flex items-center gap-2.5 p-2 bg-muted/20 rounded-lg">
-                  {pick.poster_url ? (
-                    <img src={pick.poster_url} alt={pick.title} className="w-8 h-12 rounded object-cover shrink-0" />
-                  ) : (
-                    <div className="w-8 h-12 rounded bg-muted flex items-center justify-center shrink-0">
-                      <Film className="w-3 h-3 text-muted-foreground" />
+                <div
+                  key={pick.id}
+                  className="bg-muted/20 rounded-lg cursor-pointer transition-colors hover:bg-muted/30"
+                  onClick={() => setExpandedDetailId(isExpanded ? null : pick.id)}
+                >
+                  <div className="flex items-center gap-2.5 p-2">
+                    {pick.poster_url ? (
+                      <img src={pick.poster_url} alt={pick.title} className="w-8 h-12 rounded object-cover shrink-0" />
+                    ) : (
+                      <div className="w-8 h-12 rounded bg-muted flex items-center justify-center shrink-0">
+                        <Film className="w-3 h-3 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{pick.title}</p>
+                      {pick.year && <p className="text-[11px] text-muted-foreground">{pick.year}</p>}
+                    </div>
+                    <div className="shrink-0 flex items-center gap-1.5">
+                      <Avatar className="w-5 h-5">
+                        <AvatarImage src={guessedProfile?.avatar_url || undefined} />
+                        <AvatarFallback className="text-[8px]">{(guessedProfile?.display_name || '?')[0]}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs font-medium max-w-[80px] truncate">{guessedProfile?.display_name || '—'}</span>
+                    </div>
+                  </div>
+                  {isExpanded && pick.overview && (
+                    <div className="px-3 pb-2.5">
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">{pick.overview}</p>
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{pick.title}</p>
-                    {pick.year && <p className="text-[11px] text-muted-foreground">{pick.year}</p>}
-                  </div>
-                  <div className="shrink-0 flex items-center gap-1.5">
-                    <Avatar className="w-5 h-5">
-                      <AvatarImage src={guessedProfile?.avatar_url || undefined} />
-                      <AvatarFallback className="text-[8px]">{(guessedProfile?.display_name || '?')[0]}</AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs font-medium max-w-[80px] truncate">{guessedProfile?.display_name || '—'}</span>
-                  </div>
                 </div>
               );
             })}
