@@ -13,6 +13,7 @@ interface Props {
 
 interface RankedMovie {
   moviePickId: string;
+  _allPickIds?: string[];
   title: string;
   posterUrl: string | null;
   year: string | null;
@@ -61,34 +62,46 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
         return;
       }
 
-      // Aggregate rankings per movie_pick_id
-      const scoreMap: Record<string, { total: number; count: number }> = {};
+      // Group co-picks by (season_id, watch_order) so they merge into one entry
+      const coPickGroups = new Map<string, typeof picks>();
+      picks.forEach(p => {
+        const key = `${p.season_id}::${p.watch_order ?? p.id}`;
+        if (!coPickGroups.has(key)) coPickGroups.set(key, []);
+        coPickGroups.get(key)!.push(p);
+      });
+
+      // Build a map from movie_pick_id to its co-pick group key
+      const pickIdToGroupKey = new Map<string, string>();
+      coPickGroups.forEach((group, key) => {
+        group.forEach(p => pickIdToGroupKey.set(p.id, key));
+      });
+
+      // Aggregate rankings per co-pick group (not per individual pick id)
+      const scoreMap: Record<string, { total: number; count: number; pickIds: Set<string> }> = {};
       rankings.forEach(r => {
-        if (!scoreMap[r.movie_pick_id]) scoreMap[r.movie_pick_id] = { total: 0, count: 0 };
-        scoreMap[r.movie_pick_id].total += r.rank;
-        scoreMap[r.movie_pick_id].count += 1;
+        const groupKey = pickIdToGroupKey.get(r.movie_pick_id) || r.movie_pick_id;
+        if (!scoreMap[groupKey]) scoreMap[groupKey] = { total: 0, count: 0, pickIds: new Set() };
+        scoreMap[groupKey].total += r.rank;
+        scoreMap[groupKey].count += 1;
+        scoreMap[groupKey].pickIds.add(r.movie_pick_id);
       });
 
       // Build ranked list
-      const pickMap = new Map(picks.map(p => [p.id, p]));
       const ranked: RankedMovie[] = Object.entries(scoreMap)
-        .map(([moviePickId, { total, count }]) => {
-          const pick = pickMap.get(moviePickId);
-          // For co-picks, find all pickers with same watch_order
-          let pickerName = '?';
-          if (pick) {
-            const coPicks = picks.filter(
-              p => p.season_id === pick.season_id && p.watch_order === pick.watch_order
-            );
-            pickerName = coPicks
-              .map(p => getProfile(p.user_id)?.display_name || '?')
-              .join(' & ');
-          }
+        .map(([groupKey, { total, count, pickIds }]) => {
+          const group = coPickGroups.get(groupKey);
+          const primaryPick = group?.[0];
+          const pickerName = group
+            ? group.map(p => getProfile(p.user_id)?.display_name || '?').join(' & ')
+            : '?';
+          // Use first pick id as the canonical id; store all pick ids for ranking lookup
+          const canonicalId = primaryPick?.id || [...pickIds][0];
           return {
-            moviePickId,
-            title: pick?.title || '?',
-            posterUrl: pick?.poster_url || null,
-            year: pick?.year || null,
+            moviePickId: canonicalId,
+            _allPickIds: [...pickIds],
+            title: primaryPick?.title || '?',
+            posterUrl: primaryPick?.poster_url || null,
+            year: primaryPick?.year || null,
             avgRank: total / count,
             rankCount: count,
             pickerName,
@@ -239,30 +252,32 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
               <p className="text-xs text-muted-foreground mb-2">
                 Avg rank: {selectedMovie.avgRank.toFixed(1)} · {selectedMovie.rankCount} votes
               </p>
-              {allRankings
-                .filter(r => r.movie_pick_id === selectedMovie.moviePickId)
-                .sort((a, b) => a.rank - b.rank)
-                .map(r => {
-                  const profile = getProfile(r.user_id);
-                  return (
-                    <div key={r.user_id} className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {profile?.avatar_url ? (
-                          <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-bold text-primary">{profile?.display_name?.charAt(0).toUpperCase() || '?'}</span>
-                          </div>
-                        )}
-                        <span className="text-sm truncate">{profile?.display_name || 'Unknown'}</span>
+              {(() => {
+                const pickIds = new Set(selectedMovie._allPickIds?.length ? selectedMovie._allPickIds : [selectedMovie.moviePickId]);
+                const movieRankings = allRankings.filter(r => pickIds.has(r.movie_pick_id));
+                return movieRankings.length > 0 ? movieRankings
+                  .sort((a, b) => a.rank - b.rank)
+                  .map(r => {
+                    const profile = getProfile(r.user_id);
+                    return (
+                      <div key={r.user_id} className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {profile?.avatar_url ? (
+                            <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <span className="text-[10px] font-bold text-primary">{profile?.display_name?.charAt(0).toUpperCase() || '?'}</span>
+                            </div>
+                          )}
+                          <span className="text-sm truncate">{profile?.display_name || 'Unknown'}</span>
+                        </div>
+                        <span className="font-mono text-sm font-medium text-muted-foreground shrink-0 ml-2">#{r.rank}</span>
                       </div>
-                      <span className="font-mono text-sm font-medium text-muted-foreground shrink-0 ml-2">#{r.rank}</span>
-                    </div>
-                  );
-                })}
-              {allRankings.filter(r => r.movie_pick_id === selectedMovie.moviePickId).length === 0 && (
-                <p className="text-sm text-muted-foreground italic text-center py-4">No rankings yet</p>
-              )}
+                    );
+                  }) : (
+                  <p className="text-sm text-muted-foreground italic text-center py-4">No rankings yet</p>
+                );
+              })()}
             </div>
           )}
         </DialogContent>
