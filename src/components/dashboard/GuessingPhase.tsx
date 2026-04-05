@@ -241,7 +241,10 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
           </div>
 
           {/* Compact inline summary */}
-          <div className="space-y-1">
+          <div
+            className={`space-y-1 ${!showAllInline && otherPicks.length > 3 ? 'cursor-pointer' : ''}`}
+            onClick={() => { if (!showAllInline && otherPicks.length > 3) setShowAllInline(true); }}
+          >
             {(showAllInline ? otherPicks : otherPicks.slice(0, 3)).map((pick) => {
               const guessedProfile = guesses[pick.id] ? getProfile(guesses[pick.id]) : null;
               return (
@@ -252,22 +255,15 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
               );
             })}
             {otherPicks.length > 3 && !showAllInline && (
-              <div
-                onClick={() => setShowAllInline(true)}
-                className="flex items-center justify-center gap-1 px-3 py-2 bg-muted/10 hover:bg-muted/30 rounded-lg cursor-pointer transition-colors"
-              >
-                <span className="text-[11px] text-primary font-medium">Show all {otherPicks.length} guesses</span>
-                <ChevronDown className="w-3 h-3 text-primary" />
-              </div>
+              <p className="text-[11px] text-muted-foreground text-center">+{otherPicks.length - 3} more</p>
             )}
             {showAllInline && otherPicks.length > 3 && (
-              <div
-                onClick={() => setShowAllInline(false)}
-                className="flex items-center justify-center gap-1 px-3 py-1.5 bg-muted/10 hover:bg-muted/30 rounded-lg cursor-pointer transition-colors"
+              <p
+                className="text-[11px] text-primary text-center cursor-pointer hover:underline"
+                onClick={(e) => { e.stopPropagation(); setShowAllInline(false); }}
               >
-                <span className="text-[11px] text-primary font-medium">Show less</span>
-                <ChevronUp className="w-3 h-3 text-primary" />
-              </div>
+                Show less
+              </p>
             )}
           </div>
 
