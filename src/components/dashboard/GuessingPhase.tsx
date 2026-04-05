@@ -180,6 +180,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   };
 
   const otherPicks = moviePicks.filter(p => p.user_id !== user?.id);
+  const myPicks = moviePicks.filter(p => p.user_id === user?.id);
   const allGuessed = otherPicks.every(p => guesses[p.id]);
   const guessingMembers = members.filter(m => !profiles.find(p => p.user_id === m.user_id)?.is_placeholder);
 
