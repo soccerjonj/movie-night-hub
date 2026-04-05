@@ -13,6 +13,7 @@ interface Props {
 
 interface RankedMovie {
   moviePickId: string;
+  _allPickIds?: string[];
   title: string;
   posterUrl: string | null;
   year: string | null;
