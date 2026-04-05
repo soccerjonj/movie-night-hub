@@ -242,21 +242,23 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
 
       {/* Individual rankings dialog */}
       <Dialog open={!!selectedMovie} onOpenChange={(open) => { if (!open) setSelectedMovie(null); }}>
-        <DialogContent className="sm:max-w-xs">
-          <DialogHeader>
-            <DialogTitle className="font-display text-base truncate flex items-center gap-2">
-              {selectedMovie?.posterUrl ? (
-                <img src={selectedMovie.posterUrl} alt={selectedMovie.title} className="w-8 h-11 rounded-lg object-cover shrink-0" />
-              ) : (
-                <div className="w-8 h-11 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <Film className="w-3 h-3 text-muted-foreground" />
+        <DialogContent className="sm:max-w-xs max-h-[80vh] overflow-y-auto">
+          <DialogHeader className="pr-6">
+            <DialogTitle className="font-display text-base">
+              <div className="flex items-center gap-2.5">
+                {selectedMovie?.posterUrl ? (
+                  <img src={selectedMovie.posterUrl} alt={selectedMovie?.title ?? ''} className="w-8 h-11 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <div className="w-8 h-11 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Film className="w-3 h-3 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{selectedMovie?.title}</p>
+                  <p className="text-[11px] font-normal text-muted-foreground truncate">
+                    {selectedMovie?.year && `${selectedMovie.year} · `}Picked by {selectedMovie?.pickerName}
+                  </p>
                 </div>
-              )}
-              <div className="min-w-0">
-                <p className="truncate">{selectedMovie?.title}</p>
-                <p className="text-[11px] font-normal text-muted-foreground">
-                  {selectedMovie?.year && `${selectedMovie.year} · `}Picked by {selectedMovie?.pickerName}
-                </p>
               </div>
             </DialogTitle>
           </DialogHeader>
