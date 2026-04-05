@@ -373,7 +373,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="xs" className="text-[11px]" onClick={() => setEditing(true)}>
+            <Button variant="outline" size="sm" className="text-[11px]" onClick={() => setEditing(true)}>
               Change Pick
             </Button>
           </div>
