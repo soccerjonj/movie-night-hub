@@ -343,6 +343,42 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                 </div>
               );
             })}
+            {myPicks.length > 0 && (
+              <>
+                <div className="border-t border-border/30 my-1" />
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider px-1">Your Picks</p>
+                {myPicks.map((pick) => {
+                  const isExpanded = expandedDetailId === pick.id;
+                  return (
+                    <div
+                      key={pick.id}
+                      className="bg-primary/5 border border-primary/10 rounded-lg cursor-pointer transition-colors hover:bg-primary/10"
+                      onClick={() => setExpandedDetailId(isExpanded ? null : pick.id)}
+                    >
+                      <div className="flex items-center gap-2.5 p-2">
+                        {pick.poster_url ? (
+                          <img src={pick.poster_url} alt={pick.title} className="w-8 h-12 rounded object-cover shrink-0" />
+                        ) : (
+                          <div className="w-8 h-12 rounded bg-muted flex items-center justify-center shrink-0">
+                            <Film className="w-3 h-3 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{pick.title}</p>
+                          {pick.year && <p className="text-[11px] text-muted-foreground">{pick.year}</p>}
+                        </div>
+                        <span className="shrink-0 text-[10px] font-medium text-primary bg-primary/10 rounded-full px-1.5 py-0.5">Your Pick</span>
+                      </div>
+                      {isExpanded && pick.overview && (
+                        <div className="px-3 pb-2.5">
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">{pick.overview}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
