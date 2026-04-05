@@ -4,10 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock, Pencil, PartyPopper, X } from 'lucide-react';
+import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock, Pencil, PartyPopper, X, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Props {
   season: Season;
@@ -30,6 +31,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   const [editing, setEditing] = useState(false);
   const [hasUsedEdit, setHasUsedEdit] = useState(false);
   const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [showGuessDetail, setShowGuessDetail] = useState(false);
 
   const storageKey = `${STORAGE_KEY_PREFIX}${season.id}_${user?.id}`;
 
@@ -227,29 +229,89 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
 
       {/* Submitted state - collapsed */}
       {submitted && !editing && (
-        <div className="text-center py-6 space-y-4">
-          <div className="flex items-center justify-center gap-2 text-primary">
-            <PartyPopper className="w-8 h-8" />
-          </div>
-          <div>
+        <div className="py-4 space-y-3">
+          <div className="text-center space-y-1">
+            <PartyPopper className="w-6 h-6 text-primary mx-auto" />
             <p className="text-sm font-medium text-foreground">All guesses submitted!</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              You guessed for {otherPicks.length} {otherPicks.length === 1 ? 'movie' : 'movies'}. Results will be revealed later.
+            <p className="text-xs text-muted-foreground">
+              Results will be revealed later.
             </p>
           </div>
-          {hasUsedEdit ? (
-            <Button variant="outline" size="sm" disabled className="opacity-50">
-              <Pencil className="w-3.5 h-3.5 mr-1.5" />
-              Edit Used
+
+          {/* Compact inline summary */}
+          <div className="space-y-1">
+            {otherPicks.slice(0, 3).map((pick) => {
+              const guessedProfile = guesses[pick.id] ? getProfile(guesses[pick.id]) : null;
+              return (
+                <div key={pick.id} className="flex items-center gap-2 px-3 py-1.5 bg-muted/20 rounded-lg text-xs">
+                  <span className="truncate flex-1 text-muted-foreground">{pick.title}</span>
+                  <span className="shrink-0 font-medium text-foreground">{guessedProfile?.display_name || '—'}</span>
+                </div>
+              );
+            })}
+            {otherPicks.length > 3 && (
+              <p className="text-[11px] text-muted-foreground text-center">+{otherPicks.length - 3} more</p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowGuessDetail(true)}>
+              <Eye className="w-3.5 h-3.5 mr-1.5" />
+              View All Guesses
             </Button>
-          ) : (
-            <Button variant="outline" size="sm" onClick={handleEditClick}>
-              <Pencil className="w-3.5 h-3.5 mr-1.5" />
-              Edit Guesses
-            </Button>
-          )}
+            {hasUsedEdit ? (
+              <Button variant="outline" size="sm" disabled className="opacity-50">
+                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                Edit Used
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={handleEditClick}>
+                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                Edit Guesses
+              </Button>
+            )}
+          </div>
         </div>
       )}
+
+      {/* Full guesses dialog */}
+      <Dialog open={showGuessDetail} onOpenChange={setShowGuessDetail}>
+        <DialogContent className="max-w-sm max-h-[80vh] flex flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <HelpCircle className="w-4 h-4 text-primary" />
+              Your Guesses
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto space-y-1.5 mt-2">
+            {otherPicks.map((pick) => {
+              const guessedProfile = guesses[pick.id] ? getProfile(guesses[pick.id]) : null;
+              return (
+                <div key={pick.id} className="flex items-center gap-2.5 p-2 bg-muted/20 rounded-lg">
+                  {pick.poster_url ? (
+                    <img src={pick.poster_url} alt={pick.title} className="w-8 h-12 rounded object-cover shrink-0" />
+                  ) : (
+                    <div className="w-8 h-12 rounded bg-muted flex items-center justify-center shrink-0">
+                      <Film className="w-3 h-3 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{pick.title}</p>
+                    {pick.year && <p className="text-[11px] text-muted-foreground">{pick.year}</p>}
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    <Avatar className="w-5 h-5">
+                      <AvatarImage src={guessedProfile?.avatar_url || undefined} />
+                      <AvatarFallback className="text-[8px]">{(guessedProfile?.display_name || '?')[0]}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs font-medium max-w-[80px] truncate">{guessedProfile?.display_name || '—'}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Movie list - shown when not submitted or editing */}
       {showForm && (
