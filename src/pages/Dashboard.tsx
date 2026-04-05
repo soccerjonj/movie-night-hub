@@ -22,6 +22,7 @@ import MemberList from '@/components/dashboard/MemberList';
 import Scoreboard from '@/components/dashboard/Scoreboard';
 import History from '@/components/dashboard/History';
 import MovieRevealDialog from '@/components/dashboard/MovieRevealDialog';
+import UnrankedSeasonsReminder from '@/components/dashboard/UnrankedSeasonsReminder';
 import { getClubLabels } from '@/lib/clubTypes';
 
 const Dashboard = () => {
