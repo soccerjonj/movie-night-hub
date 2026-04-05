@@ -124,6 +124,35 @@ export type Database = {
         }
         Relationships: []
       }
+      guess_edits: {
+        Row: {
+          created_at: string
+          id: string
+          season_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          season_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          season_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guess_edits_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guesses: {
         Row: {
           created_at: string
