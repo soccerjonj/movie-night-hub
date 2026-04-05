@@ -252,30 +252,32 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
               <p className="text-xs text-muted-foreground mb-2">
                 Avg rank: {selectedMovie.avgRank.toFixed(1)} · {selectedMovie.rankCount} votes
               </p>
-              {allRankings
-                .filter(r => r.movie_pick_id === selectedMovie.moviePickId)
-                .sort((a, b) => a.rank - b.rank)
-                .map(r => {
-                  const profile = getProfile(r.user_id);
-                  return (
-                    <div key={r.user_id} className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {profile?.avatar_url ? (
-                          <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-bold text-primary">{profile?.display_name?.charAt(0).toUpperCase() || '?'}</span>
-                          </div>
-                        )}
-                        <span className="text-sm truncate">{profile?.display_name || 'Unknown'}</span>
+              {(() => {
+                const pickIds = new Set(selectedMovie._allPickIds?.length ? selectedMovie._allPickIds : [selectedMovie.moviePickId]);
+                const movieRankings = allRankings.filter(r => pickIds.has(r.movie_pick_id));
+                return movieRankings.length > 0 ? movieRankings
+                  .sort((a, b) => a.rank - b.rank)
+                  .map(r => {
+                    const profile = getProfile(r.user_id);
+                    return (
+                      <div key={r.user_id} className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {profile?.avatar_url ? (
+                            <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <span className="text-[10px] font-bold text-primary">{profile?.display_name?.charAt(0).toUpperCase() || '?'}</span>
+                            </div>
+                          )}
+                          <span className="text-sm truncate">{profile?.display_name || 'Unknown'}</span>
+                        </div>
+                        <span className="font-mono text-sm font-medium text-muted-foreground shrink-0 ml-2">#{r.rank}</span>
                       </div>
-                      <span className="font-mono text-sm font-medium text-muted-foreground shrink-0 ml-2">#{r.rank}</span>
-                    </div>
-                  );
-                })}
-              {allRankings.filter(r => r.movie_pick_id === selectedMovie.moviePickId).length === 0 && (
-                <p className="text-sm text-muted-foreground italic text-center py-4">No rankings yet</p>
-              )}
+                    );
+                  }) : (
+                  <p className="text-sm text-muted-foreground italic text-center py-4">No rankings yet</p>
+                );
+              })()}
             </div>
           )}
         </DialogContent>
