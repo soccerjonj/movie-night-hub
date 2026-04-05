@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useGroup';
-import { Trophy, Film, Star, Crown } from 'lucide-react';
+import { Trophy, Film, Star, Crown, Check, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { motion } from 'framer-motion';
 
 interface Props {
   seasonIds: string[];
@@ -243,43 +244,73 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
       <Dialog open={!!selectedMovie} onOpenChange={(open) => { if (!open) setSelectedMovie(null); }}>
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle className="font-display text-base truncate">
-              {selectedMovie?.title}
+            <DialogTitle className="font-display text-base truncate flex items-center gap-2">
+              {selectedMovie?.posterUrl ? (
+                <img src={selectedMovie.posterUrl} alt={selectedMovie.title} className="w-8 h-11 rounded-lg object-cover shrink-0" />
+              ) : (
+                <div className="w-8 h-11 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <Film className="w-3 h-3 text-muted-foreground" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="truncate">{selectedMovie?.title}</p>
+                <p className="text-[11px] font-normal text-muted-foreground">
+                  {selectedMovie?.year && `${selectedMovie.year} · `}Picked by {selectedMovie?.pickerName}
+                </p>
+              </div>
             </DialogTitle>
           </DialogHeader>
-          {selectedMovie && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground mb-2">
-                Avg rank: {selectedMovie.avgRank.toFixed(1)} · {selectedMovie.rankCount} votes
-              </p>
-              {(() => {
-                const pickIds = new Set(selectedMovie._allPickIds?.length ? selectedMovie._allPickIds : [selectedMovie.moviePickId]);
-                const movieRankings = allRankings.filter(r => pickIds.has(r.movie_pick_id));
-                return movieRankings.length > 0 ? movieRankings
-                  .sort((a, b) => a.rank - b.rank)
-                  .map(r => {
-                    const profile = getProfile(r.user_id);
-                    return (
-                      <div key={r.user_id} className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {profile?.avatar_url ? (
-                            <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                              <span className="text-[10px] font-bold text-primary">{profile?.display_name?.charAt(0).toUpperCase() || '?'}</span>
-                            </div>
-                          )}
-                          <span className="text-sm truncate">{profile?.display_name || 'Unknown'}</span>
-                        </div>
-                        <span className="font-mono text-sm font-medium text-muted-foreground shrink-0 ml-2">#{r.rank}</span>
-                      </div>
-                    );
-                  }) : (
-                  <p className="text-sm text-muted-foreground italic text-center py-4">No rankings yet</p>
-                );
-              })()}
-            </div>
-          )}
+          {selectedMovie && (() => {
+            const pickIds = new Set(selectedMovie._allPickIds?.length ? selectedMovie._allPickIds : [selectedMovie.moviePickId]);
+            const movieRankings = allRankings.filter(r => pickIds.has(r.movie_pick_id));
+            const rankingsByUser = new Map(movieRankings.map(r => [r.user_id, r.rank]));
+            // Get all unique users who have any rankings in this dataset
+            const allUsers = [...new Set(allRankings.map(r => r.user_id))];
+
+            return (
+              <div>
+                <div className="text-xs mb-3">
+                  <span className="text-primary font-semibold">{selectedMovie.avgRank.toFixed(1)} avg rank</span>
+                  <span className="text-muted-foreground"> ({movieRankings.length} ranked)</span>
+                </div>
+                <div className="space-y-1">
+                  {allUsers
+                    .map(uid => ({ user_id: uid, rank: rankingsByUser.get(uid) ?? null }))
+                    .sort((a, b) => {
+                      if (a.rank === null && b.rank === null) return 0;
+                      if (a.rank === null) return 1;
+                      if (b.rank === null) return -1;
+                      return a.rank - b.rank;
+                    })
+                    .map((item, idx) => {
+                      const profile = getProfile(item.user_id);
+                      const name = profile?.display_name || 'Unknown';
+                      const hasRank = item.rank !== null;
+                      const rowClass = hasRank && item.rank === 1 ? 'bg-green-500/10' : hasRank ? 'bg-muted/20' : 'bg-muted/10';
+                      return (
+                        <motion.div
+                          key={item.user_id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.05 + idx * 0.03 }}
+                          className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs ${rowClass}`}
+                        >
+                          <span className="font-medium">{name}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground">ranked</span>
+                            <span className={`font-medium ${hasRank ? (item.rank === 1 ? 'text-green-400' : 'text-foreground') : 'text-muted-foreground italic'}`}>
+                              {hasRank ? `${item.rank}` : '—'}
+                            </span>
+                            {hasRank && item.rank === 1 && <Check className="w-3 h-3 text-green-400" />}
+                            {!hasRank && <X className="w-3 h-3 text-destructive/50" />}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
