@@ -23,6 +23,7 @@ import Scoreboard from '@/components/dashboard/Scoreboard';
 import History from '@/components/dashboard/History';
 import MovieRevealDialog from '@/components/dashboard/MovieRevealDialog';
 import UnrankedSeasonsReminder from '@/components/dashboard/UnrankedSeasonsReminder';
+import UnsubmittedGuessesReminder from '@/components/dashboard/UnsubmittedGuessesReminder';
 import { getClubLabels } from '@/lib/clubTypes';
 
 const Dashboard = () => {
