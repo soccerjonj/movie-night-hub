@@ -55,8 +55,7 @@ export default function StartWatchingDialog({
     setOrderedPicks(updated);
   };
 
-  const { dragIndex, handleTouchStart, handleTouchMove, handleTouchEnd, listRef } =
-    useTouchDragReorder(orderedPicks.length, moveItem);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const handleConfirm = async () => {
     setLoading(true);
