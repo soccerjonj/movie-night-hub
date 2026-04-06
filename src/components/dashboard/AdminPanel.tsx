@@ -18,6 +18,7 @@ import EditMovieInfoDialog from './EditMovieInfoDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPreview from './MapPreview';
+import StartWatchingDialog from './StartWatchingDialog';
 
 
 // Collapsible dropdown panel for grouping admin actions
