@@ -117,14 +117,14 @@ export default function StartWatchingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Play className="w-4 h-4" /> Start {labels.Watching}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-5 pr-1">
           {/* Order selection */}
           <div className="space-y-3">
             <p className="text-sm font-medium">{labels.Item} Order</p>
@@ -157,7 +157,7 @@ export default function StartWatchingDialog({
 
             {/* Manual reorder list */}
             {orderMode === 'manual' && (
-              <div ref={listRef} className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-border p-2">
+              <div ref={listRef} className="space-y-1 rounded-lg border border-border p-2">
                 {orderedPicks.map((pick, idx) => (
                   <div
                     key={pick.id}
@@ -172,7 +172,7 @@ export default function StartWatchingDialog({
                     }}
                   >
                     <GripVertical className="w-3 h-3 text-muted-foreground shrink-0 cursor-grab" />
-                    <span className="font-medium text-muted-foreground w-5">{idx + 1}.</span>
+                    <span className="font-medium text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
                     {pick.poster_url && (
                       <img src={pick.poster_url} alt="" className="w-6 h-9 rounded object-cover shrink-0" />
                     )}
@@ -231,7 +231,7 @@ export default function StartWatchingDialog({
           )}
         </div>
 
-        <DialogFooter className="mt-2">
+        <div className="shrink-0 flex gap-2 justify-end pt-3 border-t border-border">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancel
           </Button>
@@ -239,7 +239,7 @@ export default function StartWatchingDialog({
             <Play className="w-4 h-4 mr-1" />
             {loading ? 'Starting...' : `Start ${labels.Watching}`}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
