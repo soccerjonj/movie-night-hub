@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Play, Shuffle, ListOrdered, GripVertical, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { nextMonday, setHours, setMinutes, format, addDays } from 'date-fns';
-import { useTouchDragReorder } from '@/hooks/useTouchDragReorder';
+import { useRef, useCallback } from 'react';
 
 interface Props {
   open: boolean;
