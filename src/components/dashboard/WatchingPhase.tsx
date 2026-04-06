@@ -337,7 +337,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
       {clubType === 'book' && (
         <ReadingAssignments seasonId={season.id} isAdmin={isAdmin} />
       )}
-      <MeetingScheduleManager seasonId={season.id} meetingType={meetingType} allowEdit={isAdmin} />
+      
 
       {/* Movie schedule list - only for movie clubs */}
       {clubType !== 'book' && (
