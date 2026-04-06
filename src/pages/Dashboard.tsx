@@ -38,6 +38,7 @@ const Dashboard = () => {
   const [hasEverGuessed, setHasEverGuessed] = useState(false);
   const [openProfileUserId, setOpenProfileUserId] = useState<string | null>(null);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [guessesDismissed, setGuessesDismissed] = useState(false);
 
   const labels = getClubLabels(group?.club_type ?? 'movie');
   const isBookClub = labels.type === 'book';
