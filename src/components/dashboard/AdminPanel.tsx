@@ -158,25 +158,8 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     }
   };
 
-  const startWatching = async () => {
-    if (!season) return;
-    setLoading(true);
-    try {
-      const callDate = getNextMondayCallDate();
-      const { error } = await supabase.from('seasons').update({
-        status: 'watching',
-        current_movie_index: 0,
-        next_call_date: callDate.toISOString(),
-      }).eq('id', season.id);
-      if (error) throw error;
-      toast.success('Watching season started!');
-      onUpdate();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to start watching season');
-    } finally {
-      setLoading(false);
-    }
-  };
+
+
 
   const jumpToMovie = async (index: number) => {
     if (!season) return;
