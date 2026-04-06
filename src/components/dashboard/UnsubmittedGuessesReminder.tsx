@@ -18,12 +18,12 @@ const UnsubmittedGuessesReminder = ({ season, onDismissed }: Props) => {
   const [timeLeft, setTimeLeft] = useState('');
 
   useEffect(() => {
-    if (!user || !season) return;
-    if (season.status !== 'watching' || !season.guessing_enabled) return;
-    if (!season.next_call_date) return;
+    if (!user || !season) { onDismissed(); return; }
+    if (season.status !== 'watching' || !season.guessing_enabled) { onDismissed(); return; }
+    if (!season.next_call_date) { onDismissed(); return; }
 
     const deadline = new Date(season.next_call_date);
-    if (isPast(deadline)) return;
+    if (isPast(deadline)) { onDismissed(); return; }
 
     const checkGuesses = async () => {
       const { data } = await supabase
@@ -32,6 +32,8 @@ const UnsubmittedGuessesReminder = ({ season, onDismissed }: Props) => {
       const submitters = new Set((data || []).map((r: { guesser_id: string }) => r.guesser_id));
       if (!submitters.has(user.id)) {
         setShow(true);
+      } else {
+        onDismissed();
       }
     };
 
