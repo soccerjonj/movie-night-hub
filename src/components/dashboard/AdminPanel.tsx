@@ -53,6 +53,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const isBookClub = labels.type === 'book';
   const showCallDate = group.meeting_type === 'remote' && !isBookClub;
   const [loading, setLoading] = useState(false);
+  const [showStartWatching, setShowStartWatching] = useState(false);
   
   const [editingSeason, setEditingSeason] = useState(false);
   const [editSeasonNumber, setEditSeasonNumber] = useState('');
