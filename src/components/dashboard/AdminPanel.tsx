@@ -1013,6 +1013,18 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
           </div>
         </div>
       )}
+      {season && (
+        <StartWatchingDialog
+          open={showStartWatching}
+          onOpenChange={setShowStartWatching}
+          season={season}
+          moviePicks={moviePicks}
+          profiles={profiles}
+          onUpdate={onUpdate}
+          labels={labels}
+          showCallDate={showCallDate}
+        />
+      )}
     </>
   );
 };
