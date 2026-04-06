@@ -18,6 +18,7 @@ import EditMovieInfoDialog from './EditMovieInfoDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPreview from './MapPreview';
+import StartWatchingDialog from './StartWatchingDialog';
 
 
 // Collapsible dropdown panel for grouping admin actions
@@ -52,6 +53,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const isBookClub = labels.type === 'book';
   const showCallDate = group.meeting_type === 'remote' && !isBookClub;
   const [loading, setLoading] = useState(false);
+  const [showStartWatching, setShowStartWatching] = useState(false);
   
   const [editingSeason, setEditingSeason] = useState(false);
   const [editSeasonNumber, setEditSeasonNumber] = useState('');
@@ -156,25 +158,8 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     }
   };
 
-  const startWatching = async () => {
-    if (!season) return;
-    setLoading(true);
-    try {
-      const callDate = getNextMondayCallDate();
-      const { error } = await supabase.from('seasons').update({
-        status: 'watching',
-        current_movie_index: 0,
-        next_call_date: callDate.toISOString(),
-      }).eq('id', season.id);
-      if (error) throw error;
-      toast.success('Watching season started!');
-      onUpdate();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to start watching season');
-    } finally {
-      setLoading(false);
-    }
-  };
+
+
 
   const jumpToMovie = async (index: number) => {
     if (!season) return;
@@ -620,31 +605,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                     )}
                   </Button>
                 ) : (
-                  <Button variant="gold" size="sm" onClick={async () => {
-                    // Skip guessing, shuffle and go straight to watching/reading
-                    if (!season) return;
-                    setLoading(true);
-                    try {
-                      const shuffled = [...moviePicks].sort(() => Math.random() - 0.5);
-                      for (let i = 0; i < shuffled.length; i++) {
-                        const { error: pickError } = await supabase.from('movie_picks').update({ watch_order: i }).eq('id', shuffled[i].id);
-                        if (pickError) throw pickError;
-                      }
-                      const callDate = getNextMondayCallDate();
-                      const { error } = await supabase.from('seasons').update({
-                        status: 'watching',
-                        current_movie_index: 0,
-                        next_call_date: callDate.toISOString(),
-                      }).eq('id', season.id);
-                      if (error) throw error;
-                      toast.success(`${labels.Watching} season started!`);
-                      onUpdate();
-                    } catch (err: unknown) {
-                      toast.error(err instanceof Error ? err.message : 'Failed');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }} disabled={loading || moviePicks.length < members.length}>
+                  <Button variant="gold" size="sm" onClick={() => setShowStartWatching(true)} disabled={loading || moviePicks.length < members.length}>
                     <Play className="w-4 h-4 mr-1" /> Start {labels.Watching}
                     {moviePicks.length < members.length && (
                       <span className="ml-1 text-xs">({moviePicks.length}/{members.length} picks)</span>
@@ -655,7 +616,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             )}
 
             {season?.status === 'guessing' && (
-              <Button variant="gold" size="sm" onClick={startWatching} disabled={loading}>
+              <Button variant="gold" size="sm" onClick={() => setShowStartWatching(true)} disabled={loading}>
                 <Play className="w-4 h-4 mr-1" /> Start {labels.Watching}
               </Button>
             )}
@@ -1034,6 +995,18 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
             )}
           </div>
         </div>
+      )}
+      {season && (
+        <StartWatchingDialog
+          open={showStartWatching}
+          onOpenChange={setShowStartWatching}
+          season={season}
+          moviePicks={moviePicks}
+          profiles={profiles}
+          onUpdate={onUpdate}
+          labels={labels}
+          showCallDate={showCallDate}
+        />
       )}
     </>
   );
