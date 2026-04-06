@@ -273,8 +273,13 @@ const Dashboard = () => {
               {/* Members */}
               <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} externalSelectedUserId={openProfileUserId} onExternalSelectedClear={() => setOpenProfileUserId(null)} />
 
-              {/* Unranked seasons reminder */}
-              <UnrankedSeasonsReminder groupId={groupId!} profiles={profiles} onUpdate={refetch} />
+              {/* Guesses reminder (shows first) */}
+              <UnsubmittedGuessesReminder season={season} onDismissed={() => setGuessesDismissed(true)} />
+
+              {/* Unranked seasons reminder (shows after guesses dismissed) */}
+              {guessesDismissed && (
+                <UnrankedSeasonsReminder groupId={groupId!} profiles={profiles} onUpdate={refetch} />
+              )}
 
               {/* No season yet */}
               {!season && !isAdmin && (
