@@ -161,9 +161,7 @@ export default function StartWatchingDialog({
                 {orderedPicks.map((pick, idx) => (
                   <div
                     key={pick.id}
-                    className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors ${
-                      dragIndex === idx ? 'bg-primary/10 scale-[1.02]' : 'bg-muted/30 hover:bg-muted/50'
-                    }`}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs bg-muted/30 hover:bg-muted/50 transition-colors"
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData('text/plain', String(idx))}
                     onDragOver={(e) => e.preventDefault()}
@@ -172,9 +170,6 @@ export default function StartWatchingDialog({
                       const from = parseInt(e.dataTransfer.getData('text/plain'));
                       moveItem(from, idx);
                     }}
-                    onTouchStart={(e) => handleTouchStart(idx, e)}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
                   >
                     <GripVertical className="w-3 h-3 text-muted-foreground shrink-0 cursor-grab" />
                     <span className="font-medium text-muted-foreground w-5">{idx + 1}.</span>
