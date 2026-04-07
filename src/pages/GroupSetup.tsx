@@ -415,6 +415,9 @@ const GroupSetup = () => {
               <Button variant="outline" className="w-full" onClick={() => setMode('join')}>
                 <ArrowRight className="w-4 h-4 mr-2" /> Join with Code
               </Button>
+              <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => navigate('/clubs')}>
+                <ChevronLeft className="w-4 h-4 mr-2" /> Back to My Clubs
+              </Button>
             </div>
           </div>
         )}
