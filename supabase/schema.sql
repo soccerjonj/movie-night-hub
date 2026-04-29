@@ -450,6 +450,10 @@ CREATE POLICY "Admin can manage reading assignments" ON public.reading_assignmen
   );
 
 -- ─── Additional functions ────────────────────────────────────
+DROP FUNCTION IF EXISTS public.get_season_guess_submitters(UUID);
+DROP FUNCTION IF EXISTS public.list_available_placeholders(UUID);
+DROP FUNCTION IF EXISTS public.claim_placeholder(UUID, UUID, UUID);
+
 CREATE OR REPLACE FUNCTION public.get_season_guess_submitters(_season_id UUID)
 RETURNS TABLE(guesser_id UUID) AS $$
   SELECT DISTINCT guesser_id FROM public.guesses WHERE season_id = _season_id;
