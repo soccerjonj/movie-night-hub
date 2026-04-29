@@ -22,7 +22,11 @@ INSERT INTO public.profiles (id, user_id, display_name, avatar_url, is_placehold
   ('273efdd3-e098-483c-9492-630537dade6b', '42542128-e74c-462d-a196-932574e5ecb4', 'Julia', NULL, false, '2026-04-03 02:15:47.195651+00', '2026-04-03 02:15:57.444737+00'),
   ('8dffab66-13a4-45c0-80e6-14a039a1cc59', '28fb7843-c6f3-4ed4-9e58-3c4e4299542e', 'Cait', '28fb7843-c6f3-4ed4-9e58-3c4e4299542e/avatar.jpg', false, '2026-03-05 00:06:38.328045+00', '2026-04-10 01:32:09.081024+00'),
   ('4cfcfbb8-738f-4883-8548-43e4bfdf7e58', 'c530de58-6e21-4746-b567-fd8ff7ff7e4e', 'Bryce', 'c530de58-6e21-4746-b567-fd8ff7ff7e4e/avatar.jpg', false, '2026-03-05 01:13:29.186502+00', '2026-04-21 01:07:53.592563+00')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (user_id) DO UPDATE SET
+  display_name = EXCLUDED.display_name,
+  avatar_url = EXCLUDED.avatar_url,
+  is_placeholder = EXCLUDED.is_placeholder,
+  updated_at = EXCLUDED.updated_at;
 
 -- groups
 INSERT INTO public.groups (id, name, join_code, admin_user_id, club_type, meeting_type, meeting_location, created_at) VALUES
