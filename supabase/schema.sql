@@ -30,14 +30,20 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Profiles viewable by authenticated users" ON public.profiles
+DROP POLICY IF EXISTS "Profiles viewable by authenticated users" ON public.profiles;
+CREATE POLICY "Profiles viewable by authenticated users" ON public.profiles
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "Users can update own profile" ON public.profiles
+
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+CREATE POLICY "Users can update own profile" ON public.profiles
   FOR UPDATE TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Users can insert own profile" ON public.profiles
+
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile" ON public.profiles
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
-CREATE OR REPLACE TRIGGER update_profiles_updated_at
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
+CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -54,7 +60,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE TRIGGER on_auth_user_created
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
@@ -106,21 +113,31 @@ RETURNS TABLE(id UUID) AS $$
 $$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 
 -- Group policies
-CREATE POLICY IF NOT EXISTS "Members can view their groups" ON public.groups
+DROP POLICY IF EXISTS "Members can view their groups" ON public.groups;
+CREATE POLICY "Members can view their groups" ON public.groups
   FOR SELECT TO authenticated
   USING (public.is_group_member(auth.uid(), id) OR admin_user_id = auth.uid());
-CREATE POLICY IF NOT EXISTS "Authenticated users can create groups" ON public.groups
+
+DROP POLICY IF EXISTS "Authenticated users can create groups" ON public.groups;
+CREATE POLICY "Authenticated users can create groups" ON public.groups
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = admin_user_id);
-CREATE POLICY IF NOT EXISTS "Admin can update group" ON public.groups
+
+DROP POLICY IF EXISTS "Admin can update group" ON public.groups;
+CREATE POLICY "Admin can update group" ON public.groups
   FOR UPDATE TO authenticated USING (auth.uid() = admin_user_id);
 
 -- Group members policies
-CREATE POLICY IF NOT EXISTS "Members can view group members" ON public.group_members
+DROP POLICY IF EXISTS "Members can view group members" ON public.group_members;
+CREATE POLICY "Members can view group members" ON public.group_members
   FOR SELECT TO authenticated
   USING (public.is_group_member(auth.uid(), group_id));
-CREATE POLICY IF NOT EXISTS "Users can join groups" ON public.group_members
+
+DROP POLICY IF EXISTS "Users can join groups" ON public.group_members;
+CREATE POLICY "Users can join groups" ON public.group_members
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Admin can remove members" ON public.group_members
+
+DROP POLICY IF EXISTS "Admin can remove members" ON public.group_members;
+CREATE POLICY "Admin can remove members" ON public.group_members
   FOR DELETE TO authenticated
   USING (public.is_group_admin(auth.uid(), group_id));
 
@@ -146,17 +163,23 @@ CREATE TABLE IF NOT EXISTS public.seasons (
 
 ALTER TABLE public.seasons ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Members can view seasons" ON public.seasons
+DROP POLICY IF EXISTS "Members can view seasons" ON public.seasons;
+CREATE POLICY "Members can view seasons" ON public.seasons
   FOR SELECT TO authenticated
   USING (public.is_group_member(auth.uid(), group_id));
-CREATE POLICY IF NOT EXISTS "Admin can create seasons" ON public.seasons
+
+DROP POLICY IF EXISTS "Admin can create seasons" ON public.seasons;
+CREATE POLICY "Admin can create seasons" ON public.seasons
   FOR INSERT TO authenticated
   WITH CHECK (public.is_group_admin(auth.uid(), group_id));
-CREATE POLICY IF NOT EXISTS "Admin can update seasons" ON public.seasons
+
+DROP POLICY IF EXISTS "Admin can update seasons" ON public.seasons;
+CREATE POLICY "Admin can update seasons" ON public.seasons
   FOR UPDATE TO authenticated
   USING (public.is_group_admin(auth.uid(), group_id));
 
-CREATE OR REPLACE TRIGGER update_seasons_updated_at
+DROP TRIGGER IF EXISTS update_seasons_updated_at ON public.seasons;
+CREATE TRIGGER update_seasons_updated_at
   BEFORE UPDATE ON public.seasons
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -173,7 +196,8 @@ CREATE TABLE IF NOT EXISTS public.season_participants (
 
 ALTER TABLE public.season_participants ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Members can view season participants" ON public.season_participants
+DROP POLICY IF EXISTS "Members can view season participants" ON public.season_participants;
+CREATE POLICY "Members can view season participants" ON public.season_participants
   FOR SELECT TO authenticated
   USING (
     EXISTS (
@@ -181,7 +205,9 @@ CREATE POLICY IF NOT EXISTS "Members can view season participants" ON public.sea
       WHERE s.id = season_id AND public.is_group_member(auth.uid(), s.group_id)
     )
   );
-CREATE POLICY IF NOT EXISTS "Admin can manage season participants" ON public.season_participants
+
+DROP POLICY IF EXISTS "Admin can manage season participants" ON public.season_participants;
+CREATE POLICY "Admin can manage season participants" ON public.season_participants
   FOR ALL TO authenticated
   USING (
     EXISTS (
@@ -208,7 +234,8 @@ CREATE TABLE IF NOT EXISTS public.movie_picks (
 
 ALTER TABLE public.movie_picks ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Members can view movie picks" ON public.movie_picks
+DROP POLICY IF EXISTS "Members can view movie picks" ON public.movie_picks;
+CREATE POLICY "Members can view movie picks" ON public.movie_picks
   FOR SELECT TO authenticated
   USING (
     EXISTS (
@@ -216,9 +243,13 @@ CREATE POLICY IF NOT EXISTS "Members can view movie picks" ON public.movie_picks
       WHERE s.id = season_id AND public.is_group_member(auth.uid(), s.group_id)
     )
   );
-CREATE POLICY IF NOT EXISTS "Members can insert own picks" ON public.movie_picks
+
+DROP POLICY IF EXISTS "Members can insert own picks" ON public.movie_picks;
+CREATE POLICY "Members can insert own picks" ON public.movie_picks
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Admin can update picks" ON public.movie_picks
+
+DROP POLICY IF EXISTS "Admin can update picks" ON public.movie_picks;
+CREATE POLICY "Admin can update picks" ON public.movie_picks
   FOR UPDATE TO authenticated
   USING (
     EXISTS (
@@ -229,18 +260,19 @@ CREATE POLICY IF NOT EXISTS "Admin can update picks" ON public.movie_picks
 
 -- ─── Guesses ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.guesses (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  season_id      UUID NOT NULL REFERENCES public.seasons(id) ON DELETE CASCADE,
-  guesser_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  movie_pick_id  UUID NOT NULL REFERENCES public.movie_picks(id) ON DELETE CASCADE,
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  season_id       UUID NOT NULL REFERENCES public.seasons(id) ON DELETE CASCADE,
+  guesser_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  movie_pick_id   UUID NOT NULL REFERENCES public.movie_picks(id) ON DELETE CASCADE,
   guessed_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(season_id, guesser_id, movie_pick_id)
 );
 
 ALTER TABLE public.guesses ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Members can view guesses after guessing ends" ON public.guesses
+DROP POLICY IF EXISTS "Members can view guesses after guessing ends" ON public.guesses;
+CREATE POLICY "Members can view guesses after guessing ends" ON public.guesses
   FOR SELECT TO authenticated
   USING (
     EXISTS (
@@ -251,11 +283,17 @@ CREATE POLICY IF NOT EXISTS "Members can view guesses after guessing ends" ON pu
     )
     OR guesser_id = auth.uid()
   );
-CREATE POLICY IF NOT EXISTS "Members can insert own guesses" ON public.guesses
+
+DROP POLICY IF EXISTS "Members can insert own guesses" ON public.guesses;
+CREATE POLICY "Members can insert own guesses" ON public.guesses
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = guesser_id);
-CREATE POLICY IF NOT EXISTS "Members can update own guesses" ON public.guesses
+
+DROP POLICY IF EXISTS "Members can update own guesses" ON public.guesses;
+CREATE POLICY "Members can update own guesses" ON public.guesses
   FOR UPDATE TO authenticated USING (auth.uid() = guesser_id);
-CREATE POLICY IF NOT EXISTS "Members can delete own guesses" ON public.guesses
+
+DROP POLICY IF EXISTS "Members can delete own guesses" ON public.guesses;
+CREATE POLICY "Members can delete own guesses" ON public.guesses
   FOR DELETE TO authenticated USING (auth.uid() = guesser_id);
 
 -- ─── Guess Edits ─────────────────────────────────────────────
@@ -268,7 +306,8 @@ CREATE TABLE IF NOT EXISTS public.guess_edits (
 
 ALTER TABLE public.guess_edits ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Members can view guess edits" ON public.guess_edits
+DROP POLICY IF EXISTS "Members can view guess edits" ON public.guess_edits;
+CREATE POLICY "Members can view guess edits" ON public.guess_edits
   FOR SELECT TO authenticated
   USING (
     EXISTS (
@@ -276,7 +315,9 @@ CREATE POLICY IF NOT EXISTS "Members can view guess edits" ON public.guess_edits
       WHERE s.id = season_id AND public.is_group_member(auth.uid(), s.group_id)
     )
   );
-CREATE POLICY IF NOT EXISTS "Users can insert own guess edits" ON public.guess_edits
+
+DROP POLICY IF EXISTS "Users can insert own guess edits" ON public.guess_edits;
+CREATE POLICY "Users can insert own guess edits" ON public.guess_edits
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
 -- ─── Movie Rankings ──────────────────────────────────────────
@@ -292,7 +333,8 @@ CREATE TABLE IF NOT EXISTS public.movie_rankings (
 
 ALTER TABLE public.movie_rankings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Members can view movie rankings" ON public.movie_rankings
+DROP POLICY IF EXISTS "Members can view movie rankings" ON public.movie_rankings;
+CREATE POLICY "Members can view movie rankings" ON public.movie_rankings
   FOR SELECT TO authenticated
   USING (
     EXISTS (
@@ -300,24 +342,27 @@ CREATE POLICY IF NOT EXISTS "Members can view movie rankings" ON public.movie_ra
       WHERE s.id = season_id AND public.is_group_member(auth.uid(), s.group_id)
     )
   );
-CREATE POLICY IF NOT EXISTS "Members can manage own rankings" ON public.movie_rankings
+
+DROP POLICY IF EXISTS "Members can manage own rankings" ON public.movie_rankings;
+CREATE POLICY "Members can manage own rankings" ON public.movie_rankings
   FOR ALL TO authenticated USING (auth.uid() = user_id);
 
 -- ─── Club Meetings ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.club_meetings (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  season_id      UUID NOT NULL REFERENCES public.seasons(id) ON DELETE CASCADE,
-  meeting_index  INT NOT NULL,
-  meeting_at     TIMESTAMPTZ NOT NULL,
-  location_text  TEXT,
-  location_lat   FLOAT,
-  location_lon   FLOAT,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  season_id     UUID NOT NULL REFERENCES public.seasons(id) ON DELETE CASCADE,
+  meeting_index INT NOT NULL,
+  meeting_at    TIMESTAMPTZ NOT NULL,
+  location_text TEXT,
+  location_lat  FLOAT,
+  location_lon  FLOAT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.club_meetings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Members can view club meetings" ON public.club_meetings
+DROP POLICY IF EXISTS "Members can view club meetings" ON public.club_meetings;
+CREATE POLICY "Members can view club meetings" ON public.club_meetings
   FOR SELECT TO authenticated
   USING (
     EXISTS (
@@ -325,7 +370,9 @@ CREATE POLICY IF NOT EXISTS "Members can view club meetings" ON public.club_meet
       WHERE s.id = season_id AND public.is_group_member(auth.uid(), s.group_id)
     )
   );
-CREATE POLICY IF NOT EXISTS "Admin can manage club meetings" ON public.club_meetings
+
+DROP POLICY IF EXISTS "Admin can manage club meetings" ON public.club_meetings;
+CREATE POLICY "Admin can manage club meetings" ON public.club_meetings
   FOR ALL TO authenticated
   USING (
     EXISTS (
@@ -346,7 +393,8 @@ CREATE TABLE IF NOT EXISTS public.meeting_settings (
 
 ALTER TABLE public.meeting_settings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Members can view meeting settings" ON public.meeting_settings
+DROP POLICY IF EXISTS "Members can view meeting settings" ON public.meeting_settings;
+CREATE POLICY "Members can view meeting settings" ON public.meeting_settings
   FOR SELECT TO authenticated
   USING (
     EXISTS (
@@ -354,7 +402,9 @@ CREATE POLICY IF NOT EXISTS "Members can view meeting settings" ON public.meetin
       WHERE s.id = season_id AND public.is_group_member(auth.uid(), s.group_id)
     )
   );
-CREATE POLICY IF NOT EXISTS "Admin can manage meeting settings" ON public.meeting_settings
+
+DROP POLICY IF EXISTS "Admin can manage meeting settings" ON public.meeting_settings;
+CREATE POLICY "Admin can manage meeting settings" ON public.meeting_settings
   FOR ALL TO authenticated
   USING (
     EXISTS (
@@ -379,7 +429,8 @@ CREATE TABLE IF NOT EXISTS public.reading_assignments (
 
 ALTER TABLE public.reading_assignments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Members can view reading assignments" ON public.reading_assignments
+DROP POLICY IF EXISTS "Members can view reading assignments" ON public.reading_assignments;
+CREATE POLICY "Members can view reading assignments" ON public.reading_assignments
   FOR SELECT TO authenticated
   USING (
     EXISTS (
@@ -387,7 +438,9 @@ CREATE POLICY IF NOT EXISTS "Members can view reading assignments" ON public.rea
       WHERE s.id = season_id AND public.is_group_member(auth.uid(), s.group_id)
     )
   );
-CREATE POLICY IF NOT EXISTS "Admin can manage reading assignments" ON public.reading_assignments
+
+DROP POLICY IF EXISTS "Admin can manage reading assignments" ON public.reading_assignments;
+CREATE POLICY "Admin can manage reading assignments" ON public.reading_assignments
   FOR ALL TO authenticated
   USING (
     EXISTS (
@@ -417,16 +470,12 @@ CREATE OR REPLACE FUNCTION public.claim_placeholder(
 )
 RETURNS VOID AS $$
 BEGIN
-  -- Move group membership
   UPDATE public.group_members
     SET user_id = _real_user_id
     WHERE group_id = _group_id AND user_id = _placeholder_user_id;
-  -- Reassign picks
   UPDATE public.movie_picks SET user_id = _real_user_id WHERE user_id = _placeholder_user_id;
-  -- Reassign guesses
   UPDATE public.guesses SET guesser_id = _real_user_id WHERE guesser_id = _placeholder_user_id;
   UPDATE public.guesses SET guessed_user_id = _real_user_id WHERE guessed_user_id = _placeholder_user_id;
-  -- Remove placeholder profile
   DELETE FROM public.profiles WHERE user_id = _placeholder_user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
