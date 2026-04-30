@@ -873,7 +873,7 @@ const MovieDetailView = ({
   const yearText = tmdb?.release_date?.slice(0, 4) || p.year || '';
 
   return (
-    <div className="space-y-4 pt-1">
+    <div className="space-y-4 pt-1 min-w-0">
       <div className="flex gap-3">
         <div className="w-20 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-muted">
           {p.poster_url ? (
