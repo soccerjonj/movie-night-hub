@@ -928,28 +928,30 @@ const MovieDetailView = ({
 
       {/* Cast */}
       {tmdb?.cast && tmdb.cast.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 min-w-0">
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Top cast</div>
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-            {tmdb.cast.slice(0, 8).map(c => (
-              <div key={c.id} className="shrink-0 w-16 text-center">
-                <div className="aspect-[2/3] rounded-md overflow-hidden bg-muted">
-                  {c.profile_path ? (
-                    <img
-                      src={`https://image.tmdb.org/t/p/w185${c.profile_path}`}
-                      alt={c.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  )}
+          <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-1">
+            <div className="flex gap-2 w-max">
+              {tmdb.cast.slice(0, 10).map(c => (
+                <div key={c.id} className="shrink-0 w-16 text-center">
+                  <div className="aspect-[2/3] rounded-md overflow-hidden bg-muted">
+                    {c.profile_path ? (
+                      <img
+                        src={`https://image.tmdb.org/t/p/w185${c.profile_path}`}
+                        alt={c.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] mt-1 line-clamp-2 leading-tight">{c.name}</p>
                 </div>
-                <p className="text-[10px] mt-1 line-clamp-2 leading-tight">{c.name}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}
