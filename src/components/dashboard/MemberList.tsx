@@ -209,9 +209,9 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     }
   };
 
-  // Fetch data when a member is selected
+  // Fetch group-wide data once on mount — needed for the Club header card,
+  // member-card badges, and the per-member profile dialog.
   useEffect(() => {
-    if (!selectedUserId) return;
     const fetchData = async () => {
       setLoading(true);
       const { data: seasonData } = await supabase
@@ -244,7 +244,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       setLoading(false);
     };
     fetchData();
-  }, [selectedUserId, group.id]);
+  }, [group.id]);
 
   const isPickWatched = (pick: PickRow) => {
     const s = seasons.find(ss => ss.id === pick.season_id);
@@ -499,6 +499,40 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     }
     return merged;
   }, [memberBadgesMap, casualViewerMap]);
+
+  // Club-level stats for the header card
+  const clubStats = useMemo(() => {
+    const completedSeasons = seasons.filter(s => s.status === 'completed').length;
+    const watchedPicks = picks.filter(p => isPickWatched(p));
+    // Dedupe co-picks (same season + watch_order = one shared movie/book)
+    const watchedSlots = new Set<string>();
+    for (const p of watchedPicks) {
+      const key = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `single:${p.id}`;
+      watchedSlots.add(key);
+    }
+    const totalWatched = watchedSlots.size;
+
+    let totalRuntimeMin = 0;
+    const countedSlots = new Set<string>();
+    for (const p of watchedPicks) {
+      const key = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `single:${p.id}`;
+      if (countedSlots.has(key)) continue;
+      const det = tmdbDetails[p.id];
+      if (det?.runtime) {
+        totalRuntimeMin += det.runtime;
+        countedSlots.add(key);
+      }
+    }
+
+    return {
+      completedSeasons,
+      totalWatched,
+      totalRuntimeMin,
+      memberCount: members.length,
+      foundedAt: group.created_at,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seasons, picks, tmdbDetails, members, group.created_at]);
 
   const renderMemberProfile = () => {
     if (!selectedUserId) return null;
@@ -804,8 +838,67 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
   };
 
+  const isBookClub = group.club_type === 'book';
+  const watchedNoun = isBookClub ? 'books read' : 'movies watched';
+  const runtimeNoun = isBookClub ? null : 'watched together';
+  const formatRuntimeShort = (mins: number) => {
+    if (mins <= 0) return null;
+    const totalH = mins / 60;
+    if (totalH >= 100) return `${Math.round(totalH)} hours`;
+    if (totalH >= 10) return `${totalH.toFixed(1)} hours`;
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins - h * 60);
+    if (h === 0) return `${m} min`;
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  };
+  const runtimeStr = formatRuntimeShort(clubStats.totalRuntimeMin);
+  const foundedDate = clubStats.foundedAt
+    ? new Date(clubStats.foundedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+    : null;
+
   return (
     <>
+      {/* Club header card */}
+      <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
+        <div className="flex items-start justify-between gap-3 mb-3 sm:mb-4">
+          <div className="min-w-0">
+            <h2 className="font-display text-xl sm:text-2xl font-bold truncate">{group.name}</h2>
+            {foundedDate && (
+              <p className="text-xs text-muted-foreground mt-0.5">Founded {foundedDate}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <div className="rounded-xl bg-muted/20 p-3 text-center">
+            <p className="font-display text-lg sm:text-xl font-bold text-primary">{clubStats.memberCount}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">members</p>
+          </div>
+          <div className="rounded-xl bg-muted/20 p-3 text-center">
+            <p className="font-display text-lg sm:text-xl font-bold text-primary">{clubStats.completedSeasons}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">seasons done</p>
+          </div>
+          <div className="rounded-xl bg-muted/20 p-3 text-center">
+            <p className="font-display text-lg sm:text-xl font-bold text-primary">{clubStats.totalWatched}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">{watchedNoun}</p>
+          </div>
+          <div className="rounded-xl bg-muted/20 p-3 text-center">
+            {runtimeStr && runtimeNoun ? (
+              <>
+                <p className="font-display text-lg sm:text-xl font-bold text-primary">{runtimeStr}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">{runtimeNoun}</p>
+              </>
+            ) : (
+              <>
+                <p className="font-display text-lg sm:text-xl font-bold text-primary">{seasons.length}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">total seasons</p>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Member cards */}
       <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
         <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <Users className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -813,34 +906,53 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           <span className="text-[10px] sm:text-xs text-muted-foreground ml-auto">{members.length} members</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
           {members.map((member) => {
             const profile = getProfile(member.user_id);
             const isGroupAdmin = member.user_id === group.admin_user_id;
             const isPlaceholder = profile?.is_placeholder === true;
+            const earned = allMemberBadgesMap.get(member.user_id) || [];
+            const topBadges = earned.slice(0, 2);
             return (
               <button
                 key={member.id}
                 onClick={() => setSelectedUserId(member.user_id)}
-                className={`flex items-center gap-2 rounded-xl p-2 sm:p-3 text-left transition-colors hover:ring-1 hover:ring-primary/30 ${isPlaceholder ? 'bg-muted/10 border border-dashed border-border' : 'bg-muted/20 hover:bg-muted/30'}`}
+                className={`flex flex-col items-center gap-2 rounded-xl p-3 sm:p-4 text-center transition-colors hover:ring-1 hover:ring-primary/30 ${isPlaceholder ? 'bg-muted/10 border border-dashed border-border' : 'bg-muted/20 hover:bg-muted/30'}`}
               >
-                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex items-center justify-center text-[10px] sm:text-xs font-bold shrink-0 ${isPlaceholder ? 'bg-muted/30 text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
-                  {isPlaceholder ? <Ghost className="w-3 h-3 sm:w-4 sm:h-4" /> : profile?.avatar_url ? (
+                <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden flex items-center justify-center text-xl sm:text-2xl font-bold shrink-0 ${isPlaceholder ? 'bg-muted/30 text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                  {isPlaceholder ? <Ghost className="w-6 h-6 sm:w-8 sm:h-8" /> : profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
                   ) : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="w-full min-w-0">
                   <p className="text-sm font-medium truncate">{profile?.display_name || 'Unknown'}</p>
                   {isGroupAdmin ? (
-                    <span className="flex items-center gap-1 text-xs text-primary">
+                    <span className="inline-flex items-center gap-1 text-xs text-primary">
                       <Crown className="w-3 h-3" /> Admin
                     </span>
                   ) : isPlaceholder ? (
-                    <span className="text-xs text-muted-foreground">Unregistered member</span>
+                    <span className="text-xs text-muted-foreground">Unregistered</span>
                   ) : (
                     <span className="text-xs text-green-400">Member</span>
                   )}
                 </div>
+                {topBadges.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-center gap-1 mt-0.5">
+                    {topBadges.map(({ badge }) => (
+                      <span
+                        key={badge.id}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-background border border-primary/20 text-[10px]"
+                        title={badge.label}
+                      >
+                        <span>{badge.emoji}</span>
+                        <span className="truncate max-w-[64px] sm:max-w-[80px]">{badge.label}</span>
+                      </span>
+                    ))}
+                    {earned.length > topBadges.length && (
+                      <span className="text-[10px] text-muted-foreground">+{earned.length - topBadges.length}</span>
+                    )}
+                  </div>
+                )}
               </button>
             );
           })}
