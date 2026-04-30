@@ -21,6 +21,7 @@ import ReviewPhase from '@/components/dashboard/ReviewPhase';
 import MemberList from '@/components/dashboard/MemberList';
 import Scoreboard from '@/components/dashboard/Scoreboard';
 import History from '@/components/dashboard/History';
+import Stats from '@/components/dashboard/Stats';
 import MovieRevealDialog from '@/components/dashboard/MovieRevealDialog';
 import UnrankedSeasonsReminder from '@/components/dashboard/UnrankedSeasonsReminder';
 import UnsubmittedGuessesReminder from '@/components/dashboard/UnsubmittedGuessesReminder';
@@ -32,7 +33,7 @@ const Dashboard = () => {
   const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup(groupId);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [tab, setTab] = useState<'current' | 'history'>('current');
+  const [tab, setTab] = useState<'current' | 'history' | 'stats'>('current');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminViewAsMember, setAdminViewAsMember] = useState(false);
   const [hasEverGuessed, setHasEverGuessed] = useState(false);
@@ -211,6 +212,16 @@ const Dashboard = () => {
               }`}
             >
               History
+            </button>
+            <button
+              onClick={() => setTab('stats')}
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
+                tab === 'stats'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Stats
             </button>
           </div>
         </div>
