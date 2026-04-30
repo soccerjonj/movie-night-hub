@@ -572,6 +572,13 @@ const Stats = ({ group, profiles, members }: Props) => {
     const decadeOverall = new Map<number, DecadeAgg>();
     // Per-member avg love-score per decade
     const memberDecade = new Map<string, Map<number, DecadeAgg>>(); // user_id -> decade -> agg
+    // Per-canonical-pick avg love-score (across all users)
+    const pickLove = new Map<string, DecadeAgg>();
+    // Map any sibling pick id → canonical pick id
+    const siblingToCanonical = new Map<string, string>();
+    for (const e of movieEntries) {
+      for (const sid of e.siblingPickIds) siblingToCanonical.set(sid, e.canonical.id);
+    }
 
     for (const r of rankings) {
       const dec = siblingDecade.get(r.movie_pick_id);
@@ -588,6 +595,13 @@ const Stats = ({ group, profiles, members }: Props) => {
       const ma = m.get(dec) || { sum: 0, count: 0 };
       ma.sum += love; ma.count += 1;
       m.set(dec, ma);
+
+      const canonId = siblingToCanonical.get(r.movie_pick_id);
+      if (canonId) {
+        const pl = pickLove.get(canonId) || { sum: 0, count: 0 };
+        pl.sum += love; pl.count += 1;
+        pickLove.set(canonId, pl);
+      }
     }
 
     const tasteDecadeRows = Array.from(decadeOverall.entries())
