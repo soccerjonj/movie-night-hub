@@ -710,6 +710,7 @@ const Stats = ({ group, profiles, members }: Props) => {
             overall={stats.tasteDecadeRows}
             members={stats.tasteMembers}
             profiles={profiles}
+            onSelectDecade={(r) => openDrill(r.label, r.pickIds)}
           />
         </Section>
       )}
