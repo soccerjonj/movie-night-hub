@@ -213,9 +213,18 @@ const Stats = ({ group, profiles, members }: Props) => {
               tmdbId = d.results?.[0]?.id || null;
             }
             if (!tmdbId) continue;
-            const r2 = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`, { headers });
+            const r2 = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US&append_to_response=credits`, { headers });
             if (!r2.ok) continue;
             const d2 = await r2.json();
+            const rawCast = Array.isArray(d2.credits?.cast) ? d2.credits.cast : [];
+            const cast: CastMember[] = rawCast
+              .slice(0, 10)
+              .map((c: any) => ({
+                id: c.id,
+                name: c.name,
+                profile_path: c.profile_path ?? null,
+                character: c.character ?? null,
+              }));
             const details: TmdbDetails = {
               runtime: d2.runtime ?? null,
               vote_average: d2.vote_average ?? null,
@@ -223,6 +232,7 @@ const Stats = ({ group, profiles, members }: Props) => {
               genres: Array.isArray(d2.genres) ? d2.genres : [],
               original_language: d2.original_language ?? null,
               production_countries: Array.isArray(d2.production_countries) ? d2.production_countries : [],
+              cast,
             };
             cache[cacheKey] = details;
             if (!cancelled) {
