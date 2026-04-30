@@ -1149,18 +1149,33 @@ const TasteByDecade = ({
   profiles: Profile[];
 }) => {
   const [tab, setTab] = useState<'overall' | 'members'>('overall');
-  // Color score 0..1 -> red-ish (low) to green-ish (high), via primary
-  const scoreBar = (avg: number, count: number) => (
-    <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden relative">
-      <div
-        className="h-full rounded-full transition-all"
-        style={{
-          width: `${Math.max(4, Math.round(avg * 100))}%`,
-          background: `linear-gradient(90deg, hsl(var(--primary) / 0.5), hsl(var(--primary)))`,
-        }}
-      />
-    </div>
-  );
+
+  // Convert 0..1 love score → 0..5 stars (rounded to half)
+  const toStars = (avg: number) => Math.round(avg * 5 * 2) / 2;
+
+  const StarRating = ({ avg, size = 14 }: { avg: number; size?: number }) => {
+    const stars = toStars(avg);
+    return (
+      <div className="flex items-center gap-0.5" aria-label={`${stars} out of 5 stars`}>
+        {[1, 2, 3, 4, 5].map(i => {
+          const fill = Math.max(0, Math.min(1, stars - (i - 1)));
+          return (
+            <div key={i} className="relative" style={{ width: size, height: size }}>
+              <Star className="absolute inset-0 text-muted-foreground/30" style={{ width: size, height: size }} />
+              {fill > 0 && (
+                <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+                  <Star
+                    className="text-primary fill-primary"
+                    style={{ width: size, height: size }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-3">
