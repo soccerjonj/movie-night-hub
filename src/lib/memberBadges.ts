@@ -236,9 +236,12 @@ export function computeMemberBadges(
       case 'releaseYear':
         return `Their picks come out around ${Math.round(value)} on average`;
       case 'groupLove':
-        // Score is 1.0 for the season's #1 ranked movie, ~0 for last-ranked,
-        // averaged across pickers and seasons.
-        return `On average their picks land in the top ${Math.round((1 - value) * 100)}% of season rankings`;
+        // 1.0 = season's #1 ranked movie, 0 = last-ranked, averaged across
+        // pickers and seasons. Convert to "top X% of season rankings".
+        {
+          const topPct = Math.max(1, Math.round((1 - value) * 100));
+          return `Their picks land in the top ${topPct}% of season rankings on average`;
+        }
     }
   };
 
