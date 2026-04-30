@@ -255,6 +255,159 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     return isPickWatched(pick);
   };
 
+  // Enrich watched picks with TMDB details (shares cache with Stats.tsx)
+  useEffect(() => {
+    if (group.club_type === 'book') return;
+    if (picks.length === 0) return;
+    let cancelled = false;
+
+    const enrich = async () => {
+      let cache: Record<string, TmdbDetails> = {};
+      try {
+        const raw = sessionStorage.getItem(TMDB_CACHE_KEY);
+        if (raw) cache = JSON.parse(raw);
+      } catch { /* ignore */ }
+
+      const initial: Record<string, TmdbDetails> = {};
+      const toFetch: PickRow[] = [];
+      for (const p of picks) {
+        // Only enrich watched picks — anonymity for unwatched is preserved.
+        if (!isPickWatched(p)) continue;
+        const cacheKey = p.tmdb_id ? `id:${p.tmdb_id}` : `t:${p.title}|${p.year || ''}`;
+        if (cache[cacheKey]) {
+          initial[p.id] = {
+            runtime: cache[cacheKey].runtime ?? null,
+            vote_average: cache[cacheKey].vote_average ?? null,
+            release_date: cache[cacheKey].release_date ?? null,
+            popularity: cache[cacheKey].popularity ?? null,
+          };
+        } else {
+          toFetch.push(p);
+        }
+      }
+      if (Object.keys(initial).length) setTmdbDetails(prev => ({ ...prev, ...initial }));
+      if (toFetch.length === 0 || !TMDB_API_TOKEN) return;
+
+      const headers = { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' };
+      const queue = [...toFetch];
+      const workers = Array.from({ length: 4 }, async () => {
+        while (queue.length && !cancelled) {
+          const p = queue.shift()!;
+          const cacheKey = p.tmdb_id ? `id:${p.tmdb_id}` : `t:${p.title}|${p.year || ''}`;
+          try {
+            let tmdbId = p.tmdb_id;
+            if (!tmdbId) {
+              const yp = p.year ? `&year=${p.year}` : '';
+              const r = await fetch(
+                `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(p.title)}&include_adult=false&language=en-US&page=1${yp}`,
+                { headers }
+              );
+              const d = await r.json();
+              tmdbId = d.results?.[0]?.id || null;
+            }
+            if (!tmdbId) continue;
+            const r2 = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`, { headers });
+            if (!r2.ok) continue;
+            const d2 = await r2.json();
+            const details: TmdbDetails = {
+              runtime: typeof d2.runtime === 'number' ? d2.runtime : null,
+              vote_average: typeof d2.vote_average === 'number' ? d2.vote_average : null,
+              release_date: d2.release_date ?? null,
+              popularity: typeof d2.popularity === 'number' ? d2.popularity : null,
+            };
+            // Don't clobber richer Stats cache entries — only fill if missing.
+            if (!cache[cacheKey]) {
+              cache[cacheKey] = details as TmdbDetails;
+            } else {
+              cache[cacheKey] = { ...cache[cacheKey], ...details };
+            }
+            if (!cancelled) {
+              setTmdbDetails(prev => ({ ...prev, [p.id]: details }));
+            }
+          } catch { /* skip */ }
+        }
+      });
+
+      await Promise.all(workers);
+      try { sessionStorage.setItem(TMDB_CACHE_KEY, JSON.stringify(cache)); } catch { /* ignore */ }
+    };
+
+    enrich();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks, group.club_type]);
+
+  // Compute badges for ALL members (group context). Only watched picks count.
+  const memberBadgesMap = useMemo(() => {
+    if (group.club_type === 'book') {
+      // Books don't have runtime/popularity from TMDB — skip badges for now.
+      return new Map();
+    }
+    if (picks.length === 0) return new Map();
+
+    // Group co-pickers by season+watch_order so a co-picked movie is one entry
+    // counted toward each picker.
+    const slotMap = new Map<string, PickRow[]>();
+    for (const p of picks) {
+      if (!isPickWatched(p)) continue;
+      const key = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `${p.season_id}:single:${p.id}`;
+      if (!slotMap.has(key)) slotMap.set(key, []);
+      slotMap.get(key)!.push(p);
+    }
+
+    // Build per-season ranking max (N) per user for love-score normalization
+    const seasonUserMax = new Map<string, number>(); // `${season}:${user}` -> N
+    const ranksBySeason = new Map<string, Map<string, number[]>>();
+    for (const r of rankings) {
+      let bySeason = ranksBySeason.get(r.season_id);
+      if (!bySeason) { bySeason = new Map(); ranksBySeason.set(r.season_id, bySeason); }
+      const arr = bySeason.get(r.user_id) || [];
+      arr.push(r.rank);
+      bySeason.set(r.user_id, arr);
+    }
+    for (const [seasonId, byUser] of ranksBySeason) {
+      for (const [uid, ranks] of byUser) {
+        seasonUserMax.set(`${seasonId}:${uid}`, Math.max(...ranks));
+      }
+    }
+
+    // For each slot, compute group love (avg across users for any pick in slot)
+    const slotLove = new Map<string, number | null>();
+    for (const [key, slotPicks] of slotMap) {
+      const slotPickIds = new Set(slotPicks.map(p => p.id));
+      const seasonId = slotPicks[0].season_id;
+      const loves: number[] = [];
+      for (const r of rankings) {
+        if (r.season_id !== seasonId) continue;
+        if (!slotPickIds.has(r.movie_pick_id)) continue;
+        const N = seasonUserMax.get(`${seasonId}:${r.user_id}`);
+        if (!N || N < 2) continue;
+        loves.push((N - r.rank + 1) / N);
+      }
+      slotLove.set(key, loves.length ? loves.reduce((s, v) => s + v, 0) / loves.length : null);
+    }
+
+    const inputs: BadgePickInput[] = [];
+    for (const [key, slotPicks] of slotMap) {
+      const canonical = slotPicks[0];
+      const det = tmdbDetails[canonical.id];
+      const releaseYearStr = det?.release_date?.slice(0, 4) || canonical.year || null;
+      const releaseYear = releaseYearStr ? parseInt(releaseYearStr.slice(0, 4), 10) : null;
+      inputs.push({
+        pickId: canonical.id,
+        pickerIds: Array.from(new Set(slotPicks.map(p => p.user_id))),
+        runtime: det?.runtime ?? null,
+        voteAverage: det?.vote_average ?? null,
+        popularity: det?.popularity ?? null,
+        releaseYear: Number.isFinite(releaseYear as number) ? (releaseYear as number) : null,
+        groupLove: slotLove.get(key) ?? null,
+      });
+    }
+
+    return computeMemberBadges(inputs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks, rankings, tmdbDetails, group.club_type, seasons]);
+
   const renderMemberProfile = () => {
     if (!selectedUserId) return null;
     const profile = getProfile(selectedUserId);
