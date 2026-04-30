@@ -145,11 +145,11 @@ const RankingInsights = ({ userId, groupId, profiles }: Props) => {
   if (loading) return null;
   if (!favoritePicker && !biggestFan && !biggestCritic) return null;
 
-  const InsightCard = ({ icon, label, insight, color }: { icon: React.ReactNode; label: string; insight: Insight; color: string }) => {
+  const InsightCard = ({ icon, label, insight, color, borderColor }: { icon: React.ReactNode; label: string; insight: Insight; color: string; borderColor: string }) => {
     const firstUser = insight.users[0];
     const names = insight.users.map(u => u.displayName).join(', ');
     return (
-      <div className="flex items-center gap-2 rounded-xl bg-muted/20 p-2.5">
+      <div className={`flex items-center gap-2 rounded-xl bg-muted/20 p-2.5 border-l-2 ${borderColor}`}>
         <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0 ${color}`}>
           {firstUser.avatarUrl ? (
             <img src={firstUser.avatarUrl} alt={firstUser.displayName} className="w-full h-full object-cover" />
@@ -184,6 +184,7 @@ const RankingInsights = ({ userId, groupId, profiles }: Props) => {
             label="Favorite Picker"
             insight={favoritePicker}
             color="bg-pink-500/10 text-pink-400"
+            borderColor="border-pink-500/40"
           />
         )}
         {biggestFan && (
@@ -192,6 +193,7 @@ const RankingInsights = ({ userId, groupId, profiles }: Props) => {
             label="Biggest Fan"
             insight={biggestFan}
             color="bg-green-500/10 text-green-400"
+            borderColor="border-green-500/40"
           />
         )}
         {biggestCritic && (
@@ -200,6 +202,7 @@ const RankingInsights = ({ userId, groupId, profiles }: Props) => {
             label="Biggest Critic"
             insight={biggestCritic}
             color="bg-orange-500/10 text-orange-400"
+            borderColor="border-orange-500/40"
           />
         )}
       </div>
