@@ -331,7 +331,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           icon={<Film className="w-4 h-4" />}
-          label={`${labels.itemsTitle || labels.items} ${labels.watched}`}
+          label={`${labels.items} ${labels.watched}`}
           value={stats.total.toString()}
         />
         {!isBookClub && (
