@@ -703,7 +703,7 @@ const Stats = ({ group, profiles, members }: Props) => {
 
       {/* Taste by decade */}
       {stats.tasteDecadeRows.length > 0 && (
-        <Section title="Taste by decade" icon={<Star className="w-4 h-4" />} sub="Avg ranking score (100 = favorite)">
+        <Section title="Taste by decade" icon={<Star className="w-4 h-4" />} sub="Avg star rating per decade">
           <TasteByDecade
             overall={stats.tasteDecadeRows}
             members={stats.tasteMembers}
