@@ -221,6 +221,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
     const isCurrent = i === season.current_movie_index;
     const isWatched = i < season.current_movie_index;
     const isExpanded = expandedPick === pick.id;
+    const isNext = !isWatched && !isCurrent && i === season.current_movie_index + 1;
 
     return (
       <div key={pick.id}>
@@ -252,6 +253,20 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
             <p className={`font-medium text-sm truncate ${isCurrent ? 'text-foreground' : ''}`}>
               {pick.title}
             </p>
+            {isCurrent && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary uppercase tracking-wider mt-0.5">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+                </span>
+                Now
+              </span>
+            )}
+            {isNext && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
+                Up Next
+              </span>
+            )}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
               {pick.year && <span className="text-xs text-muted-foreground">{pick.year}</span>}
               {directors[pick.id] && (

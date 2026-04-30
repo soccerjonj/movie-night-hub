@@ -5,6 +5,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { ClubType, getClubLabels } from '@/lib/clubTypes';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
+import { motion } from 'framer-motion';
 
 interface Props {
   season: Season;
@@ -24,10 +25,8 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
   const [director, setDirector] = useState<string | null>(null);
   const [readingStatus, setReadingStatus] = useState<string | null>(null);
 
-  // Find current movie by watch_order matching the index
   const currentMovie = moviePicks.find(p => p.watch_order === season.current_movie_index);
 
-  // Auto-fetch poster + director from TMDB if not stored
   useEffect(() => {
     if (!currentMovie) return;
     if (currentMovie.poster_url) {
@@ -38,7 +37,6 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
       try {
         let tmdbId = currentMovie.tmdb_id;
 
-        // Search for movie if we don't have tmdb_id
         if (!tmdbId || !currentMovie.poster_url) {
           const yearParam = currentMovie.year ? `&year=${currentMovie.year}` : '';
           const res = await fetch(
@@ -61,7 +59,6 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
           }
         }
 
-        // Fetch director from credits
         if (tmdbId) {
           const creditsRes = await fetch(
             `https://api.themoviedb.org/3/movie/${tmdbId}/credits?language=en-US`,
@@ -96,14 +93,8 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
           .limit(1);
         if (error) throw error;
         const first = data?.[0];
-        if (!first) {
-          setReadingStatus('Chapters TBD');
-          return;
-        }
-        if (first.chapter_range) {
-          setReadingStatus(`Chapters ${first.chapter_range}`);
-          return;
-        }
+        if (!first) { setReadingStatus('Chapters TBD'); return; }
+        if (first.chapter_range) { setReadingStatus(`Chapters ${first.chapter_range}`); return; }
         if (first.start_page || first.end_page) {
           setReadingStatus(`Pages ${first.start_page ?? '?'}–${first.end_page ?? '?'}`);
           return;
@@ -119,13 +110,22 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
   const uniquePicks = moviePicks.filter((p, i, arr) => arr.findIndex(x => x.watch_order === p.watch_order) === i);
 
   return (
-    <div className="glass-card rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="glass-card rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <h2 className="font-display text-lg sm:text-xl font-bold">
           {labels.seasonNoun} {season.season_number}
           {season.title ? ` — ${season.title}` : ''}
         </h2>
-        <span className="text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium w-fit">
+        <span className={`text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full font-medium w-fit border ${
+          season.status === 'watching'
+            ? 'bg-primary/10 border-primary/25 text-primary'
+            : 'bg-muted/30 border-border/50 text-muted-foreground'
+        }`}>
           {season.status === 'watching'
             ? clubType === 'book'
               ? `Currently reading: ${readingStatus ?? 'Chapters TBD'}`
@@ -134,9 +134,9 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </span>
       </div>
 
+      {/* Movie club: cinematic Now Watching card */}
       {season.status === 'watching' && currentMovie && clubType !== 'book' && (
         <div className="relative overflow-hidden rounded-xl mt-2">
-          {/* Cinematic blurred backdrop */}
           {posterUrl && (
             <>
               <div
@@ -174,7 +174,17 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
 
             {/* Info */}
             <div className="flex-1 min-w-0 py-1">
-              <p className="text-[10px] sm:text-[11px] text-primary uppercase tracking-[0.2em] font-bold mb-2">{labels.nowAction}</p>
+              {/* Pulsing NOW PLAYING indicator */}
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                </span>
+                <p className="text-[10px] sm:text-[11px] text-primary uppercase tracking-[0.2em] font-bold">
+                  {labels.nowAction}
+                </p>
+              </div>
+
               <h3 className="font-display text-xl sm:text-2xl font-bold leading-tight">{currentMovie.title}</h3>
               <div className="flex flex-wrap items-center gap-x-2 mt-1.5">
                 {currentMovie.year && (
@@ -203,7 +213,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </div>
       )}
 
-      {/* Book club: compact cover + title, no description */}
+      {/* Book club: compact cover + title */}
       {season.status === 'watching' && currentMovie && clubType === 'book' && (
         <div className="flex items-center gap-3 mt-4">
           {posterUrl ? (
@@ -224,12 +234,13 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </div>
       )}
 
+      {/* Next call / meeting info */}
       {season.next_call_date && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-4 h-4 shrink-0" />
             <span>
-              Next call: {format(new Date(season.next_call_date), 'EEEE, MMM d · h:mm a')}
+              Next {isInPerson ? 'meetup' : 'call'}: {format(new Date(season.next_call_date), 'EEEE, MMM d · h:mm a')}
               {' '}({formatDistanceToNow(new Date(season.next_call_date), { addSuffix: true })})
             </span>
           </div>
@@ -244,7 +255,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
               href={season.call_link}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 px-3 py-1.5 rounded-full w-fit"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 hover:bg-primary/15 px-3 py-1.5 rounded-full w-fit"
             >
               <Video className="w-4 h-4" />
               Join Call
@@ -260,7 +271,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
             href={season.call_link}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 px-3 py-1.5 rounded-full w-fit"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 hover:bg-primary/15 px-3 py-1.5 rounded-full w-fit"
           >
             <Video className="w-4 h-4" />
             Join Call
@@ -277,31 +288,35 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </div>
       )}
 
-      {/* Progress bar - movie clubs only */}
+      {/* Progress bar — movie clubs only */}
       {season.status === 'watching' && clubType !== 'book' && (
         <div className="mt-4">
           <div className="flex gap-1">
             {uniquePicks
               .sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0))
-              .map((pick) => (
-                <div
-                  key={pick.id}
-                  className={`h-1.5 flex-1 rounded-full transition-colors ${
-                    (pick.watch_order ?? 0) < season.current_movie_index
-                      ? 'bg-primary'
-                      : (pick.watch_order ?? 0) === season.current_movie_index
-                      ? 'bg-primary/60'
-                      : 'bg-muted'
-                  }`}
-                />
-              ))}
+              .map((pick) => {
+                const state =
+                  (pick.watch_order ?? 0) < season.current_movie_index ? 'done'
+                  : (pick.watch_order ?? 0) === season.current_movie_index ? 'current'
+                  : 'upcoming';
+                return (
+                  <div
+                    key={pick.id}
+                    className={`h-2 flex-1 rounded-full transition-all duration-500 ${
+                      state === 'done' ? 'bg-primary'
+                      : state === 'current' ? 'bg-primary/50'
+                      : 'bg-muted/50'
+                    }`}
+                  />
+                );
+              })}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1.5">
             {season.current_movie_index + 1} of {uniquePicks.length} {labels.items}
           </p>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

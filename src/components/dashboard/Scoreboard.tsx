@@ -553,19 +553,32 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
             ) : mode === 'guesses' ? (
               // Guesses mode
               scores.every(s => s.total === 0) ? (
-                <div className="text-center text-muted-foreground py-8">
-                  <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p>No guesses scored yet</p>
-                  <p className="text-xs mt-1">Scores update as pickers are revealed</p>
+                <div className="text-center text-muted-foreground py-10 space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center mx-auto">
+                    <TrendingUp className="w-6 h-6 opacity-40" />
+                  </div>
+                  <p className="font-medium text-sm">No scores yet</p>
+                  <p className="text-xs text-muted-foreground/70">Scores appear as movies are revealed</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <motion.div
+                  className="space-y-2"
+                  initial="hidden"
+                  animate="visible"
+                  variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
+                >
                   {scores.map((entry, i) => {
                     const profile = getProfile(entry.user_id);
                     const pct = entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
                     const isExpanded = expandedUser === entry.user_id;
                     return (
-                      <div key={entry.user_id}>
+                      <motion.div
+                        key={entry.user_id}
+                        variants={{
+                          hidden: { opacity: 0, y: 8 },
+                          visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } }
+                        }}
+                      >
                         <button
                           onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
                           className={`w-full flex items-center gap-3 rounded-xl p-3 transition-all text-left ${getMedalStyle(i, entry.correct > 0)}`}
@@ -597,28 +610,41 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                             </motion.div>
                           )}
                         </AnimatePresence>
-                      </div>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               )
             ) : (
               // Rankings mode
               rankingScores.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">
-                  <Star className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p>No rankings yet</p>
-                  <p className="text-xs mt-1">Rankings appear after members submit their reviews</p>
+                <div className="text-center text-muted-foreground py-10 space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center mx-auto">
+                    <Star className="w-6 h-6 opacity-40" />
+                  </div>
+                  <p className="font-medium text-sm">No rankings yet</p>
+                  <p className="text-xs text-muted-foreground/70">Rankings appear after members submit reviews</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <motion.div
+                  className="space-y-2"
+                  initial="hidden"
+                  animate="visible"
+                  variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
+                >
                   {rankingScores.map((entry, i) => {
                     const profile = getProfile(entry.user_id);
                     const isExpanded = expandedUser === entry.user_id;
                     const showInlinePick = view === 'season' && entry.picks.length <= 1;
                     const inlinePick = showInlinePick ? entry.picks[0] : undefined;
                     return (
-                      <div key={entry.user_id}>
+                      <motion.div
+                        key={entry.user_id}
+                        variants={{
+                          hidden: { opacity: 0, y: 8 },
+                          visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } }
+                        }}
+                      >
                         <button
                           onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
                           className={`w-full flex items-center gap-3 rounded-xl p-3 transition-all text-left ${getMedalStyle(i, true)}`}
@@ -671,10 +697,10 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                             </motion.div>
                           )}
                         </AnimatePresence>
-                      </div>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               )
             )}
           </motion.div>

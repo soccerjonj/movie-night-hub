@@ -252,10 +252,10 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
                   </div>
                 )}
 
-                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${
-                  index === 0 ? 'bg-primary text-primary-foreground' :
-                  index === 1 ? 'bg-primary/60 text-primary-foreground' :
-                  index === 2 ? 'bg-primary/30 text-foreground' :
+                <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${
+                  index === 0 ? 'bg-gradient-to-br from-amber-300 to-yellow-500 text-amber-950 shadow-[0_0_10px_-2px_rgba(251,191,36,0.5)]' :
+                  index === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-400 text-slate-800' :
+                  index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-700 text-amber-100' :
                   'bg-muted text-muted-foreground'
                 }`}>
                   {index + 1}
@@ -318,10 +318,10 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
               <div key={score.id} className={`flex items-center gap-3 rounded-xl p-3 ${
                 index === 0 ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-muted/20'
               }`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                  index === 0 ? 'bg-primary text-primary-foreground' :
-                  index === 1 ? 'bg-primary/60 text-primary-foreground' :
-                  index === 2 ? 'bg-primary/30 text-foreground' :
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                  index === 0 ? 'bg-gradient-to-br from-amber-300 to-yellow-500 text-amber-950 shadow-[0_0_10px_-2px_rgba(251,191,36,0.5)]' :
+                  index === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-400 text-slate-800' :
+                  index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-700 text-amber-100' :
                   'bg-muted text-muted-foreground'
                 }`}>
                   {index + 1}
