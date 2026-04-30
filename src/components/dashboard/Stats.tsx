@@ -555,6 +555,22 @@ const Stats = ({ group, profiles, members }: Props) => {
             </Section>
           </div>
 
+          {/* Actors */}
+          <Section
+            title="Actors"
+            icon={<Users className="w-4 h-4" />}
+            sub={enrichLoading ? 'Loading TMDB data…' : (stats.actorRows.length > 0 ? `${stats.actorRows.length} unique` : undefined)}
+          >
+            {stats.actorRows.length === 0 ? (
+              <Empty hint="Top-billed cast pulled from TMDB" />
+            ) : (
+              <ActorGrid
+                actors={stats.actorRows}
+                onSelect={(a) => openDrill(a.label, a.pickIds)}
+              />
+            )}
+          </Section>
+
           <div className="grid md:grid-cols-2 gap-4">
             <Section title="Records" icon={<Trophy className="w-4 h-4" />}>
               <ul className="text-sm space-y-2">
