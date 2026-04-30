@@ -58,6 +58,7 @@ interface CrewMember {
   id: number;
   name: string;
   profile_path: string | null;
+  popularity?: number | null;
 }
 
 interface ProductionCompany {
