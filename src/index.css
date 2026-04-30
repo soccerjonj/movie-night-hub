@@ -79,6 +79,27 @@
     @apply bg-card/80 backdrop-blur-xl border border-border/50;
   }
 
+  .glass-card-rich {
+    background: linear-gradient(135deg, hsl(220 18% 12% / 0.95), hsl(220 18% 9% / 0.95));
+    @apply backdrop-blur-xl border border-border/50;
+  }
+
+  .glow-gold-sm {
+    box-shadow: 0 0 20px -5px hsl(38 90% 55% / 0.35);
+  }
+
+  .glow-silver-sm {
+    box-shadow: 0 0 15px -5px hsl(220 15% 70% / 0.25);
+  }
+
+  .glow-bronze-sm {
+    box-shadow: 0 0 15px -5px hsl(25 60% 50% / 0.25);
+  }
+
+  .cinematic-backdrop {
+    background: linear-gradient(to right, hsl(220 18% 9% / 0.97) 0%, hsl(220 18% 9% / 0.80) 50%, hsl(220 18% 9% / 0.50) 100%);
+  }
+
   .animate-fade-up {
     animation: fadeUp 0.6s ease-out forwards;
   }

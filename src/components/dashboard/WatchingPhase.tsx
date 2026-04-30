@@ -226,22 +226,22 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
       <div key={pick.id}>
         <button
           onClick={() => setExpandedPick(isExpanded ? null : pick.id)}
-          className={`w-full flex items-center gap-2 sm:gap-4 rounded-xl p-2 sm:p-3 transition-colors text-left ${
+          className={`w-full flex items-center gap-2 sm:gap-4 rounded-xl p-2 sm:p-3 transition-all text-left ${
             isCurrent
-              ? 'bg-primary/10 ring-1 ring-primary/30'
+              ? 'bg-primary/10 ring-1 ring-primary/30 shadow-[0_0_15px_-5px_hsl(38_90%_55%_/_0.2)]'
               : isWatched
               ? 'bg-muted/10 opacity-60 hover:opacity-80'
               : 'bg-muted/20 hover:bg-muted/30'
           }`}
         >
           <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${
-            isCurrent ? 'bg-primary text-primary-foreground' : isWatched ? 'bg-muted text-muted-foreground' : 'bg-muted/50 text-muted-foreground'
+            isCurrent ? 'bg-primary text-primary-foreground shadow-[0_0_10px_-2px_hsl(38_90%_55%_/_0.5)]' : isWatched ? 'bg-muted text-muted-foreground' : 'bg-muted/50 text-muted-foreground'
           }`}>
             {i + 1}
           </div>
 
           {(pick.poster_url || posterOverrides[pick.id]) ? (
-            <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className="w-8 sm:w-10 rounded-lg object-cover shrink-0" />
+            <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className={`w-8 sm:w-10 rounded-lg object-cover shrink-0 ${isCurrent ? 'ring-1 ring-primary/30 shadow-md' : ''}`} />
           ) : (
             <div className="w-8 sm:w-10 h-11 sm:h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
               <ItemIcon className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
@@ -342,7 +342,12 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
       {/* Movie schedule list - only for movie clubs */}
       {clubType !== 'book' && (
         <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
-          <h2 className="font-display text-lg sm:text-xl font-bold mb-3 sm:mb-4">{labels.scheduleLabel}</h2>
+          <div className="flex items-center gap-2.5 mb-3 sm:mb-4">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/15 border border-primary/25">
+              <Film className="w-4 h-4 text-primary" />
+            </div>
+            <h2 className="font-display text-lg sm:text-xl font-bold">{labels.scheduleLabel}</h2>
+          </div>
           <div className="space-y-2 sm:space-y-3">
             {watchedPicks.length > 0 && (
               <>
