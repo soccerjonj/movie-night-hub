@@ -51,6 +51,7 @@ interface CastMember {
   name: string;
   profile_path: string | null;
   character?: string | null;
+  popularity?: number | null;
 }
 
 interface CrewMember {
