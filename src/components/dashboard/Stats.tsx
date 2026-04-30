@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useGroup';
 import { Film, Clock, Star, Globe, Calendar, Tag, Trophy, BarChart3, Languages, BookOpen, ChevronLeft, Check, X, Trophy as TrophyIcon, Users, Clapperboard, Building2 } from 'lucide-react';
