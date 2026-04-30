@@ -6,6 +6,7 @@ import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { getClubLabels } from '@/lib/clubTypes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 
 interface Props {
   group: { id: string; club_type?: string };
@@ -138,10 +139,7 @@ const StarRating = ({ avg, size = 14 }: { avg: number; size?: number }) => {
             <Star className="absolute inset-0 text-muted-foreground/30" style={{ width: size, height: size }} />
             {fill > 0 && (
               <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
-                <Star
-                  className="text-primary fill-primary"
-                  style={{ width: size, height: size }}
-                />
+                <Star className="text-primary fill-primary" style={{ width: size, height: size }} />
               </div>
             )}
           </div>
@@ -150,6 +148,37 @@ const StarRating = ({ avg, size = 14 }: { avg: number; size?: number }) => {
     </div>
   );
 };
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+const StatsSkeleton = () => (
+  <div className="space-y-4 sm:space-y-6 animate-pulse">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="glass-card rounded-xl p-3 sm:p-4 h-[72px]">
+          <div className="h-3 w-16 bg-muted/60 rounded mb-3" />
+          <div className="h-6 w-12 bg-muted/50 rounded" />
+        </div>
+      ))}
+    </div>
+    {[...Array(3)].map((_, i) => (
+      <div key={i} className="glass-card rounded-2xl p-4 sm:p-5">
+        <div className="h-4 w-28 bg-muted/60 rounded mb-4" />
+        <div className="space-y-2.5">
+          {[...Array(4)].map((_, j) => (
+            <div key={j} className="flex items-center gap-3">
+              <div className="w-20 h-2.5 bg-muted/50 rounded" />
+              <div
+                className="h-2 bg-muted/40 rounded-full"
+                style={{ flex: 1, maxWidth: `${55 + ((i * 4 + j) * 13) % 40}%` }}
+              />
+              <div className="w-5 h-2.5 bg-muted/50 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 const Stats = ({ group, profiles, members }: Props) => {
   const labels = getClubLabels((group.club_type || 'movie') as any);
@@ -325,7 +354,6 @@ const Stats = ({ group, profiles, members }: Props) => {
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(p);
     }
-    // Each entry — pick first as canonical, but list all picker user_ids
     return Array.from(grouped.values()).map(group => ({
       canonical: group[0],
       pickerIds: group.map(p => p.user_id),
@@ -345,7 +373,6 @@ const Stats = ({ group, profiles, members }: Props) => {
   }, [movieEntries]);
 
   const stats = useMemo(() => {
-    // For categorization, collapse to canonical pick per movie-entry to avoid double-counting co-picks.
     const canonicalPicks = movieEntries.map(e => e.canonical);
     const total = canonicalPicks.length;
 
@@ -404,7 +431,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       .sort((a, b) => b[1].length - a[1].length)
       .map(([name, ids]) => ({ key: name, label: name, count: ids.length, pickIds: ids }));
 
-    // Actors — aggregate top-billed cast across canonical picks
+    // Actors
     const actorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[]; popularity: number }>();
     for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
@@ -469,8 +496,8 @@ const Stats = ({ group, profiles, members }: Props) => {
       .map(([id, v]) => ({ key: String(id), id, label: v.name, logo_path: v.logo_path, count: v.pickIds.length, pickIds: v.pickIds }))
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 
-    // Picker — uses ALL pick rows (so co-picks credit each picker)
-    const pickerMap = new Map<string, string[]>(); // user_id -> pick entry canonical ids
+    // Picker
+    const pickerMap = new Map<string, string[]>();
     for (const e of movieEntries) {
       for (const uid of e.pickerIds) {
         if (!pickerMap.has(uid)) pickerMap.set(uid, []);
@@ -532,15 +559,12 @@ const Stats = ({ group, profiles, members }: Props) => {
       medianYear = sorted.length % 2 === 0 ? Math.round((sorted[mid - 1] + sorted[mid]) / 2) : sorted[mid];
     }
 
-    // --- Taste by decade -----------------------------------------------------
-    // "Love score" = (N - rank + 1) / N within a season (1 = favorite, ~0 = least)
-    // Group rankings by season to find N
+    // Taste by decade
     const rankingsBySeason = new Map<string, RankingRow[]>();
     for (const r of rankings) {
       if (!rankingsBySeason.has(r.season_id)) rankingsBySeason.set(r.season_id, []);
       rankingsBySeason.get(r.season_id)!.push(r);
     }
-    // For each season+user, compute N (their max rank); fall back to count
     const seasonUserMax = new Map<string, number>();
     for (const [seasonId, rs] of rankingsBySeason) {
       const byUser = new Map<string, number[]>();
@@ -553,7 +577,6 @@ const Stats = ({ group, profiles, members }: Props) => {
       }
     }
 
-    // Map pickId -> decade
     const pickDecade = new Map<string, number>();
     for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
@@ -561,7 +584,6 @@ const Stats = ({ group, profiles, members }: Props) => {
       const dec = decadeOf(yr);
       if (dec != null) pickDecade.set(p.id, dec);
     }
-    // Sibling pick IDs share the canonical decade
     const siblingDecade = new Map<string, number>();
     for (const e of movieEntries) {
       const dec = pickDecade.get(e.canonical.id);
@@ -569,14 +591,10 @@ const Stats = ({ group, profiles, members }: Props) => {
       for (const sid of e.siblingPickIds) siblingDecade.set(sid, dec);
     }
 
-    // Overall avg love-score per decade
     type DecadeAgg = { sum: number; count: number };
     const decadeOverall = new Map<number, DecadeAgg>();
-    // Per-member avg love-score per decade
-    const memberDecade = new Map<string, Map<number, DecadeAgg>>(); // user_id -> decade -> agg
-    // Per-canonical-pick avg love-score (across all users)
+    const memberDecade = new Map<string, Map<number, DecadeAgg>>();
     const pickLove = new Map<string, DecadeAgg>();
-    // Map any sibling pick id → canonical pick id
     const siblingToCanonical = new Map<string, string>();
     for (const e of movieEntries) {
       for (const sid of e.siblingPickIds) siblingToCanonical.set(sid, e.canonical.id);
@@ -586,8 +604,8 @@ const Stats = ({ group, profiles, members }: Props) => {
       const dec = siblingDecade.get(r.movie_pick_id);
       if (dec == null) continue;
       const N = seasonUserMax.get(`${r.season_id}:${r.user_id}`);
-      if (!N || N < 2) continue; // need at least 2 to differentiate
-      const love = (N - r.rank + 1) / N; // 1 favorite, ~0 least
+      if (!N || N < 2) continue;
+      const love = (N - r.rank + 1) / N;
       const o = decadeOverall.get(dec) || { sum: 0, count: 0 };
       o.sum += love; o.count += 1;
       decadeOverall.set(dec, o);
@@ -663,22 +681,32 @@ const Stats = ({ group, profiles, members }: Props) => {
     };
   }, [movieEntries, tmdbDetails, profiles, rankings]);
 
-  if (loading) {
-    return <div className="text-center text-muted-foreground py-12">Loading stats...</div>;
-  }
+  if (loading) return <StatsSkeleton />;
 
   if (picks.length === 0) {
     return (
-      <div className="text-center text-muted-foreground py-12">
-        <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-        <p>No {labels.items} {labels.watched} yet</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="text-center py-20"
+      >
+        <div className="relative inline-block mb-5">
+          <div className="absolute inset-0 blur-2xl bg-primary/15 scale-150 rounded-full" />
+          <div className="relative w-16 h-16 rounded-2xl bg-muted/50 border border-border/50 flex items-center justify-center">
+            <BarChart3 className="w-8 h-8 text-muted-foreground/40" />
+          </div>
+        </div>
+        <p className="font-display text-lg font-semibold text-muted-foreground">No stats yet</p>
+        <p className="text-sm text-muted-foreground/60 mt-1">
+          Stats appear once {labels.items} have been {labels.watched}
+        </p>
+      </motion.div>
     );
   }
 
   const maxDecade = Math.max(1, ...stats.decadeRows.map(r => r.count));
   const maxGenre = Math.max(1, ...stats.genreRows.map(r => r.count));
-  const maxPicker = Math.max(1, ...stats.pickerRows.map(r => r.count));
   const maxLang = Math.max(1, ...stats.langRows.map(r => r.count));
   const maxCountry = Math.max(1, ...stats.countryRows.map(r => r.count));
 
@@ -695,9 +723,10 @@ const Stats = ({ group, profiles, members }: Props) => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Headline cards */}
+      {/* Headline cards — stagger in on mount */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
+          index={0}
           icon={<Film className="w-4 h-4" />}
           label={`${labels.items} ${labels.watched}`}
           value={stats.total.toString()}
@@ -705,6 +734,7 @@ const Stats = ({ group, profiles, members }: Props) => {
         />
         {!isBookClub && (
           <StatCard
+            index={1}
             icon={<Clock className="w-4 h-4" />}
             label="Total runtime"
             value={stats.runtimeCount > 0 ? formatRuntime(stats.totalRuntime) : '—'}
@@ -713,12 +743,14 @@ const Stats = ({ group, profiles, members }: Props) => {
         )}
         {!isBookClub && (
           <StatCard
+            index={2}
             icon={<Star className="w-4 h-4" />}
             label="Avg TMDB rating"
             value={stats.avgRating != null ? stats.avgRating.toFixed(1) : '—'}
           />
         )}
         <StatCard
+          index={isBookClub ? 1 : 3}
           icon={<Calendar className="w-4 h-4" />}
           label="Year range"
           value={
@@ -740,8 +772,8 @@ const Stats = ({ group, profiles, members }: Props) => {
           <Empty />
         ) : (
           <div className="space-y-1.5">
-            {stats.decadeRows.map(r => (
-              <BarRow key={r.key} label={r.label} count={r.count} max={maxDecade}
+            {stats.decadeRows.map((r, i) => (
+              <BarRow key={r.key} label={r.label} count={r.count} max={maxDecade} index={i}
                 onClick={() => openDrill(`${r.label}`, r.pickIds)} />
             ))}
           </div>
@@ -768,8 +800,8 @@ const Stats = ({ group, profiles, members }: Props) => {
               <Empty hint="Pulled from TMDB" />
             ) : (
               <div className="space-y-1.5">
-                {stats.genreRows.slice(0, 12).map(r => (
-                  <BarRow key={r.key} label={r.label} count={r.count} max={maxGenre}
+                {stats.genreRows.slice(0, 12).map((r, i) => (
+                  <BarRow key={r.key} label={r.label} count={r.count} max={maxGenre} index={i}
                     onClick={() => openDrill(r.label, r.pickIds)} />
                 ))}
               </div>
@@ -780,8 +812,8 @@ const Stats = ({ group, profiles, members }: Props) => {
             <Section title="Languages" icon={<Languages className="w-4 h-4" />}>
               {stats.langRows.length === 0 ? <Empty /> : (
                 <div className="space-y-1.5">
-                  {stats.langRows.slice(0, 8).map(r => (
-                    <BarRow key={r.key} label={r.label} count={r.count} max={maxLang}
+                  {stats.langRows.slice(0, 8).map((r, i) => (
+                    <BarRow key={r.key} label={r.label} count={r.count} max={maxLang} index={i}
                       onClick={() => openDrill(r.label, r.pickIds)} />
                   ))}
                 </div>
@@ -790,8 +822,8 @@ const Stats = ({ group, profiles, members }: Props) => {
             <Section title="Countries" icon={<Globe className="w-4 h-4" />}>
               {stats.countryRows.length === 0 ? <Empty /> : (
                 <div className="space-y-1.5">
-                  {stats.countryRows.slice(0, 8).map(r => (
-                    <BarRow key={r.key} label={r.label} count={r.count} max={maxCountry}
+                  {stats.countryRows.slice(0, 8).map((r, i) => (
+                    <BarRow key={r.key} label={r.label} count={r.count} max={maxCountry} index={i}
                       onClick={() => openDrill(r.label, r.pickIds)} />
                   ))}
                 </div>
@@ -854,24 +886,30 @@ const Stats = ({ group, profiles, members }: Props) => {
 
           <div className="grid md:grid-cols-2 gap-4">
             <Section title="Records" icon={<Trophy className="w-4 h-4" />}>
-              <ul className="text-sm space-y-2">
+              <ul className="space-y-1">
                 <RecordRow label="Longest"
                   value={stats.longest ? `${pickIdToEntry.get(stats.longest.pickId)?.canonical.title} · ${formatRuntime(stats.longest.runtime)}` : '—'}
+                  posterUrl={stats.longest ? (pickIdToEntry.get(stats.longest.pickId)?.canonical.poster_url ?? undefined) : undefined}
                   onClick={stats.longest ? () => openDrill('Longest', [stats.longest!.pickId]) : undefined} />
                 <RecordRow label="Shortest"
                   value={stats.shortest ? `${pickIdToEntry.get(stats.shortest.pickId)?.canonical.title} · ${formatRuntime(stats.shortest.runtime)}` : '—'}
+                  posterUrl={stats.shortest ? (pickIdToEntry.get(stats.shortest.pickId)?.canonical.poster_url ?? undefined) : undefined}
                   onClick={stats.shortest ? () => openDrill('Shortest', [stats.shortest!.pickId]) : undefined} />
                 <RecordRow label="Highest rated"
                   value={stats.highestRated ? `${pickIdToEntry.get(stats.highestRated.pickId)?.canonical.title} · ${stats.highestRated.rating.toFixed(1)}` : '—'}
+                  posterUrl={stats.highestRated ? (pickIdToEntry.get(stats.highestRated.pickId)?.canonical.poster_url ?? undefined) : undefined}
                   onClick={stats.highestRated ? () => openDrill('Highest rated', [stats.highestRated!.pickId]) : undefined} />
                 <RecordRow label="Lowest rated"
                   value={stats.lowestRated ? `${pickIdToEntry.get(stats.lowestRated.pickId)?.canonical.title} · ${stats.lowestRated.rating.toFixed(1)}` : '—'}
+                  posterUrl={stats.lowestRated ? (pickIdToEntry.get(stats.lowestRated.pickId)?.canonical.poster_url ?? undefined) : undefined}
                   onClick={stats.lowestRated ? () => openDrill('Lowest rated', [stats.lowestRated!.pickId]) : undefined} />
                 <RecordRow label="Oldest"
                   value={stats.oldest ? `${stats.oldest.p.title} · ${stats.oldest.y}` : '—'}
+                  posterUrl={stats.oldest ? (stats.oldest.p.poster_url ?? undefined) : undefined}
                   onClick={stats.oldest ? () => openDrill('Oldest', [stats.oldest!.p.id]) : undefined} />
                 <RecordRow label="Newest"
                   value={stats.newest ? `${stats.newest.p.title} · ${stats.newest.y}` : '—'}
+                  posterUrl={stats.newest ? (stats.newest.p.poster_url ?? undefined) : undefined}
                   onClick={stats.newest ? () => openDrill('Newest', [stats.newest!.p.id]) : undefined} />
               </ul>
             </Section>
@@ -927,27 +965,30 @@ const Stats = ({ group, profiles, members }: Props) => {
 
           {drill && !selectedPickId && drill.pickIds.length > 1 && drill.mode !== 'decade' && (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
-              {drill.pickIds.map(pid => {
+              {drill.pickIds.map((pid, i) => {
                 const entry = pickIdToEntry.get(pid);
                 if (!entry) return null;
                 const p = entry.canonical;
                 return (
-                  <button
+                  <motion.button
                     key={pid}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.25, delay: i * 0.03, ease: [0.16, 1, 0.3, 1] }}
                     onClick={() => setSelectedPickId(pid)}
                     className="text-left group"
                   >
-                    <div className="aspect-[2/3] rounded-md overflow-hidden bg-muted">
+                    <div className="aspect-[2/3] rounded-md overflow-hidden bg-muted ring-1 ring-border/30 group-hover:ring-primary/40 transition-all">
                       {p.poster_url ? (
-                        <img src={p.poster_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <img src={p.poster_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center p-1">
+                        <div className="w-full h-full flex items-center justify-center">
                           <Film className="w-5 h-5 text-muted-foreground" />
                         </div>
                       )}
                     </div>
                     <p className="text-[11px] mt-1 line-clamp-2 leading-tight min-h-[2.2em] group-hover:text-primary transition-colors">{p.title}</p>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
@@ -969,13 +1010,16 @@ const Stats = ({ group, profiles, members }: Props) => {
                   if (b.avg == null) return -1;
                   return b.avg - a.avg;
                 })
-                .map(({ pid, entry, avg, count }) => {
+                .map(({ pid, entry, avg, count }, i) => {
                   const p = entry!.canonical;
                   return (
-                    <button
+                    <motion.button
                       key={pid}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.25, delay: i * 0.04, ease: [0.16, 1, 0.3, 1] }}
                       onClick={() => setSelectedPickId(pid)}
-                      className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                      className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-primary/5 hover:ring-1 hover:ring-primary/20 transition-all text-left"
                     >
                       <div className="w-12 aspect-[2/3] rounded overflow-hidden bg-muted shrink-0">
                         {p.poster_url ? (
@@ -998,7 +1042,7 @@ const Stats = ({ group, profiles, members }: Props) => {
                           <p className="text-[11px] text-muted-foreground mt-1">No rankings yet</p>
                         )}
                       </div>
-                    </button>
+                    </motion.button>
                   );
                 })}
             </div>
@@ -1022,7 +1066,7 @@ const Stats = ({ group, profiles, members }: Props) => {
   );
 };
 
-// --- Movie detail view -------------------------------------------------------
+// ── Movie detail view ─────────────────────────────────────────────────────────
 
 const MovieDetailView = ({
   entry,
@@ -1048,7 +1092,6 @@ const MovieDetailView = ({
   const validPickerIds = new Set(entry.pickerIds);
   const siblingSet = new Set(entry.siblingPickIds);
 
-  // Guesses for this movie entry — dedupe per guesser
   const guessByUser = new Map<string, GuessRow>();
   for (const g of guesses) {
     if (siblingSet.has(g.movie_pick_id) && !guessByUser.has(g.guesser_id)) {
@@ -1056,7 +1099,6 @@ const MovieDetailView = ({
     }
   }
 
-  // Rankings for this movie entry — combine across sibling picks (each member ranks each pick once)
   const rankByUser = new Map<string, number>();
   for (const r of rankings) {
     if (siblingSet.has(r.movie_pick_id) && !rankByUser.has(r.user_id)) {
@@ -1065,7 +1107,7 @@ const MovieDetailView = ({
   }
 
   const guessRows = members
-    .filter(m => !validPickerIds.has(m.user_id)) // pickers don't guess themselves
+    .filter(m => !validPickerIds.has(m.user_id))
     .map(m => ({
       uid: m.user_id,
       name: getName(m.user_id),
@@ -1085,17 +1127,23 @@ const MovieDetailView = ({
 
   return (
     <div className="space-y-4 pt-1 min-w-0">
-      <div className="flex gap-3">
-        <div className="w-20 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-muted">
-          {p.poster_url ? (
-            <img src={p.poster_url} alt={p.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Film className="w-6 h-6 text-muted-foreground" />
-            </div>
+      <div className="flex gap-4">
+        {/* Poster with ambient glow */}
+        <div className="relative shrink-0">
+          {p.poster_url && (
+            <div className="absolute inset-0 blur-2xl bg-primary/20 scale-125 -z-10 rounded-xl" />
           )}
+          <div className="w-24 aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/40">
+            {p.poster_url ? (
+              <img src={p.poster_url} alt={p.title} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Film className="w-6 h-6 text-muted-foreground" />
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex-1 min-w-0 text-sm space-y-1">
+        <div className="flex-1 min-w-0 text-sm space-y-1.5">
           <div className="font-display font-semibold text-base leading-snug">{p.title}</div>
           <div className="text-muted-foreground text-xs">
             {[yearText, tmdb?.runtime ? formatRuntime(tmdb.runtime) : null, tmdb?.vote_average ? `★ ${tmdb.vote_average.toFixed(1)}` : null]
@@ -1113,7 +1161,7 @@ const MovieDetailView = ({
             </div>
           )}
           {tmdb?.genres && tmdb.genres.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-1">
+            <div className="flex flex-wrap gap-1 pt-0.5">
               {tmdb.genres.map(g => (
                 <span key={g.id} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/15 text-primary">
                   {g.name}
@@ -1225,9 +1273,7 @@ const MovieDetailView = ({
   );
 };
 
-// --- Small UI primitives -----------------------------------------------------
-
-// --- Taste by decade ---------------------------------------------------------
+// ── Taste by decade ───────────────────────────────────────────────────────────
 
 type TasteRow = { decade: number; label: string; avg: number; count: number; pickIds: string[] };
 type TasteMember = {
@@ -1253,24 +1299,26 @@ const TasteByDecade = ({
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 p-1 bg-muted/40 rounded-lg w-fit">
-        <button
-          onClick={() => setTab('overall')}
-          className={`text-xs px-3 py-1 rounded-md transition-colors ${tab === 'overall' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
-        >
-          Overall
-        </button>
-        <button
-          onClick={() => setTab('members')}
-          className={`text-xs px-3 py-1 rounded-md transition-colors ${tab === 'members' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
-        >
-          Per member
-        </button>
+      {/* Tab switcher — matches the dashboard tab style */}
+      <div className="flex gap-0 border-b border-border/40 -mx-1">
+        {(['overall', 'members'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors capitalize ${
+              tab === t
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t === 'members' ? 'Per member' : 'Overall'}
+          </button>
+        ))}
       </div>
 
       {tab === 'overall' && (
         <div className="space-y-1.5">
-          {overall.map(r => {
+          {overall.map((r, i) => {
             const inner = (
               <>
                 <div className="w-16 text-xs sm:text-sm text-left">{r.label}</div>
@@ -1286,12 +1334,12 @@ const TasteByDecade = ({
               <button
                 key={r.decade}
                 onClick={() => onSelectDecade(r)}
-                className="w-full flex items-center gap-3 rounded-md px-1 -mx-1 py-1 hover:bg-primary/5 transition-colors"
+                className="w-full flex items-center gap-3 rounded-md px-1 -mx-1 py-1.5 hover:bg-primary/5 transition-colors"
               >
                 {inner}
               </button>
             ) : (
-              <div key={r.decade} className="flex items-center gap-3 px-1 py-1">
+              <div key={r.decade} className="flex items-center gap-3 px-1 py-1.5">
                 {inner}
               </div>
             );
@@ -1365,6 +1413,8 @@ const TasteByDecade = ({
   );
 };
 
+// ── Actor / Director / Company grid ──────────────────────────────────────────
+
 type GridItem = {
   id: number;
   label: string;
@@ -1400,8 +1450,6 @@ const ActorGrid = ({
 
   const handleCollapse = () => {
     setShowAll(false);
-    // Scroll the section header back into view so the user isn't left
-    // hovering somewhere deep in the page.
     requestAnimationFrame(() => {
       topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -1421,26 +1469,25 @@ const ActorGrid = ({
           <p className="text-[11px] text-muted-foreground">
             Showing all {actors.length} {actors.length === 1 ? noun : pluralNoun}
           </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCollapse}
-            className="text-xs h-7"
-          >
+          <Button variant="ghost" size="sm" onClick={handleCollapse} className="text-xs h-7">
             Show less
           </Button>
         </div>
       )}
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-        {list.map(a => {
+        {list.map((a, i) => {
           const img = a.profile_path ?? a.logo_path ?? null;
           return (
-            <button
+            <motion.button
               key={a.id}
+              initial={{ opacity: 0, scale: 0.92 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: '-20px' }}
+              transition={{ duration: 0.28, delay: i * 0.03, ease: [0.16, 1, 0.3, 1] }}
               onClick={() => onSelect(a)}
               className="text-left group"
             >
-              <div className={`${isLogo ? 'aspect-square p-3 flex items-center justify-center' : 'aspect-[2/3]'} rounded-md overflow-hidden bg-muted relative`}>
+              <div className={`${isLogo ? 'aspect-square p-3 flex items-center justify-center' : 'aspect-[2/3]'} rounded-md overflow-hidden bg-muted relative ring-1 ring-border/20 group-hover:ring-primary/30 transition-all`}>
                 {img ? (
                   <img
                     src={`https://image.tmdb.org/t/p/w185${img}`}
@@ -1448,7 +1495,7 @@ const ActorGrid = ({
                     loading="lazy"
                     className={isLogo
                       ? 'max-w-full max-h-full object-contain'
-                      : 'w-full h-full object-cover group-hover:scale-105 transition-transform'}
+                      : 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
@@ -1458,7 +1505,7 @@ const ActorGrid = ({
                   </div>
                 )}
                 {a.count >= 2 && (
-                  <span className="absolute top-1 right-1 text-[10px] font-semibold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
+                  <span className="absolute top-1 right-1 text-[10px] font-semibold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 shadow-sm">
                     ×{a.count}
                   </span>
                 )}
@@ -1466,18 +1513,13 @@ const ActorGrid = ({
               <p className="text-[11px] mt-1 line-clamp-2 leading-tight min-h-[2.2em] group-hover:text-primary transition-colors">
                 {a.label}
               </p>
-            </button>
+            </motion.button>
           );
         })}
       </div>
       {actors.length > headline.length && (
         <div className="flex justify-center pt-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowAll(s => !s)}
-            className="text-xs"
-          >
+          <Button variant="ghost" size="sm" onClick={() => setShowAll(s => !s)} className="text-xs">
             {showAll ? 'Show less' : `Show all ${actors.length}`}
           </Button>
         </div>
@@ -1485,6 +1527,8 @@ const ActorGrid = ({
     </div>
   );
 };
+
+// ── Small UI primitives ───────────────────────────────────────────────────────
 
 const Avatar = ({ profile, size = 24 }: { profile?: Profile; size?: number }) => {
   const initial = (profile?.display_name || '?').slice(0, 1).toUpperCase();
@@ -1495,66 +1539,89 @@ const Avatar = ({ profile, size = 24 }: { profile?: Profile; size?: number }) =>
     >
       {profile?.avatar_url ? (
         <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-      ) : (
-        initial
-      )}
+      ) : initial}
     </div>
   );
 };
 
 const StatCard = ({
-  icon, label, value, sub, onClick,
-}: { icon: React.ReactNode; label: string; value: string; sub?: string; onClick?: () => void }) => {
+  icon, label, value, sub, onClick, index = 0,
+}: { icon: React.ReactNode; label: string; value: string; sub?: string; onClick?: () => void; index?: number }) => {
   const inner = (
     <>
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
         {icon}
         <span className="truncate">{label}</span>
       </div>
-      <div className="text-lg sm:text-2xl font-display font-bold text-gradient-gold leading-tight">{value}</div>
+      <div className="text-xl sm:text-2xl font-display font-bold text-gradient-gold leading-tight">{value}</div>
       {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
     </>
   );
+
+  const motionProps = {
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.35, delay: index * 0.07, ease: [0.16, 1, 0.3, 1] as number[] },
+  };
+
   if (onClick) {
     return (
-      <button
+      <motion.button
+        {...motionProps}
         onClick={onClick}
-        className="glass-card rounded-xl p-3 sm:p-4 text-left hover:ring-1 hover:ring-primary/40 transition-all"
+        className="glass-card rounded-xl p-3 sm:p-4 text-left hover:ring-1 hover:ring-primary/40 hover:shadow-[0_0_20px_-8px_hsl(38_90%_55%_/_0.3)] hover:bg-primary/5 transition-all duration-200 w-full"
       >
         {inner}
-      </button>
+      </motion.button>
     );
   }
-  return <div className="glass-card rounded-xl p-3 sm:p-4">{inner}</div>;
+  return (
+    <motion.div {...motionProps} className="glass-card rounded-xl p-3 sm:p-4">
+      {inner}
+    </motion.div>
+  );
 };
 
 const Section = ({
   title, icon, children, sub,
 }: { title: string; icon: React.ReactNode; children: React.ReactNode; sub?: string }) => (
-  <div className="glass-card rounded-2xl p-4 sm:p-5">
+  <motion.div
+    className="glass-card rounded-2xl p-4 sm:p-5"
+    initial={{ opacity: 0, y: 12 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: '-40px' }}
+    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+  >
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2 text-sm font-semibold">
-        {icon}
+        <span className="text-primary">{icon}</span>
         {title}
       </div>
       {sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}
     </div>
     {children}
-  </div>
+  </motion.div>
 );
 
 const BarRow = ({
-  label, count, max, onClick,
-}: { label: string; count: number; max: number; onClick?: () => void }) => {
+  label, count, max, onClick, index = 0,
+}: { label: string; count: number; max: number; onClick?: () => void; index?: number }) => {
+  const pct = (count / max) * 100;
+  const bar = (
+    <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden">
+      <motion.div
+        className="h-full bg-gradient-to-r from-primary/70 to-primary rounded-full"
+        initial={{ width: '0%' }}
+        whileInView={{ width: `${pct}%` }}
+        viewport={{ once: true, margin: '-20px' }}
+        transition={{ duration: 0.65, delay: index * 0.045, ease: [0.16, 1, 0.3, 1] }}
+      />
+    </div>
+  );
   const content = (
     <>
       <div className="w-24 sm:w-32 text-xs sm:text-sm truncate text-left">{label}</div>
-      <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-primary/70 to-primary rounded-full"
-          style={{ width: `${(count / max) * 100}%` }}
-        />
-      </div>
+      {bar}
       <div className="w-8 text-right text-xs sm:text-sm font-medium tabular-nums">{count}</div>
     </>
   );
@@ -1562,22 +1629,32 @@ const BarRow = ({
     return (
       <button
         onClick={onClick}
-        className="w-full flex items-center gap-3 rounded-md px-1 -mx-1 py-1 hover:bg-primary/5 transition-colors"
+        className="w-full flex items-center gap-3 rounded-md px-1 -mx-1 py-1.5 hover:bg-primary/5 transition-colors"
       >
         {content}
       </button>
     );
   }
-  return <div className="flex items-center gap-3 px-1 py-1">{content}</div>;
+  return <div className="flex items-center gap-3 px-1 py-1.5">{content}</div>;
 };
 
 const RecordRow = ({
-  label, value, onClick,
-}: { label: string; value: string; onClick?: () => void }) => {
+  label, value, onClick, posterUrl,
+}: { label: string; value: string; onClick?: () => void; posterUrl?: string }) => {
   const content = (
     <>
-      <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className="font-medium text-right truncate">{value}</span>
+      {posterUrl && (
+        <div className="w-7 h-10 rounded overflow-hidden bg-muted shrink-0 ring-1 ring-border/30">
+          <img src={posterUrl} alt="" className="w-full h-full object-cover" />
+        </div>
+      )}
+      {!posterUrl && (
+        <div className="w-7 h-10 rounded bg-muted/50 shrink-0 flex items-center justify-center ring-1 ring-border/20">
+          <Film className="w-3 h-3 text-muted-foreground/40" />
+        </div>
+      )}
+      <span className="text-muted-foreground shrink-0 text-xs w-20">{label}</span>
+      <span className="font-medium text-right truncate text-sm flex-1">{value}</span>
     </>
   );
   if (onClick) {
@@ -1585,14 +1662,18 @@ const RecordRow = ({
       <li>
         <button
           onClick={onClick}
-          className="w-full flex justify-between gap-3 rounded-md px-1 -mx-1 py-1 hover:bg-primary/5 transition-colors text-left"
+          className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 -mx-2 hover:bg-primary/5 hover:ring-1 hover:ring-primary/15 transition-all text-left"
         >
           {content}
         </button>
       </li>
     );
   }
-  return <li className="flex justify-between gap-3 px-1 py-1">{content}</li>;
+  return (
+    <li className="flex items-center gap-2 px-2 py-1.5">
+      {content}
+    </li>
+  );
 };
 
 const Empty = ({ hint }: { hint?: string } = {}) => (
