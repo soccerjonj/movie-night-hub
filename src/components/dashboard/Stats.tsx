@@ -1240,9 +1240,11 @@ const TasteByDecade = ({
                   {m.rows.map(r => (
                     <div key={r.decade} className="flex items-center gap-2">
                       <div className="w-12 text-[11px] text-muted-foreground">{r.label}</div>
-                      {scoreBar(r.avg, r.count)}
+                      <div className="flex-1">
+                        <StarRating avg={r.avg} size={13} />
+                      </div>
                       <div className="w-8 text-right text-[11px] tabular-nums">
-                        {Math.round(r.avg * 100)}
+                        {toStars(r.avg).toFixed(1)}
                       </div>
                       <div className="w-6 text-right text-[10px] text-muted-foreground tabular-nums">
                         ({r.count})
