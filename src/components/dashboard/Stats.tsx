@@ -600,6 +600,8 @@ const Stats = ({ group, profiles, members }: Props) => {
       newest,
       avgYear,
       medianYear,
+      tasteDecadeRows,
+      tasteMembers,
     };
   }, [movieEntries, tmdbDetails, profiles, rankings]);
 
