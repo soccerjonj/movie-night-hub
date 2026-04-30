@@ -188,7 +188,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
                 )}
               </div>
               {currentMovie.overview && (
-                <p className="text-xs sm:text-sm text-muted-foreground mt-2 line-clamp-2 sm:line-clamp-3 leading-relaxed">
+                <p className="text-xs sm:text-sm text-muted-foreground mt-2 leading-relaxed">
                   {currentMovie.overview}
                 </p>
               )}

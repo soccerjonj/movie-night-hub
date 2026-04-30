@@ -469,10 +469,8 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
         onClick={() => collapsed && setIsOpen(!isOpen)}
         className={`flex items-center justify-between w-full mb-${isOpen ? '4' : '0'} ${collapsed ? 'cursor-pointer' : 'cursor-default'}`}
       >
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/15 border border-primary/25">
-            <Trophy className="w-4 h-4 text-primary" />
-          </div>
+        <div className="flex items-center gap-2">
+          <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
           <h2 className="font-display text-lg sm:text-xl font-bold">Scoreboard</h2>
           {collapsed && !isOpen && (
             <span className="text-xs text-muted-foreground ml-2">(from past seasons)</span>
