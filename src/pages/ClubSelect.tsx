@@ -118,7 +118,7 @@ const ClubSelect = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="glass-card p-8 w-full max-w-md mx-4 relative z-10"
+        className="glass-card rounded-2xl p-8 w-full max-w-md mx-4 relative z-10"
         style={{ boxShadow: '0 0 60px -20px hsl(38 90% 55% / 0.15), 0 25px 50px -12px rgba(0,0,0,0.5)' }}
       >
         <div className="space-y-6">
@@ -142,9 +142,9 @@ const ClubSelect = () => {
               >
                 <button
                   onClick={() => navigate(`/dashboard/${g.id}`)}
-                  className="flex-1 flex items-center gap-4 p-4 border border-border/50 bg-gradient-to-r from-muted/20 to-muted/5 hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_0_20px_-8px_hsl(38_90%_55%_/_0.3)] transition-all text-left group"
+                  className="flex-1 flex items-center gap-4 rounded-xl p-4 border border-border/50 bg-gradient-to-r from-muted/20 to-muted/5 hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_0_20px_-8px_hsl(38_90%_55%_/_0.3)] transition-all text-left group"
                 >
-                  <div className="flex items-center justify-center h-11 w-11 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/35 transition-colors shrink-0">
+                  <div className="flex items-center justify-center h-11 w-11 rounded-xl bg-primary/10 border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/35 transition-colors shrink-0">
                     {g.club_type === 'book' ? (
                       <BookOpen className="w-5 h-5 text-primary" />
                     ) : (
