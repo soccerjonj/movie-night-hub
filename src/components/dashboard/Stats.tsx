@@ -475,16 +475,6 @@ const Stats = ({ group, profiles, members }: Props) => {
         )}
       </Section>
 
-      {/* Pickers */}
-      <Section title="Picks per member" icon={<Trophy className="w-4 h-4" />}>
-        <div className="space-y-1.5">
-          {stats.pickerRows.map(r => (
-            <BarRow key={r.key} label={r.label} count={r.count} max={maxPicker}
-              onClick={() => openDrill(`${r.label}'s picks`, r.pickIds)} />
-          ))}
-        </div>
-      </Section>
-
       {/* Movie-only sections */}
       {!isBookClub && (
         <>
