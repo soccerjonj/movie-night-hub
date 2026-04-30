@@ -340,6 +340,28 @@ const Stats = ({ group, profiles, members }: Props) => {
       .sort((a, b) => b[1].length - a[1].length)
       .map(([name, ids]) => ({ key: name, label: name, count: ids.length, pickIds: ids }));
 
+    // Actors — aggregate top-billed cast across canonical picks
+    const actorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[] }>();
+    for (const p of canonicalPicks) {
+      const det = tmdbDetails[p.id];
+      if (!det?.cast) continue;
+      const seen = new Set<number>();
+      for (const c of det.cast) {
+        if (seen.has(c.id)) continue;
+        seen.add(c.id);
+        const existing = actorMap.get(c.id);
+        if (existing) {
+          existing.pickIds.push(p.id);
+        } else {
+          actorMap.set(c.id, { name: c.name, profile_path: c.profile_path, pickIds: [p.id] });
+        }
+      }
+    }
+    const actorRows = Array.from(actorMap.entries())
+      .map(([id, v]) => ({ key: String(id), id, label: v.name, profile_path: v.profile_path, count: v.pickIds.length, pickIds: v.pickIds }))
+      .filter(r => r.count >= 1)
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
     // Picker — uses ALL pick rows (so co-picks credit each picker)
     const pickerMap = new Map<string, string[]>(); // user_id -> pick entry canonical ids
     for (const e of movieEntries) {
