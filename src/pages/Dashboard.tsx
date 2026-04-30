@@ -301,8 +301,10 @@ const Dashboard = () => {
                 </div>
               )}
             </>
-          ) : (
+          ) : tab === 'history' ? (
             <History group={group} profiles={profiles} members={members} />
+          ) : (
+            <Stats group={group} profiles={profiles} members={members} />
           )}
 
           {/* Always render MemberList dialog for profile access from any tab */}
