@@ -120,7 +120,35 @@ const decadeOf = (year: string | null | undefined) => {
 interface DrillDown {
   title: string;
   pickIds: string[];
+  mode?: 'default' | 'decade';
 }
+
+// Convert 0..1 love score → 0..5 stars (continuous decimal)
+const toStars = (avg: number) => Math.max(0, Math.min(5, avg * 5));
+
+const StarRating = ({ avg, size = 14 }: { avg: number; size?: number }) => {
+  const stars = toStars(avg);
+  return (
+    <div className="flex items-center gap-0.5" aria-label={`${stars.toFixed(1)} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map(i => {
+        const fill = Math.max(0, Math.min(1, stars - (i - 1)));
+        return (
+          <div key={i} className="relative" style={{ width: size, height: size }}>
+            <Star className="absolute inset-0 text-muted-foreground/30" style={{ width: size, height: size }} />
+            {fill > 0 && (
+              <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+                <Star
+                  className="text-primary fill-primary"
+                  style={{ width: size, height: size }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 const Stats = ({ group, profiles, members }: Props) => {
   const labels = getClubLabels((group.club_type || 'movie') as any);
