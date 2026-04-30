@@ -46,6 +46,13 @@ interface RankingRow {
   season_id: string;
 }
 
+interface CastMember {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  character?: string | null;
+}
+
 interface TmdbDetails {
   runtime: number | null;
   vote_average: number | null;
@@ -53,9 +60,10 @@ interface TmdbDetails {
   genres: { id: number; name: string }[];
   original_language: string | null;
   production_countries: { iso_3166_1: string; name: string }[];
+  cast?: CastMember[];
 }
 
-const TMDB_CACHE_KEY = 'mc_tmdb_details_v1';
+const TMDB_CACHE_KEY = 'mc_tmdb_details_v2';
 
 const loadTmdbCache = (): Record<string, TmdbDetails> => {
   try {
