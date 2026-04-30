@@ -481,8 +481,38 @@ const Stats = ({ group, profiles, members }: Props) => {
       .filter(Boolean) as { p: PickRow; y: number }[];
     const oldest = datedPicks.length ? datedPicks.reduce((a, b) => (a.y < b.y ? a : b)) : null;
     const newest = datedPicks.length ? datedPicks.reduce((a, b) => (a.y > b.y ? a : b)) : null;
+    const avgYear = datedPicks.length
+      ? Math.round(datedPicks.reduce((s, d) => s + d.y, 0) / datedPicks.length)
+      : null;
+    let medianYear: number | null = null;
+    if (datedPicks.length) {
+      const sorted = [...datedPicks].map(d => d.y).sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      medianYear = sorted.length % 2 === 0 ? Math.round((sorted[mid - 1] + sorted[mid]) / 2) : sorted[mid];
+    }
 
     return {
+      total,
+      decadeRows,
+      genreRows,
+      langRows,
+      countryRows,
+      actorRows,
+      directorRows,
+      companyRows,
+      pickerRows,
+      totalRuntime,
+      runtimeCount,
+      longest,
+      shortest,
+      highestRated,
+      lowestRated,
+      avgRating: ratingCount > 0 ? ratingSum / ratingCount : null,
+      oldest,
+      newest,
+      avgYear,
+      medianYear,
+    };
       total,
       decadeRows,
       genreRows,
