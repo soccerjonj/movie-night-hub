@@ -967,56 +967,84 @@ const MovieDetailView = ({
 
 // --- Small UI primitives -----------------------------------------------------
 
+type GridItem = {
+  id: number;
+  label: string;
+  profile_path?: string | null;
+  logo_path?: string | null;
+  count: number;
+  pickIds: string[];
+};
+
 const ActorGrid = ({
   actors,
   onSelect,
+  noun = 'actor',
+  pluralNoun = 'actors',
+  itemNoun = 'movie',
+  itemPluralNoun = 'movies',
+  variant = 'portrait',
 }: {
-  actors: { id: number; label: string; profile_path: string | null; count: number; pickIds: string[] }[];
-  onSelect: (a: { label: string; pickIds: string[] }) => void;
+  actors: GridItem[];
+  onSelect: (a: GridItem) => void;
+  noun?: string;
+  pluralNoun?: string;
+  itemNoun?: string;
+  itemPluralNoun?: string;
+  variant?: 'portrait' | 'logo';
 }) => {
   const [showAll, setShowAll] = useState(false);
   const repeats = actors.filter(a => a.count >= 2);
   const headline = repeats.length > 0 ? repeats : actors.slice(0, 12);
   const list = showAll ? actors : headline;
 
+  const isLogo = variant === 'logo';
+
   return (
     <div className="space-y-3">
       {repeats.length > 0 && !showAll && (
         <p className="text-[11px] text-muted-foreground">
-          {repeats.length} {repeats.length === 1 ? 'actor appears' : 'actors appear'} in multiple {repeats.length === 1 ? 'movie' : 'movies'}.
+          {repeats.length} {repeats.length === 1 ? `${noun} appears` : `${pluralNoun} appear`} in multiple {repeats.length === 1 ? itemNoun : itemPluralNoun}.
         </p>
       )}
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-        {list.map(a => (
-          <button
-            key={a.id}
-            onClick={() => onSelect(a)}
-            className="text-left group"
-          >
-            <div className="aspect-[2/3] rounded-md overflow-hidden bg-muted relative">
-              {a.profile_path ? (
-                <img
-                  src={`https://image.tmdb.org/t/p/w185${a.profile_path}`}
-                  alt={a.label}
-                  loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Users className="w-6 h-6 text-muted-foreground" />
-                </div>
-              )}
-              {a.count >= 2 && (
-                <span className="absolute top-1 right-1 text-[10px] font-semibold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
-                  ×{a.count}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] mt-1 line-clamp-2 leading-tight min-h-[2.2em] group-hover:text-primary transition-colors">
-              {a.label}
-            </p>
-          </button>
-        ))}
+        {list.map(a => {
+          const img = a.profile_path ?? a.logo_path ?? null;
+          return (
+            <button
+              key={a.id}
+              onClick={() => onSelect(a)}
+              className="text-left group"
+            >
+              <div className={`${isLogo ? 'aspect-square p-3 flex items-center justify-center' : 'aspect-[2/3]'} rounded-md overflow-hidden bg-muted relative`}>
+                {img ? (
+                  <img
+                    src={`https://image.tmdb.org/t/p/w185${img}`}
+                    alt={a.label}
+                    loading="lazy"
+                    className={isLogo
+                      ? 'max-w-full max-h-full object-contain'
+                      : 'w-full h-full object-cover group-hover:scale-105 transition-transform'}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    {isLogo
+                      ? <Building2 className="w-6 h-6 text-muted-foreground" />
+                      : <Users className="w-6 h-6 text-muted-foreground" />}
+                  </div>
+                )}
+                {a.count >= 2 && (
+                  <span className="absolute top-1 right-1 text-[10px] font-semibold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
+                    ×{a.count}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] mt-1 line-clamp-2 leading-tight min-h-[2.2em] group-hover:text-primary transition-colors">
+                {a.label}
+              </p>
+            </button>
+          );
+        })}
       </div>
       {actors.length > headline.length && (
         <div className="flex justify-center pt-1">
