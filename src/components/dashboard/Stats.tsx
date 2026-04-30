@@ -601,7 +601,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       avgYear,
       medianYear,
     };
-  }, [movieEntries, tmdbDetails, profiles]);
+  }, [movieEntries, tmdbDetails, profiles, rankings]);
 
   if (loading) {
     return <div className="text-center text-muted-foreground py-12">Loading stats...</div>;
