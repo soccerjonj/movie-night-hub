@@ -204,6 +204,16 @@ const Dashboard = () => {
               Current {labels.seasonNoun}
             </button>
             <button
+              onClick={() => setTab('club')}
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
+                tab === 'club'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Club
+            </button>
+            <button
               onClick={() => setTab('history')}
               className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                 tab === 'history'
