@@ -51,6 +51,7 @@ interface CastMember {
   name: string;
   profile_path: string | null;
   character?: string | null;
+  popularity?: number | null;
 }
 
 interface CrewMember {
@@ -77,7 +78,7 @@ interface TmdbDetails {
   production_companies?: ProductionCompany[];
 }
 
-const TMDB_CACHE_KEY = 'mc_tmdb_details_v3';
+const TMDB_CACHE_KEY = 'mc_tmdb_details_v4';
 
 const loadTmdbCache = (): Record<string, TmdbDetails> => {
   try {
@@ -238,6 +239,7 @@ const Stats = ({ group, profiles, members }: Props) => {
                 name: c.name,
                 profile_path: c.profile_path ?? null,
                 character: c.character ?? null,
+                popularity: typeof c.popularity === 'number' ? c.popularity : null,
               }));
             const rawCrew = Array.isArray(d2.credits?.crew) ? d2.credits.crew : [];
             const directors: CrewMember[] = rawCrew
@@ -371,7 +373,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       .map(([name, ids]) => ({ key: name, label: name, count: ids.length, pickIds: ids }));
 
     // Actors — aggregate top-billed cast across canonical picks
-    const actorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[] }>();
+    const actorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[]; popularity: number }>();
     for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
       if (!det?.cast) continue;
@@ -379,18 +381,20 @@ const Stats = ({ group, profiles, members }: Props) => {
       for (const c of det.cast) {
         if (seen.has(c.id)) continue;
         seen.add(c.id);
+        const pop = typeof c.popularity === 'number' ? c.popularity : 0;
         const existing = actorMap.get(c.id);
         if (existing) {
           existing.pickIds.push(p.id);
+          if (pop > existing.popularity) existing.popularity = pop;
         } else {
-          actorMap.set(c.id, { name: c.name, profile_path: c.profile_path, pickIds: [p.id] });
+          actorMap.set(c.id, { name: c.name, profile_path: c.profile_path, pickIds: [p.id], popularity: pop });
         }
       }
     }
     const actorRows = Array.from(actorMap.entries())
-      .map(([id, v]) => ({ key: String(id), id, label: v.name, profile_path: v.profile_path, count: v.pickIds.length, pickIds: v.pickIds }))
+      .map(([id, v]) => ({ key: String(id), id, label: v.name, profile_path: v.profile_path, count: v.pickIds.length, pickIds: v.pickIds, popularity: v.popularity }))
       .filter(r => r.count >= 1)
-      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+      .sort((a, b) => b.count - a.count || (b.popularity - a.popularity) || a.label.localeCompare(b.label));
 
     // Directors
     const directorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[] }>();
@@ -1238,6 +1242,7 @@ type GridItem = {
   logo_path?: string | null;
   count: number;
   pickIds: string[];
+  popularity?: number;
 };
 
 const ActorGrid = ({
