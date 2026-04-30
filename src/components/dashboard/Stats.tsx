@@ -239,6 +239,7 @@ const Stats = ({ group, profiles, members }: Props) => {
                 name: c.name,
                 profile_path: c.profile_path ?? null,
                 character: c.character ?? null,
+                popularity: typeof c.popularity === 'number' ? c.popularity : null,
               }));
             const rawCrew = Array.isArray(d2.credits?.crew) ? d2.credits.crew : [];
             const directors: CrewMember[] = rawCrew
