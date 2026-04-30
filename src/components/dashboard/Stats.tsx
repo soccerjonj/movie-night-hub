@@ -1393,18 +1393,43 @@ const ActorGrid = ({
   variant?: 'portrait' | 'logo';
 }) => {
   const [showAll, setShowAll] = useState(false);
+  const topRef = useRef<HTMLDivElement>(null);
   const repeats = actors.filter(a => a.count >= 2);
   const headline = repeats.length > 0 ? repeats : actors.slice(0, 12);
   const list = showAll ? actors : headline;
 
+  const handleCollapse = () => {
+    setShowAll(false);
+    // Scroll the section header back into view so the user isn't left
+    // hovering somewhere deep in the page.
+    requestAnimationFrame(() => {
+      topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   const isLogo = variant === 'logo';
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" ref={topRef}>
       {repeats.length > 0 && !showAll && (
         <p className="text-[11px] text-muted-foreground">
           {repeats.length} {repeats.length === 1 ? `${noun} appears` : `${pluralNoun} appear`} in multiple {repeats.length === 1 ? itemNoun : itemPluralNoun}.
         </p>
+      )}
+      {showAll && actors.length > headline.length && (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] text-muted-foreground">
+            Showing all {actors.length} {actors.length === 1 ? noun : pluralNoun}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCollapse}
+            className="text-xs h-7"
+          >
+            Show less
+          </Button>
+        </div>
       )}
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
         {list.map(a => {
