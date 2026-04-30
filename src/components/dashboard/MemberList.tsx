@@ -13,7 +13,7 @@ import PastRankingsDialog from './PastRankingsDialog';
 import RankingInsights from './RankingInsights';
 import { validateImageFile, getSafeErrorMessage, safeFilename } from '@/lib/security';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
-import { computeMemberBadges, type BadgePickInput } from '@/lib/memberBadges';
+import { computeMemberBadges, computeCasualViewerBadges, type BadgePickInput, type EarnedBadge } from '@/lib/memberBadges';
 
 interface Props {
   members: GroupMember[];
@@ -31,6 +31,7 @@ interface SeasonInfo {
   title: string | null;
   status: string;
   current_movie_index: number;
+  guessing_enabled: boolean;
 }
 
 interface PickRow {
@@ -91,6 +92,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const [picks, setPicks] = useState<PickRow[]>([]);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
   const [rankings, setRankings] = useState<{ user_id: string; movie_pick_id: string; rank: number; season_id: string }[]>([]);
+  const [seasonParticipants, setSeasonParticipants] = useState<{ user_id: string; season_id: string }[]>([]);
   const [tmdbDetails, setTmdbDetails] = useState<Record<string, TmdbDetails>>({});
   const [loading, setLoading] = useState(false);
 
@@ -214,7 +216,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       setLoading(true);
       const { data: seasonData } = await supabase
         .from('seasons')
-        .select('id, season_number, title, status, current_movie_index')
+        .select('id, season_number, title, status, current_movie_index, guessing_enabled')
         .eq('group_id', group.id)
         .order('season_number', { ascending: false });
       const s = (seasonData || []) as SeasonInfo[];
@@ -224,18 +226,21 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       if (seasonIds.length === 0) {
         setPicks([]);
         setGuesses([]);
+        setSeasonParticipants([]);
         setLoading(false);
         return;
       }
 
-      const [picksRes, guessesRes, rankingsRes] = await Promise.all([
+      const [picksRes, guessesRes, rankingsRes, participantsRes] = await Promise.all([
         supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed, tmdb_id').in('season_id', seasonIds),
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
         supabase.from('movie_rankings').select('user_id, movie_pick_id, rank, season_id').in('season_id', seasonIds),
+        supabase.from('season_participants').select('user_id, season_id').in('season_id', seasonIds),
       ]);
       setPicks((picksRes.data || []) as PickRow[]);
       setGuesses((guessesRes.data || []) as GuessRow[]);
       setRankings(rankingsRes.data || []);
+      setSeasonParticipants(participantsRes.data || []);
       setLoading(false);
     };
     fetchData();
@@ -408,6 +413,93 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picks, rankings, tmdbDetails, group.club_type, seasons]);
 
+  // Casual Viewer — works for any club type, based on engagement (guesses & rankings)
+  const casualViewerMap = useMemo(() => {
+    if (picks.length === 0 || seasons.length === 0) return new Map<string, EarnedBadge>();
+
+    // Map season -> participant user ids. If no participants recorded for a
+    // season, fall back to all current group members (older seasons).
+    const participantsBySeason = new Map<string, Set<string>>();
+    for (const sp of seasonParticipants) {
+      let set = participantsBySeason.get(sp.season_id);
+      if (!set) { set = new Set(); participantsBySeason.set(sp.season_id, set); }
+      set.add(sp.user_id);
+    }
+    const allMemberIds = members.map(m => m.user_id);
+    const participantsFor = (seasonId: string): string[] => {
+      const set = participantsBySeason.get(seasonId);
+      return set && set.size > 0 ? Array.from(set) : allMemberIds;
+    };
+
+    const guessesExpected: Record<string, number> = {};
+    const guessesMade: Record<string, number> = {};
+    const rankingsExpected: Record<string, number> = {};
+    const rankingsMade: Record<string, number> = {};
+
+    for (const s of seasons) {
+      const participants = participantsFor(s.id);
+      const seasonPicks = picks.filter(p => p.season_id === s.id);
+
+      // --- Guessing expectations ---
+      if (s.guessing_enabled && (s.status === 'watching' || s.status === 'reviewing' || s.status === 'completed')) {
+        const watchedPicks = seasonPicks.filter(p => isPickWatched(p));
+        for (const uid of participants) {
+          const expected = watchedPicks.filter(p => p.user_id !== uid).length;
+          if (expected > 0) {
+            guessesExpected[uid] = (guessesExpected[uid] || 0) + expected;
+          }
+        }
+      }
+
+      // --- Ranking expectations ---
+      if (s.status === 'reviewing' || s.status === 'completed') {
+        for (const uid of participants) {
+          const expected = seasonPicks.filter(p => p.user_id !== uid).length;
+          if (expected > 0) {
+            rankingsExpected[uid] = (rankingsExpected[uid] || 0) + expected;
+          }
+        }
+      }
+    }
+
+    // Tally actual guesses (only counted against picks that are watched in their season)
+    for (const g of guesses) {
+      const s = seasons.find(ss => ss.id === g.season_id);
+      if (!s || !s.guessing_enabled) continue;
+      const pick = picks.find(p => p.id === g.movie_pick_id);
+      if (!pick || !isPickWatched(pick)) continue;
+      guessesMade[g.guesser_id] = (guessesMade[g.guesser_id] || 0) + 1;
+    }
+
+    // Tally actual rankings (only seasons in reviewing/completed)
+    for (const r of rankings) {
+      const s = seasons.find(ss => ss.id === r.season_id);
+      if (!s || (s.status !== 'reviewing' && s.status !== 'completed')) continue;
+      rankingsMade[r.user_id] = (rankingsMade[r.user_id] || 0) + 1;
+    }
+
+    return computeCasualViewerBadges({
+      memberIds: allMemberIds,
+      guessesExpected,
+      guessesMade,
+      rankingsExpected,
+      rankingsMade,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks, guesses, rankings, seasons, seasonParticipants, members]);
+
+  // Merge: pick/group badges + casual viewer
+  const allMemberBadgesMap = useMemo(() => {
+    const merged = new Map<string, EarnedBadge[]>();
+    for (const [uid, list] of memberBadgesMap) merged.set(uid, [...list]);
+    for (const [uid, badge] of casualViewerMap) {
+      const list = merged.get(uid) || [];
+      list.push(badge);
+      merged.set(uid, list);
+    }
+    return merged;
+  }, [memberBadgesMap, casualViewerMap]);
+
   const renderMemberProfile = () => {
     if (!selectedUserId) return null;
     const profile = getProfile(selectedUserId);
@@ -517,7 +609,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
 
         {/* Badges */}
         {(() => {
-          const earned = memberBadgesMap.get(selectedUserId) || [];
+          const earned = allMemberBadgesMap.get(selectedUserId) || [];
           if (earned.length === 0) return null;
           return (
             <div className="bg-primary/5 rounded-xl p-3 space-y-2">
