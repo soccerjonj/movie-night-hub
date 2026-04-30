@@ -120,7 +120,35 @@ const decadeOf = (year: string | null | undefined) => {
 interface DrillDown {
   title: string;
   pickIds: string[];
+  mode?: 'default' | 'decade';
 }
+
+// Convert 0..1 love score → 0..5 stars (continuous decimal)
+const toStars = (avg: number) => Math.max(0, Math.min(5, avg * 5));
+
+const StarRating = ({ avg, size = 14 }: { avg: number; size?: number }) => {
+  const stars = toStars(avg);
+  return (
+    <div className="flex items-center gap-0.5" aria-label={`${stars.toFixed(1)} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map(i => {
+        const fill = Math.max(0, Math.min(1, stars - (i - 1)));
+        return (
+          <div key={i} className="relative" style={{ width: size, height: size }}>
+            <Star className="absolute inset-0 text-muted-foreground/30" style={{ width: size, height: size }} />
+            {fill > 0 && (
+              <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+                <Star
+                  className="text-primary fill-primary"
+                  style={{ width: size, height: size }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 const Stats = ({ group, profiles, members }: Props) => {
   const labels = getClubLabels((group.club_type || 'movie') as any);
@@ -544,6 +572,13 @@ const Stats = ({ group, profiles, members }: Props) => {
     const decadeOverall = new Map<number, DecadeAgg>();
     // Per-member avg love-score per decade
     const memberDecade = new Map<string, Map<number, DecadeAgg>>(); // user_id -> decade -> agg
+    // Per-canonical-pick avg love-score (across all users)
+    const pickLove = new Map<string, DecadeAgg>();
+    // Map any sibling pick id → canonical pick id
+    const siblingToCanonical = new Map<string, string>();
+    for (const e of movieEntries) {
+      for (const sid of e.siblingPickIds) siblingToCanonical.set(sid, e.canonical.id);
+    }
 
     for (const r of rankings) {
       const dec = siblingDecade.get(r.movie_pick_id);
@@ -560,6 +595,13 @@ const Stats = ({ group, profiles, members }: Props) => {
       const ma = m.get(dec) || { sum: 0, count: 0 };
       ma.sum += love; ma.count += 1;
       m.set(dec, ma);
+
+      const canonId = siblingToCanonical.get(r.movie_pick_id);
+      if (canonId) {
+        const pl = pickLove.get(canonId) || { sum: 0, count: 0 };
+        pl.sum += love; pl.count += 1;
+        pickLove.set(canonId, pl);
+      }
     }
 
     const tasteDecadeRows = Array.from(decadeOverall.entries())
@@ -615,6 +657,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       medianYear,
       tasteDecadeRows,
       tasteMembers,
+      pickLove,
     };
   }, [movieEntries, tmdbDetails, profiles, rankings]);
 
@@ -637,13 +680,13 @@ const Stats = ({ group, profiles, members }: Props) => {
   const maxLang = Math.max(1, ...stats.langRows.map(r => r.count));
   const maxCountry = Math.max(1, ...stats.countryRows.map(r => r.count));
 
-  const openDrill = (title: string, pickIds: string[]) => {
+  const openDrill = (title: string, pickIds: string[], mode: 'default' | 'decade' = 'default') => {
     if (pickIds.length === 0) return;
     if (pickIds.length === 1) {
       setSelectedPickId(pickIds[0]);
-      setDrill({ title, pickIds });
+      setDrill({ title, pickIds, mode });
     } else {
-      setDrill({ title, pickIds });
+      setDrill({ title, pickIds, mode });
       setSelectedPickId(null);
     }
   };
@@ -710,7 +753,7 @@ const Stats = ({ group, profiles, members }: Props) => {
             overall={stats.tasteDecadeRows}
             members={stats.tasteMembers}
             profiles={profiles}
-            onSelectDecade={(r) => openDrill(r.label, r.pickIds)}
+            onSelectDecade={(r) => openDrill(r.label, r.pickIds, 'decade')}
           />
         </Section>
       )}
@@ -880,7 +923,7 @@ const Stats = ({ group, profiles, members }: Props) => {
             </DialogTitle>
           </DialogHeader>
 
-          {drill && !selectedPickId && drill.pickIds.length > 1 && (
+          {drill && !selectedPickId && drill.pickIds.length > 1 && drill.mode !== 'decade' && (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
               {drill.pickIds.map(pid => {
                 const entry = pickIdToEntry.get(pid);
@@ -905,6 +948,57 @@ const Stats = ({ group, profiles, members }: Props) => {
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {drill && !selectedPickId && drill.pickIds.length > 1 && drill.mode === 'decade' && (
+            <div className="space-y-2 pt-2">
+              <p className="text-xs text-muted-foreground">Sorted by group ranking · highest rated first</p>
+              {drill.pickIds
+                .map(pid => {
+                  const entry = pickIdToEntry.get(pid);
+                  const love = stats.pickLove.get(pid);
+                  return { pid, entry, avg: love ? love.sum / love.count : null, count: love?.count ?? 0 };
+                })
+                .filter(x => x.entry)
+                .sort((a, b) => {
+                  if (a.avg == null && b.avg == null) return 0;
+                  if (a.avg == null) return 1;
+                  if (b.avg == null) return -1;
+                  return b.avg - a.avg;
+                })
+                .map(({ pid, entry, avg, count }) => {
+                  const p = entry!.canonical;
+                  return (
+                    <button
+                      key={pid}
+                      onClick={() => setSelectedPickId(pid)}
+                      className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                    >
+                      <div className="w-12 aspect-[2/3] rounded overflow-hidden bg-muted shrink-0">
+                        {p.poster_url ? (
+                          <img src={p.poster_url} alt={p.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Film className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium line-clamp-1">{p.title}</p>
+                        {avg != null ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <StarRating avg={avg} size={14} />
+                            <span className="text-sm font-semibold tabular-nums">{toStars(avg).toFixed(1)}</span>
+                            <span className="text-[11px] text-muted-foreground">· {count} {count === 1 ? 'rank' : 'ranks'}</span>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground mt-1">No rankings yet</p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
             </div>
           )}
 
@@ -1154,33 +1248,6 @@ const TasteByDecade = ({
   onSelectDecade?: (row: TasteRow) => void;
 }) => {
   const [tab, setTab] = useState<'overall' | 'members'>('overall');
-
-  // Convert 0..1 love score → 0..5 stars (continuous decimal)
-  const toStars = (avg: number) => Math.max(0, Math.min(5, avg * 5));
-
-  const StarRating = ({ avg, size = 14 }: { avg: number; size?: number }) => {
-    const stars = toStars(avg);
-    return (
-      <div className="flex items-center gap-0.5" aria-label={`${stars} out of 5 stars`}>
-        {[1, 2, 3, 4, 5].map(i => {
-          const fill = Math.max(0, Math.min(1, stars - (i - 1)));
-          return (
-            <div key={i} className="relative" style={{ width: size, height: size }}>
-              <Star className="absolute inset-0 text-muted-foreground/30" style={{ width: size, height: size }} />
-              {fill > 0 && (
-                <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
-                  <Star
-                    className="text-primary fill-primary"
-                    style={{ width: size, height: size }}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-3">
