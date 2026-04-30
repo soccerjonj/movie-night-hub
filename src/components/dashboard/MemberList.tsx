@@ -31,6 +31,7 @@ interface SeasonInfo {
   title: string | null;
   status: string;
   current_movie_index: number;
+  guessing_enabled: boolean;
 }
 
 interface PickRow {
