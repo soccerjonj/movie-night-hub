@@ -655,6 +655,43 @@ const Stats = ({ group, profiles, members }: Props) => {
             )}
           </Section>
 
+          {/* Directors */}
+          <Section
+            title="Directors"
+            icon={<Clapperboard className="w-4 h-4" />}
+            sub={enrichLoading ? 'Loading TMDB data…' : (stats.directorRows.length > 0 ? `${stats.directorRows.length} unique` : undefined)}
+          >
+            {stats.directorRows.length === 0 ? (
+              <Empty hint="Pulled from TMDB" />
+            ) : (
+              <ActorGrid
+                actors={stats.directorRows}
+                onSelect={(a) => openDrill(a.label, a.pickIds)}
+                noun="director"
+                pluralNoun="directors"
+              />
+            )}
+          </Section>
+
+          {/* Production companies */}
+          <Section
+            title="Production companies"
+            icon={<Building2 className="w-4 h-4" />}
+            sub={enrichLoading ? 'Loading TMDB data…' : (stats.companyRows.length > 0 ? `${stats.companyRows.length} unique` : undefined)}
+          >
+            {stats.companyRows.length === 0 ? (
+              <Empty hint="Pulled from TMDB" />
+            ) : (
+              <ActorGrid
+                actors={stats.companyRows}
+                onSelect={(a) => openDrill(a.label, a.pickIds)}
+                noun="studio"
+                pluralNoun="studios"
+                variant="logo"
+              />
+            )}
+          </Section>
+
           <div className="grid md:grid-cols-2 gap-4">
             <Section title="Records" icon={<Trophy className="w-4 h-4" />}>
               <ul className="text-sm space-y-2">
