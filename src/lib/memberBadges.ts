@@ -218,15 +218,27 @@ export function computeMemberBadges(
   const formatMetric = (metric: MetricKey, value: number): string => {
     switch (metric) {
       case 'runtime':
-        return `Avg ${formatRuntime(value)}`;
+        return `Their picks run ${formatRuntime(value)} on average`;
       case 'voteAverage':
-        return `Avg TMDB ${value.toFixed(1)}/10`;
+        return `Their picks score ${value.toFixed(1)}/10 on TMDB on average`;
       case 'popularity':
-        return `Avg popularity ${Math.round(value)}`;
+        // TMDB popularity is an opaque score (views, votes, recency). Use a
+        // rough qualitative band so the number actually means something.
+        {
+          const band =
+            value >= 100 ? 'massive mainstream buzz'
+            : value >= 50 ? 'lots of buzz'
+            : value >= 20 ? 'moderately well-known'
+            : value >= 8 ? 'a bit obscure'
+            : 'deeply under-the-radar';
+          return `Their picks have ${band} on TMDB (avg score ${Math.round(value)})`;
+        }
       case 'releaseYear':
-        return `Avg year ${Math.round(value)}`;
+        return `Their picks come out around ${Math.round(value)} on average`;
       case 'groupLove':
-        return `${Math.round(value * 100)}% group love`;
+        // Score is 1.0 for the season's #1 ranked movie, ~0 for last-ranked,
+        // averaged across pickers and seasons.
+        return `On average their picks land in the top ${Math.round((1 - value) * 100)}% of season rankings`;
     }
   };
 
