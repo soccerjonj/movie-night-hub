@@ -50,7 +50,7 @@ const AuthPage = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="glass-card p-8 w-full max-w-md mx-4 relative z-10"
+        className="glass-card rounded-2xl p-8 w-full max-w-md mx-4 relative z-10"
       >
         <div className="text-center mb-8">
           <img src={logo} alt="Movie Club" className="h-16 object-contain mx-auto mb-4" />
