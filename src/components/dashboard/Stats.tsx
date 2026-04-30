@@ -79,7 +79,7 @@ interface TmdbDetails {
   production_companies?: ProductionCompany[];
 }
 
-const TMDB_CACHE_KEY = 'mc_tmdb_details_v4';
+const TMDB_CACHE_KEY = 'mc_tmdb_details_v5';
 
 const loadTmdbCache = (): Record<string, TmdbDetails> => {
   try {
