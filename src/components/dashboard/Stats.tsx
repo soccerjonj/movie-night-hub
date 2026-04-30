@@ -1242,6 +1242,7 @@ type GridItem = {
   logo_path?: string | null;
   count: number;
   pickIds: string[];
+  popularity?: number;
 };
 
 const ActorGrid = ({
