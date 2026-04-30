@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star } from 'lucide-react';
+import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -11,6 +12,8 @@ import 'react-image-crop/dist/ReactCrop.css';
 import PastRankingsDialog from './PastRankingsDialog';
 import RankingInsights from './RankingInsights';
 import { validateImageFile, getSafeErrorMessage, safeFilename } from '@/lib/security';
+import { TMDB_API_TOKEN } from '@/lib/apiKeys';
+import { computeMemberBadges, type BadgePickInput } from '@/lib/memberBadges';
 
 interface Props {
   members: GroupMember[];
@@ -39,7 +42,17 @@ interface PickRow {
   watch_order: number | null;
   season_id: string;
   revealed: boolean;
+  tmdb_id: number | null;
 }
+
+// Same cache key + shape as Stats.tsx so the two share TMDB enrichment.
+interface TmdbDetails {
+  runtime: number | null;
+  vote_average: number | null;
+  release_date: string | null;
+  popularity: number | null;
+}
+const TMDB_CACHE_KEY = 'mc_tmdb_details_v6';
 
 interface GuessRow {
   guesser_id: string;
@@ -78,6 +91,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const [picks, setPicks] = useState<PickRow[]>([]);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
   const [rankings, setRankings] = useState<{ user_id: string; movie_pick_id: string; rank: number; season_id: string }[]>([]);
+  const [tmdbDetails, setTmdbDetails] = useState<Record<string, TmdbDetails>>({});
   const [loading, setLoading] = useState(false);
 
   // Crop state
@@ -215,7 +229,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       }
 
       const [picksRes, guessesRes, rankingsRes] = await Promise.all([
-        supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed').in('season_id', seasonIds),
+        supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed, tmdb_id').in('season_id', seasonIds),
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
         supabase.from('movie_rankings').select('user_id, movie_pick_id, rank, season_id').in('season_id', seasonIds),
       ]);
@@ -240,6 +254,159 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     // to prevent leaking who picked an unwatched movie in member profiles
     return isPickWatched(pick);
   };
+
+  // Enrich watched picks with TMDB details (shares cache with Stats.tsx)
+  useEffect(() => {
+    if (group.club_type === 'book') return;
+    if (picks.length === 0) return;
+    let cancelled = false;
+
+    const enrich = async () => {
+      let cache: Record<string, TmdbDetails> = {};
+      try {
+        const raw = sessionStorage.getItem(TMDB_CACHE_KEY);
+        if (raw) cache = JSON.parse(raw);
+      } catch { /* ignore */ }
+
+      const initial: Record<string, TmdbDetails> = {};
+      const toFetch: PickRow[] = [];
+      for (const p of picks) {
+        // Only enrich watched picks — anonymity for unwatched is preserved.
+        if (!isPickWatched(p)) continue;
+        const cacheKey = p.tmdb_id ? `id:${p.tmdb_id}` : `t:${p.title}|${p.year || ''}`;
+        if (cache[cacheKey]) {
+          initial[p.id] = {
+            runtime: cache[cacheKey].runtime ?? null,
+            vote_average: cache[cacheKey].vote_average ?? null,
+            release_date: cache[cacheKey].release_date ?? null,
+            popularity: cache[cacheKey].popularity ?? null,
+          };
+        } else {
+          toFetch.push(p);
+        }
+      }
+      if (Object.keys(initial).length) setTmdbDetails(prev => ({ ...prev, ...initial }));
+      if (toFetch.length === 0 || !TMDB_API_TOKEN) return;
+
+      const headers = { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' };
+      const queue = [...toFetch];
+      const workers = Array.from({ length: 4 }, async () => {
+        while (queue.length && !cancelled) {
+          const p = queue.shift()!;
+          const cacheKey = p.tmdb_id ? `id:${p.tmdb_id}` : `t:${p.title}|${p.year || ''}`;
+          try {
+            let tmdbId = p.tmdb_id;
+            if (!tmdbId) {
+              const yp = p.year ? `&year=${p.year}` : '';
+              const r = await fetch(
+                `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(p.title)}&include_adult=false&language=en-US&page=1${yp}`,
+                { headers }
+              );
+              const d = await r.json();
+              tmdbId = d.results?.[0]?.id || null;
+            }
+            if (!tmdbId) continue;
+            const r2 = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`, { headers });
+            if (!r2.ok) continue;
+            const d2 = await r2.json();
+            const details: TmdbDetails = {
+              runtime: typeof d2.runtime === 'number' ? d2.runtime : null,
+              vote_average: typeof d2.vote_average === 'number' ? d2.vote_average : null,
+              release_date: d2.release_date ?? null,
+              popularity: typeof d2.popularity === 'number' ? d2.popularity : null,
+            };
+            // Don't clobber richer Stats cache entries — only fill if missing.
+            if (!cache[cacheKey]) {
+              cache[cacheKey] = details as TmdbDetails;
+            } else {
+              cache[cacheKey] = { ...cache[cacheKey], ...details };
+            }
+            if (!cancelled) {
+              setTmdbDetails(prev => ({ ...prev, [p.id]: details }));
+            }
+          } catch { /* skip */ }
+        }
+      });
+
+      await Promise.all(workers);
+      try { sessionStorage.setItem(TMDB_CACHE_KEY, JSON.stringify(cache)); } catch { /* ignore */ }
+    };
+
+    enrich();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks, group.club_type]);
+
+  // Compute badges for ALL members (group context). Only watched picks count.
+  const memberBadgesMap = useMemo(() => {
+    if (group.club_type === 'book') {
+      // Books don't have runtime/popularity from TMDB — skip badges for now.
+      return new Map();
+    }
+    if (picks.length === 0) return new Map();
+
+    // Group co-pickers by season+watch_order so a co-picked movie is one entry
+    // counted toward each picker.
+    const slotMap = new Map<string, PickRow[]>();
+    for (const p of picks) {
+      if (!isPickWatched(p)) continue;
+      const key = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `${p.season_id}:single:${p.id}`;
+      if (!slotMap.has(key)) slotMap.set(key, []);
+      slotMap.get(key)!.push(p);
+    }
+
+    // Build per-season ranking max (N) per user for love-score normalization
+    const seasonUserMax = new Map<string, number>(); // `${season}:${user}` -> N
+    const ranksBySeason = new Map<string, Map<string, number[]>>();
+    for (const r of rankings) {
+      let bySeason = ranksBySeason.get(r.season_id);
+      if (!bySeason) { bySeason = new Map(); ranksBySeason.set(r.season_id, bySeason); }
+      const arr = bySeason.get(r.user_id) || [];
+      arr.push(r.rank);
+      bySeason.set(r.user_id, arr);
+    }
+    for (const [seasonId, byUser] of ranksBySeason) {
+      for (const [uid, ranks] of byUser) {
+        seasonUserMax.set(`${seasonId}:${uid}`, Math.max(...ranks));
+      }
+    }
+
+    // For each slot, compute group love (avg across users for any pick in slot)
+    const slotLove = new Map<string, number | null>();
+    for (const [key, slotPicks] of slotMap) {
+      const slotPickIds = new Set(slotPicks.map(p => p.id));
+      const seasonId = slotPicks[0].season_id;
+      const loves: number[] = [];
+      for (const r of rankings) {
+        if (r.season_id !== seasonId) continue;
+        if (!slotPickIds.has(r.movie_pick_id)) continue;
+        const N = seasonUserMax.get(`${seasonId}:${r.user_id}`);
+        if (!N || N < 2) continue;
+        loves.push((N - r.rank + 1) / N);
+      }
+      slotLove.set(key, loves.length ? loves.reduce((s, v) => s + v, 0) / loves.length : null);
+    }
+
+    const inputs: BadgePickInput[] = [];
+    for (const [key, slotPicks] of slotMap) {
+      const canonical = slotPicks[0];
+      const det = tmdbDetails[canonical.id];
+      const releaseYearStr = det?.release_date?.slice(0, 4) || canonical.year || null;
+      const releaseYear = releaseYearStr ? parseInt(releaseYearStr.slice(0, 4), 10) : null;
+      inputs.push({
+        pickId: canonical.id,
+        pickerIds: Array.from(new Set(slotPicks.map(p => p.user_id))),
+        runtime: det?.runtime ?? null,
+        voteAverage: det?.vote_average ?? null,
+        popularity: det?.popularity ?? null,
+        releaseYear: Number.isFinite(releaseYear as number) ? (releaseYear as number) : null,
+        groupLove: slotLove.get(key) ?? null,
+      });
+    }
+
+    return computeMemberBadges(inputs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks, rankings, tmdbDetails, group.club_type, seasons]);
 
   const renderMemberProfile = () => {
     if (!selectedUserId) return null;
@@ -347,6 +514,42 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             )}
           </div>
         </div>
+
+        {/* Badges */}
+        {(() => {
+          const earned = memberBadgesMap.get(selectedUserId) || [];
+          if (earned.length === 0) return null;
+          return (
+            <div className="bg-primary/5 rounded-xl p-3 space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-primary" />
+                <h4 className="font-display text-sm font-bold">Badges</h4>
+                <span className="text-xs text-muted-foreground">· {earned.length}</span>
+              </div>
+              <TooltipProvider delayDuration={150}>
+                <div className="flex flex-wrap gap-1.5">
+                  {earned.map(({ badge, metricLabel }) => (
+                    <Tooltip key={badge.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background border border-primary/20 text-xs font-medium hover:border-primary/50 transition-colors"
+                        >
+                          <span className="text-sm leading-none">{badge.emoji}</span>
+                          <span>{badge.label}</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[220px]">
+                        <p className="font-medium">{badge.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{metricLabel}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+              </TooltipProvider>
+            </div>
+          );
+        })()}
 
         {/* Score summary */}
         <div className="flex gap-3">
