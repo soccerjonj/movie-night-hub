@@ -569,6 +569,7 @@ const Stats = ({ group, profiles, members }: Props) => {
         label: `${dec}s`,
         avg: agg.sum / agg.count,
         count: agg.count,
+        pickIds: decadeMap.get(dec) || [],
       }));
 
     const tasteMembers = Array.from(memberDecade.entries()).map(([uid, m]) => {
@@ -579,6 +580,7 @@ const Stats = ({ group, profiles, members }: Props) => {
           label: `${dec}s`,
           avg: agg.sum / agg.count,
           count: agg.count,
+          pickIds: decadeMap.get(dec) || [],
         }));
       const sortedByAvg = [...rows].sort((a, b) => b.avg - a.avg);
       return {
