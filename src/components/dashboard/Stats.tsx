@@ -71,6 +71,7 @@ interface TmdbDetails {
   runtime: number | null;
   vote_average: number | null;
   release_date: string | null;
+  popularity: number | null;
   genres: { id: number; name: string }[];
   original_language: string | null;
   production_countries: { iso_3166_1: string; name: string }[];
@@ -79,7 +80,7 @@ interface TmdbDetails {
   production_companies?: ProductionCompany[];
 }
 
-const TMDB_CACHE_KEY = 'mc_tmdb_details_v5';
+const TMDB_CACHE_KEY = 'mc_tmdb_details_v6';
 
 const loadTmdbCache = (): Record<string, TmdbDetails> => {
   try {
