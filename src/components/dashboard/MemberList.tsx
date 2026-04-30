@@ -13,7 +13,7 @@ import PastRankingsDialog from './PastRankingsDialog';
 import RankingInsights from './RankingInsights';
 import { validateImageFile, getSafeErrorMessage, safeFilename } from '@/lib/security';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
-import { computeMemberBadges, type BadgePickInput } from '@/lib/memberBadges';
+import { computeMemberBadges, computeCasualViewerBadges, type BadgePickInput, type EarnedBadge } from '@/lib/memberBadges';
 
 interface Props {
   members: GroupMember[];
