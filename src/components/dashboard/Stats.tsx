@@ -703,7 +703,7 @@ const Stats = ({ group, profiles, members }: Props) => {
 
       {/* Taste by decade */}
       {stats.tasteDecadeRows.length > 0 && (
-        <Section title="Taste by decade" icon={<Star className="w-4 h-4" />} sub="Avg ranking score (100 = favorite)">
+        <Section title="Taste by decade" icon={<Star className="w-4 h-4" />} sub="Avg star rating per decade">
           <TasteByDecade
             overall={stats.tasteDecadeRows}
             members={stats.tasteMembers}
@@ -1149,18 +1149,33 @@ const TasteByDecade = ({
   profiles: Profile[];
 }) => {
   const [tab, setTab] = useState<'overall' | 'members'>('overall');
-  // Color score 0..1 -> red-ish (low) to green-ish (high), via primary
-  const scoreBar = (avg: number, count: number) => (
-    <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden relative">
-      <div
-        className="h-full rounded-full transition-all"
-        style={{
-          width: `${Math.max(4, Math.round(avg * 100))}%`,
-          background: `linear-gradient(90deg, hsl(var(--primary) / 0.5), hsl(var(--primary)))`,
-        }}
-      />
-    </div>
-  );
+
+  // Convert 0..1 love score → 0..5 stars (rounded to half)
+  const toStars = (avg: number) => Math.round(avg * 5 * 2) / 2;
+
+  const StarRating = ({ avg, size = 14 }: { avg: number; size?: number }) => {
+    const stars = toStars(avg);
+    return (
+      <div className="flex items-center gap-0.5" aria-label={`${stars} out of 5 stars`}>
+        {[1, 2, 3, 4, 5].map(i => {
+          const fill = Math.max(0, Math.min(1, stars - (i - 1)));
+          return (
+            <div key={i} className="relative" style={{ width: size, height: size }}>
+              <Star className="absolute inset-0 text-muted-foreground/30" style={{ width: size, height: size }} />
+              {fill > 0 && (
+                <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+                  <Star
+                    className="text-primary fill-primary"
+                    style={{ width: size, height: size }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-3">
@@ -1184,14 +1199,16 @@ const TasteByDecade = ({
           {overall.map(r => (
             <div key={r.decade} className="flex items-center gap-3 py-1">
               <div className="w-16 text-xs sm:text-sm">{r.label}</div>
-              {scoreBar(r.avg, r.count)}
+              <div className="flex-1">
+                <StarRating avg={r.avg} size={16} />
+              </div>
               <div className="w-10 text-right text-xs font-medium tabular-nums">
-                {Math.round(r.avg * 100)}
+                {toStars(r.avg).toFixed(1)}
               </div>
             </div>
           ))}
           <p className="text-[11px] text-muted-foreground pt-1">
-            Score = avg of (rank position / season size). Higher = decades the club ranks higher overall.
+            Stars = avg of how high the club ranked picks from each decade.
           </p>
         </div>
       )}
@@ -1223,9 +1240,11 @@ const TasteByDecade = ({
                   {m.rows.map(r => (
                     <div key={r.decade} className="flex items-center gap-2">
                       <div className="w-12 text-[11px] text-muted-foreground">{r.label}</div>
-                      {scoreBar(r.avg, r.count)}
+                      <div className="flex-1">
+                        <StarRating avg={r.avg} size={13} />
+                      </div>
                       <div className="w-8 text-right text-[11px] tabular-nums">
-                        {Math.round(r.avg * 100)}
+                        {toStars(r.avg).toFixed(1)}
                       </div>
                       <div className="w-6 text-right text-[10px] text-muted-foreground tabular-nums">
                         ({r.count})
