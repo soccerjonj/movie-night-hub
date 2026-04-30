@@ -609,7 +609,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
 
         {/* Badges */}
         {(() => {
-          const earned = memberBadgesMap.get(selectedUserId) || [];
+          const earned = allMemberBadgesMap.get(selectedUserId) || [];
           if (earned.length === 0) return null;
           return (
             <div className="bg-primary/5 rounded-xl p-3 space-y-2">
