@@ -235,6 +235,7 @@ export function computeMemberBadges(
   for (const badgeId of enabledBadges) {
     const def = BADGES[badgeId];
     const metric = badgeToMetric[badgeId];
+    if (!metric) continue; // skip non-pick-metric badges (e.g. casual_viewer)
 
     // Eligible members: enough total picks AND has data for this metric
     const eligible: { uid: string; avg: number }[] = [];
