@@ -923,7 +923,7 @@ const Stats = ({ group, profiles, members }: Props) => {
             </DialogTitle>
           </DialogHeader>
 
-          {drill && !selectedPickId && drill.pickIds.length > 1 && (
+          {drill && !selectedPickId && drill.pickIds.length > 1 && drill.mode !== 'decade' && (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
               {drill.pickIds.map(pid => {
                 const entry = pickIdToEntry.get(pid);
@@ -948,6 +948,57 @@ const Stats = ({ group, profiles, members }: Props) => {
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {drill && !selectedPickId && drill.pickIds.length > 1 && drill.mode === 'decade' && (
+            <div className="space-y-2 pt-2">
+              <p className="text-xs text-muted-foreground">Sorted by group ranking · highest rated first</p>
+              {drill.pickIds
+                .map(pid => {
+                  const entry = pickIdToEntry.get(pid);
+                  const love = stats.pickLove.get(pid);
+                  return { pid, entry, avg: love ? love.sum / love.count : null, count: love?.count ?? 0 };
+                })
+                .filter(x => x.entry)
+                .sort((a, b) => {
+                  if (a.avg == null && b.avg == null) return 0;
+                  if (a.avg == null) return 1;
+                  if (b.avg == null) return -1;
+                  return b.avg - a.avg;
+                })
+                .map(({ pid, entry, avg, count }) => {
+                  const p = entry!.canonical;
+                  return (
+                    <button
+                      key={pid}
+                      onClick={() => setSelectedPickId(pid)}
+                      className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                    >
+                      <div className="w-12 aspect-[2/3] rounded overflow-hidden bg-muted shrink-0">
+                        {p.poster_url ? (
+                          <img src={p.poster_url} alt={p.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Film className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium line-clamp-1">{p.title}</p>
+                        {avg != null ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <StarRating avg={avg} size={14} />
+                            <span className="text-sm font-semibold tabular-nums">{toStars(avg).toFixed(1)}</span>
+                            <span className="text-[11px] text-muted-foreground">· {count} {count === 1 ? 'rank' : 'ranks'}</span>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground mt-1">No rankings yet</p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
             </div>
           )}
 
