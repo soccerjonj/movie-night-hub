@@ -513,23 +513,6 @@ const Stats = ({ group, profiles, members }: Props) => {
       avgYear,
       medianYear,
     };
-      total,
-      decadeRows,
-      genreRows,
-      langRows,
-      countryRows,
-      actorRows,
-      pickerRows,
-      totalRuntime,
-      runtimeCount,
-      longest,
-      shortest,
-      highestRated,
-      lowestRated,
-      avgRating: ratingCount > 0 ? ratingSum / ratingCount : null,
-      oldest,
-      newest,
-    };
   }, [movieEntries, tmdbDetails, profiles]);
 
   if (loading) {
