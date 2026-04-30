@@ -53,6 +53,18 @@ interface CastMember {
   character?: string | null;
 }
 
+interface CrewMember {
+  id: number;
+  name: string;
+  profile_path: string | null;
+}
+
+interface ProductionCompany {
+  id: number;
+  name: string;
+  logo_path: string | null;
+}
+
 interface TmdbDetails {
   runtime: number | null;
   vote_average: number | null;
@@ -61,9 +73,11 @@ interface TmdbDetails {
   original_language: string | null;
   production_countries: { iso_3166_1: string; name: string }[];
   cast?: CastMember[];
+  directors?: CrewMember[];
+  production_companies?: ProductionCompany[];
 }
 
-const TMDB_CACHE_KEY = 'mc_tmdb_details_v2';
+const TMDB_CACHE_KEY = 'mc_tmdb_details_v3';
 
 const loadTmdbCache = (): Record<string, TmdbDetails> => {
   try {
