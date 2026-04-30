@@ -392,6 +392,42 @@ const Stats = ({ group, profiles, members }: Props) => {
       .filter(r => r.count >= 1)
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 
+    // Directors
+    const directorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[] }>();
+    for (const p of canonicalPicks) {
+      const det = tmdbDetails[p.id];
+      if (!det?.directors) continue;
+      const seen = new Set<number>();
+      for (const c of det.directors) {
+        if (seen.has(c.id)) continue;
+        seen.add(c.id);
+        const existing = directorMap.get(c.id);
+        if (existing) existing.pickIds.push(p.id);
+        else directorMap.set(c.id, { name: c.name, profile_path: c.profile_path, pickIds: [p.id] });
+      }
+    }
+    const directorRows = Array.from(directorMap.entries())
+      .map(([id, v]) => ({ key: String(id), id, label: v.name, profile_path: v.profile_path, count: v.pickIds.length, pickIds: v.pickIds }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
+    // Production companies
+    const companyMap = new Map<number, { name: string; logo_path: string | null; pickIds: string[] }>();
+    for (const p of canonicalPicks) {
+      const det = tmdbDetails[p.id];
+      if (!det?.production_companies) continue;
+      const seen = new Set<number>();
+      for (const c of det.production_companies) {
+        if (seen.has(c.id)) continue;
+        seen.add(c.id);
+        const existing = companyMap.get(c.id);
+        if (existing) existing.pickIds.push(p.id);
+        else companyMap.set(c.id, { name: c.name, logo_path: c.logo_path, pickIds: [p.id] });
+      }
+    }
+    const companyRows = Array.from(companyMap.entries())
+      .map(([id, v]) => ({ key: String(id), id, label: v.name, logo_path: v.logo_path, count: v.pickIds.length, pickIds: v.pickIds }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
     // Picker — uses ALL pick rows (so co-picks credit each picker)
     const pickerMap = new Map<string, string[]>(); // user_id -> pick entry canonical ids
     for (const e of movieEntries) {
