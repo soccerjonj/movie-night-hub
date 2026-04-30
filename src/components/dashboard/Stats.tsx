@@ -239,6 +239,20 @@ const Stats = ({ group, profiles, members }: Props) => {
                 profile_path: c.profile_path ?? null,
                 character: c.character ?? null,
               }));
+            const rawCrew = Array.isArray(d2.credits?.crew) ? d2.credits.crew : [];
+            const directors: CrewMember[] = rawCrew
+              .filter((c: any) => c.job === 'Director')
+              .map((c: any) => ({
+                id: c.id,
+                name: c.name,
+                profile_path: c.profile_path ?? null,
+              }));
+            const rawCompanies = Array.isArray(d2.production_companies) ? d2.production_companies : [];
+            const production_companies: ProductionCompany[] = rawCompanies.map((c: any) => ({
+              id: c.id,
+              name: c.name,
+              logo_path: c.logo_path ?? null,
+            }));
             const details: TmdbDetails = {
               runtime: d2.runtime ?? null,
               vote_average: d2.vote_average ?? null,
@@ -247,6 +261,8 @@ const Stats = ({ group, profiles, members }: Props) => {
               original_language: d2.original_language ?? null,
               production_countries: Array.isArray(d2.production_countries) ? d2.production_countries : [],
               cast,
+              directors,
+              production_companies,
             };
             cache[cacheKey] = details;
             if (!cancelled) {
