@@ -50,10 +50,10 @@ const AuthPage = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="glass-card rounded-2xl p-8 w-full max-w-md mx-4 relative z-10"
+        className="glass-card p-8 w-full max-w-md mx-4 relative z-10"
       >
         <div className="text-center mb-8">
-          <img src={logo} alt="Movie Club" className="h-16 object-contain rounded-2xl mx-auto mb-4 mix-blend-screen" />
+          <img src={logo} alt="Movie Club" className="h-16 object-contain mx-auto mb-4" />
           <h1 className="text-3xl font-display font-bold text-gradient-gold">Movie Club</h1>
           <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1">
             <Popcorn className="w-4 h-4" />

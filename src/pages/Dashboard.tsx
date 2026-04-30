@@ -89,7 +89,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <img src={logo} alt="Loading" className="h-12 object-contain rounded-xl animate-pulse mix-blend-screen" />
+        <img src={logo} alt="Loading" className="h-12 object-contain animate-pulse" />
       </div>
     );
   }
@@ -113,7 +113,7 @@ const Dashboard = () => {
             <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate('/clubs')}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <img src={logo} alt="Club" className="h-8 sm:h-10 object-contain rounded-xl shrink-0 mix-blend-screen" />
+            <img src={logo} alt="Club" className="h-8 sm:h-10 object-contain shrink-0" />
             <div className="min-w-0">
               <h1 className="font-display text-base sm:text-lg font-bold truncate">{group.name}</h1>
               {season && tab === 'current' && (
@@ -283,8 +283,8 @@ const Dashboard = () => {
 
               {/* No season yet */}
               {!season && !isAdmin && (
-                <div className="glass-card rounded-2xl p-12 text-center">
-                  <img src={logo} alt="" className="h-16 object-contain rounded-xl mx-auto mb-4 opacity-30 mix-blend-screen" />
+                <div className="glass-card p-12 text-center">
+                  <img src={logo} alt="" className="h-16 object-contain mx-auto mb-4 opacity-30" />
                   <h2 className="text-xl font-display font-bold mb-2">No {labels.seasonNoun} Yet</h2>
                   <p className="text-muted-foreground">Waiting for your admin to start a new {labels.seasonNoun.toLowerCase()}.</p>
                 </div>
