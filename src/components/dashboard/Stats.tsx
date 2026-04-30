@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useGroup';
-import { Film, Clock, Star, Globe, Calendar, Tag, Trophy, BarChart3, Languages, BookOpen } from 'lucide-react';
+import { Film, Clock, Star, Globe, Calendar, Tag, Trophy, BarChart3, Languages, BookOpen, ChevronLeft, Check, X, Trophy as TrophyIcon } from 'lucide-react';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { getClubLabels } from '@/lib/clubTypes';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   group: { id: string; club_type?: string };
@@ -26,6 +28,22 @@ interface SeasonInfo {
   id: string;
   status: string;
   current_movie_index: number;
+  season_number: number;
+  title: string | null;
+}
+
+interface GuessRow {
+  guesser_id: string;
+  guessed_user_id: string;
+  movie_pick_id: string;
+  season_id: string;
+}
+
+interface RankingRow {
+  user_id: string;
+  movie_pick_id: string;
+  rank: number;
+  season_id: string;
 }
 
 interface TmdbDetails {
@@ -75,50 +93,79 @@ const decadeOf = (year: string | null | undefined) => {
   return Math.floor(y / 10) * 10;
 };
 
+interface DrillDown {
+  title: string;
+  pickIds: string[];
+}
+
 const Stats = ({ group, profiles, members }: Props) => {
   const labels = getClubLabels((group.club_type || 'movie') as any);
   const isBookClub = labels.type === 'book';
 
   const [picks, setPicks] = useState<PickRow[]>([]);
+  const [seasons, setSeasons] = useState<SeasonInfo[]>([]);
+  const [guesses, setGuesses] = useState<GuessRow[]>([]);
+  const [rankings, setRankings] = useState<RankingRow[]>([]);
   const [tmdbDetails, setTmdbDetails] = useState<Record<string, TmdbDetails>>({});
   const [loading, setLoading] = useState(true);
   const [enrichLoading, setEnrichLoading] = useState(false);
 
-  // Fetch watched picks
+  // Drill-down state — list of pickIds + selected pickId for full detail
+  const [drill, setDrill] = useState<DrillDown | null>(null);
+  const [selectedPickId, setSelectedPickId] = useState<string | null>(null);
+
+  const getProfile = (uid: string) => profiles.find(p => p.user_id === uid);
+  const getName = (uid: string) => getProfile(uid)?.display_name || 'Unknown';
+
+  // Fetch watched picks + seasons + guesses + rankings
   useEffect(() => {
     const run = async () => {
       setLoading(true);
       const { data: seasonsData } = await supabase
         .from('seasons')
-        .select('id, status, current_movie_index')
+        .select('id, status, current_movie_index, season_number, title')
         .eq('group_id', group.id);
-      const seasons = (seasonsData || []) as SeasonInfo[];
-      const seasonMap = new Map(seasons.map(s => [s.id, s]));
-      const seasonIds = seasons.map(s => s.id);
+      const seasonRows = (seasonsData || []) as SeasonInfo[];
+      setSeasons(seasonRows);
+      const seasonMap = new Map(seasonRows.map(s => [s.id, s]));
+      const seasonIds = seasonRows.map(s => s.id);
       if (seasonIds.length === 0) {
         setPicks([]);
+        setGuesses([]);
+        setRankings([]);
         setLoading(false);
         return;
       }
-      const { data: picksData } = await supabase
-        .from('movie_picks')
-        .select('id, title, user_id, year, tmdb_id, watch_order, season_id, poster_url')
-        .in('season_id', seasonIds);
 
-      const watched = ((picksData || []) as PickRow[]).filter(p => {
+      const [picksRes, guessesRes, rankingsRes] = await Promise.all([
+        supabase.from('movie_picks')
+          .select('id, title, user_id, year, tmdb_id, watch_order, season_id, poster_url')
+          .in('season_id', seasonIds),
+        supabase.from('guesses')
+          .select('guesser_id, guessed_user_id, movie_pick_id, season_id')
+          .in('season_id', seasonIds),
+        supabase.from('movie_rankings')
+          .select('user_id, movie_pick_id, rank, season_id')
+          .in('season_id', seasonIds),
+      ]);
+
+      const watched = ((picksRes.data || []) as PickRow[]).filter(p => {
         const s = seasonMap.get(p.season_id);
         if (!s) return false;
         if (s.status === 'completed' || s.status === 'reviewing') return true;
         if (s.status === 'watching' && p.watch_order != null) return p.watch_order < s.current_movie_index;
         return false;
       });
+
       setPicks(watched);
+      setGuesses((guessesRes.data || []) as GuessRow[]);
+      setRankings((rankingsRes.data || []) as RankingRow[]);
       setLoading(false);
     };
     run();
   }, [group.id]);
 
-  // Enrich with TMDB details (movie clubs only)
+  // Enrich with TMDB
   useEffect(() => {
     if (isBookClub) return;
     if (picks.length === 0) return;
@@ -141,8 +188,6 @@ const Stats = ({ group, profiles, members }: Props) => {
 
       setEnrichLoading(true);
       const headers = { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' };
-
-      // simple concurrency 4
       const queue = [...toFetch];
       const workers = Array.from({ length: 4 }, async () => {
         while (queue.length && !cancelled) {
@@ -190,95 +235,137 @@ const Stats = ({ group, profiles, members }: Props) => {
     return () => { cancelled = true; };
   }, [picks, isBookClub]);
 
-  const stats = useMemo(() => {
-    const total = picks.length;
-
-    // Decade breakdown — prefer TMDB release_date, fallback to year
-    const decadeCounts = new Map<number, number>();
+  // Group co-picks: same season + watch_order = one "movie entry", multiple pickers
+  const movieEntries = useMemo(() => {
+    const grouped = new Map<string, PickRow[]>();
     for (const p of picks) {
+      const key = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `solo:${p.id}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(p);
+    }
+    // Each entry — pick first as canonical, but list all picker user_ids
+    return Array.from(grouped.values()).map(group => ({
+      canonical: group[0],
+      pickerIds: group.map(p => p.user_id),
+      siblingPickIds: group.map(p => p.id),
+    }));
+  }, [picks]);
+
+  // Map each pickId -> its movie entry's all sibling pickIds and pickerIds
+  const pickIdToEntry = useMemo(() => {
+    const m = new Map<string, { siblingPickIds: string[]; pickerIds: string[]; canonical: PickRow }>();
+    for (const e of movieEntries) {
+      for (const id of e.siblingPickIds) {
+        m.set(id, e);
+      }
+    }
+    return m;
+  }, [movieEntries]);
+
+  const stats = useMemo(() => {
+    // For categorization, collapse to canonical pick per movie-entry to avoid double-counting co-picks.
+    const canonicalPicks = movieEntries.map(e => e.canonical);
+    const total = canonicalPicks.length;
+
+    // Decade
+    const decadeMap = new Map<number, string[]>();
+    for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
       const yr = det?.release_date?.slice(0, 4) || p.year || null;
       const dec = decadeOf(yr);
-      if (dec != null) decadeCounts.set(dec, (decadeCounts.get(dec) || 0) + 1);
+      if (dec != null) {
+        if (!decadeMap.has(dec)) decadeMap.set(dec, []);
+        decadeMap.get(dec)!.push(p.id);
+      }
     }
-    const decadeRows = Array.from(decadeCounts.entries()).sort((a, b) => a[0] - b[0]);
+    const decadeRows = Array.from(decadeMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([dec, ids]) => ({ key: `${dec}s`, label: `${dec}s`, count: ids.length, pickIds: ids }));
 
-    // Genre breakdown
-    const genreCounts = new Map<string, number>();
-    for (const p of picks) {
+    // Genre
+    const genreMap = new Map<string, string[]>();
+    for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
       if (!det) continue;
       for (const g of det.genres) {
-        genreCounts.set(g.name, (genreCounts.get(g.name) || 0) + 1);
+        if (!genreMap.has(g.name)) genreMap.set(g.name, []);
+        genreMap.get(g.name)!.push(p.id);
       }
     }
-    const genreRows = Array.from(genreCounts.entries()).sort((a, b) => b[1] - a[1]);
+    const genreRows = Array.from(genreMap.entries())
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([name, ids]) => ({ key: name, label: name, count: ids.length, pickIds: ids }));
 
     // Language
-    const langCounts = new Map<string, number>();
-    for (const p of picks) {
+    const langMap = new Map<string, string[]>();
+    for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
       if (!det?.original_language) continue;
-      langCounts.set(det.original_language, (langCounts.get(det.original_language) || 0) + 1);
+      if (!langMap.has(det.original_language)) langMap.set(det.original_language, []);
+      langMap.get(det.original_language)!.push(p.id);
     }
-    const langRows = Array.from(langCounts.entries()).sort((a, b) => b[1] - a[1]);
+    const langRows = Array.from(langMap.entries())
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([code, ids]) => ({ key: code, label: code.toUpperCase(), count: ids.length, pickIds: ids }));
 
     // Country
-    const countryCounts = new Map<string, number>();
-    for (const p of picks) {
+    const countryMap = new Map<string, string[]>();
+    for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
       if (!det) continue;
       for (const c of det.production_countries) {
-        countryCounts.set(c.name, (countryCounts.get(c.name) || 0) + 1);
+        if (!countryMap.has(c.name)) countryMap.set(c.name, []);
+        countryMap.get(c.name)!.push(p.id);
       }
     }
-    const countryRows = Array.from(countryCounts.entries()).sort((a, b) => b[1] - a[1]);
+    const countryRows = Array.from(countryMap.entries())
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([name, ids]) => ({ key: name, label: name, count: ids.length, pickIds: ids }));
+
+    // Picker — uses ALL pick rows (so co-picks credit each picker)
+    const pickerMap = new Map<string, string[]>(); // user_id -> pick entry canonical ids
+    for (const e of movieEntries) {
+      for (const uid of e.pickerIds) {
+        if (!pickerMap.has(uid)) pickerMap.set(uid, []);
+        pickerMap.get(uid)!.push(e.canonical.id);
+      }
+    }
+    const pickerRows = Array.from(pickerMap.entries())
+      .map(([uid, ids]) => ({ key: uid, label: getName(uid), count: ids.length, pickIds: ids }))
+      .sort((a, b) => b.count - a.count);
 
     // Runtime
     let totalRuntime = 0;
     let runtimeCount = 0;
-    let longest: { title: string; runtime: number; pickId: string } | null = null;
-    let shortest: { title: string; runtime: number; pickId: string } | null = null;
-    for (const p of picks) {
+    let longest: { pickId: string; runtime: number } | null = null;
+    let shortest: { pickId: string; runtime: number } | null = null;
+    for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
       if (det?.runtime && det.runtime > 0) {
         totalRuntime += det.runtime;
         runtimeCount += 1;
-        if (!longest || det.runtime > longest.runtime) longest = { title: p.title, runtime: det.runtime, pickId: p.id };
-        if (!shortest || det.runtime < shortest.runtime) shortest = { title: p.title, runtime: det.runtime, pickId: p.id };
+        if (!longest || det.runtime > longest.runtime) longest = { pickId: p.id, runtime: det.runtime };
+        if (!shortest || det.runtime < shortest.runtime) shortest = { pickId: p.id, runtime: det.runtime };
       }
     }
 
     // Ratings
-    let highestRated: { title: string; rating: number; pickId: string } | null = null;
-    let lowestRated: { title: string; rating: number; pickId: string } | null = null;
+    let highestRated: { pickId: string; rating: number } | null = null;
+    let lowestRated: { pickId: string; rating: number } | null = null;
     let ratingSum = 0;
     let ratingCount = 0;
-    for (const p of picks) {
+    for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
       if (det?.vote_average && det.vote_average > 0) {
         ratingSum += det.vote_average;
         ratingCount += 1;
-        if (!highestRated || det.vote_average > highestRated.rating) highestRated = { title: p.title, rating: det.vote_average, pickId: p.id };
-        if (!lowestRated || det.vote_average < lowestRated.rating) lowestRated = { title: p.title, rating: det.vote_average, pickId: p.id };
+        if (!highestRated || det.vote_average > highestRated.rating) highestRated = { pickId: p.id, rating: det.vote_average };
+        if (!lowestRated || det.vote_average < lowestRated.rating) lowestRated = { pickId: p.id, rating: det.vote_average };
       }
     }
 
-    // Picker counts
-    const pickerCounts = new Map<string, number>();
-    for (const p of picks) {
-      pickerCounts.set(p.user_id, (pickerCounts.get(p.user_id) || 0) + 1);
-    }
-    const pickerRows = Array.from(pickerCounts.entries())
-      .map(([uid, count]) => ({
-        uid,
-        name: profiles.find(pr => pr.user_id === uid)?.display_name || 'Unknown',
-        count,
-      }))
-      .sort((a, b) => b.count - a.count);
-
     // Oldest / newest
-    const datedPicks = picks
+    const datedPicks = canonicalPicks
       .map(p => {
         const det = tmdbDetails[p.id];
         const yr = det?.release_date?.slice(0, 4) || p.year || null;
@@ -295,6 +382,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       genreRows,
       langRows,
       countryRows,
+      pickerRows,
       totalRuntime,
       runtimeCount,
       longest,
@@ -302,11 +390,10 @@ const Stats = ({ group, profiles, members }: Props) => {
       highestRated,
       lowestRated,
       avgRating: ratingCount > 0 ? ratingSum / ratingCount : null,
-      pickerRows,
       oldest,
       newest,
     };
-  }, [picks, tmdbDetails, profiles]);
+  }, [movieEntries, tmdbDetails, profiles]);
 
   if (loading) {
     return <div className="text-center text-muted-foreground py-12">Loading stats...</div>;
@@ -321,9 +408,22 @@ const Stats = ({ group, profiles, members }: Props) => {
     );
   }
 
-  const maxDecade = Math.max(1, ...stats.decadeRows.map(([, c]) => c));
-  const maxGenre = Math.max(1, ...stats.genreRows.map(([, c]) => c));
+  const maxDecade = Math.max(1, ...stats.decadeRows.map(r => r.count));
+  const maxGenre = Math.max(1, ...stats.genreRows.map(r => r.count));
   const maxPicker = Math.max(1, ...stats.pickerRows.map(r => r.count));
+  const maxLang = Math.max(1, ...stats.langRows.map(r => r.count));
+  const maxCountry = Math.max(1, ...stats.countryRows.map(r => r.count));
+
+  const openDrill = (title: string, pickIds: string[]) => {
+    if (pickIds.length === 0) return;
+    if (pickIds.length === 1) {
+      setSelectedPickId(pickIds[0]);
+      setDrill({ title, pickIds });
+    } else {
+      setDrill({ title, pickIds });
+      setSelectedPickId(null);
+    }
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -333,6 +433,7 @@ const Stats = ({ group, profiles, members }: Props) => {
           icon={<Film className="w-4 h-4" />}
           label={`${labels.items} ${labels.watched}`}
           value={stats.total.toString()}
+          onClick={() => openDrill(`All ${labels.items}`, movieEntries.map(e => e.canonical.id))}
         />
         {!isBookClub && (
           <StatCard
@@ -366,8 +467,9 @@ const Stats = ({ group, profiles, members }: Props) => {
           <Empty />
         ) : (
           <div className="space-y-1.5">
-            {stats.decadeRows.map(([dec, count]) => (
-              <BarRow key={dec} label={`${dec}s`} count={count} max={maxDecade} />
+            {stats.decadeRows.map(r => (
+              <BarRow key={r.key} label={r.label} count={r.count} max={maxDecade}
+                onClick={() => openDrill(`${r.label}`, r.pickIds)} />
             ))}
           </div>
         )}
@@ -377,7 +479,8 @@ const Stats = ({ group, profiles, members }: Props) => {
       <Section title="Picks per member" icon={<Trophy className="w-4 h-4" />}>
         <div className="space-y-1.5">
           {stats.pickerRows.map(r => (
-            <BarRow key={r.uid} label={r.name} count={r.count} max={maxPicker} />
+            <BarRow key={r.key} label={r.label} count={r.count} max={maxPicker}
+              onClick={() => openDrill(`${r.label}'s picks`, r.pickIds)} />
           ))}
         </div>
       </Section>
@@ -390,8 +493,9 @@ const Stats = ({ group, profiles, members }: Props) => {
               <Empty hint="Pulled from TMDB" />
             ) : (
               <div className="space-y-1.5">
-                {stats.genreRows.slice(0, 12).map(([name, count]) => (
-                  <BarRow key={name} label={name} count={count} max={maxGenre} />
+                {stats.genreRows.slice(0, 12).map(r => (
+                  <BarRow key={r.key} label={r.label} count={r.count} max={maxGenre}
+                    onClick={() => openDrill(r.label, r.pickIds)} />
                 ))}
               </div>
             )}
@@ -400,26 +504,22 @@ const Stats = ({ group, profiles, members }: Props) => {
           <div className="grid md:grid-cols-2 gap-4">
             <Section title="Languages" icon={<Languages className="w-4 h-4" />}>
               {stats.langRows.length === 0 ? <Empty /> : (
-                <ul className="text-sm space-y-1">
-                  {stats.langRows.slice(0, 8).map(([lang, count]) => (
-                    <li key={lang} className="flex justify-between">
-                      <span className="uppercase text-muted-foreground">{lang}</span>
-                      <span className="font-medium">{count}</span>
-                    </li>
+                <div className="space-y-1.5">
+                  {stats.langRows.slice(0, 8).map(r => (
+                    <BarRow key={r.key} label={r.label} count={r.count} max={maxLang}
+                      onClick={() => openDrill(r.label, r.pickIds)} />
                   ))}
-                </ul>
+                </div>
               )}
             </Section>
             <Section title="Countries" icon={<Globe className="w-4 h-4" />}>
               {stats.countryRows.length === 0 ? <Empty /> : (
-                <ul className="text-sm space-y-1">
-                  {stats.countryRows.slice(0, 8).map(([name, count]) => (
-                    <li key={name} className="flex justify-between">
-                      <span className="text-muted-foreground">{name}</span>
-                      <span className="font-medium">{count}</span>
-                    </li>
+                <div className="space-y-1.5">
+                  {stats.countryRows.slice(0, 8).map(r => (
+                    <BarRow key={r.key} label={r.label} count={r.count} max={maxCountry}
+                      onClick={() => openDrill(r.label, r.pickIds)} />
                   ))}
-                </ul>
+                </div>
               )}
             </Section>
           </div>
@@ -427,12 +527,24 @@ const Stats = ({ group, profiles, members }: Props) => {
           <div className="grid md:grid-cols-2 gap-4">
             <Section title="Records" icon={<Trophy className="w-4 h-4" />}>
               <ul className="text-sm space-y-2">
-                <RecordRow label="Longest" value={stats.longest ? `${stats.longest.title} · ${formatRuntime(stats.longest.runtime)}` : '—'} />
-                <RecordRow label="Shortest" value={stats.shortest ? `${stats.shortest.title} · ${formatRuntime(stats.shortest.runtime)}` : '—'} />
-                <RecordRow label="Highest rated" value={stats.highestRated ? `${stats.highestRated.title} · ${stats.highestRated.rating.toFixed(1)}` : '—'} />
-                <RecordRow label="Lowest rated" value={stats.lowestRated ? `${stats.lowestRated.title} · ${stats.lowestRated.rating.toFixed(1)}` : '—'} />
-                <RecordRow label="Oldest" value={stats.oldest ? `${stats.oldest.p.title} · ${stats.oldest.y}` : '—'} />
-                <RecordRow label="Newest" value={stats.newest ? `${stats.newest.p.title} · ${stats.newest.y}` : '—'} />
+                <RecordRow label="Longest"
+                  value={stats.longest ? `${pickIdToEntry.get(stats.longest.pickId)?.canonical.title} · ${formatRuntime(stats.longest.runtime)}` : '—'}
+                  onClick={stats.longest ? () => openDrill('Longest', [stats.longest!.pickId]) : undefined} />
+                <RecordRow label="Shortest"
+                  value={stats.shortest ? `${pickIdToEntry.get(stats.shortest.pickId)?.canonical.title} · ${formatRuntime(stats.shortest.runtime)}` : '—'}
+                  onClick={stats.shortest ? () => openDrill('Shortest', [stats.shortest!.pickId]) : undefined} />
+                <RecordRow label="Highest rated"
+                  value={stats.highestRated ? `${pickIdToEntry.get(stats.highestRated.pickId)?.canonical.title} · ${stats.highestRated.rating.toFixed(1)}` : '—'}
+                  onClick={stats.highestRated ? () => openDrill('Highest rated', [stats.highestRated!.pickId]) : undefined} />
+                <RecordRow label="Lowest rated"
+                  value={stats.lowestRated ? `${pickIdToEntry.get(stats.lowestRated.pickId)?.canonical.title} · ${stats.lowestRated.rating.toFixed(1)}` : '—'}
+                  onClick={stats.lowestRated ? () => openDrill('Lowest rated', [stats.lowestRated!.pickId]) : undefined} />
+                <RecordRow label="Oldest"
+                  value={stats.oldest ? `${stats.oldest.p.title} · ${stats.oldest.y}` : '—'}
+                  onClick={stats.oldest ? () => openDrill('Oldest', [stats.oldest!.p.id]) : undefined} />
+                <RecordRow label="Newest"
+                  value={stats.newest ? `${stats.newest.p.title} · ${stats.newest.y}` : '—'}
+                  onClick={stats.newest ? () => openDrill('Newest', [stats.newest!.p.id]) : undefined} />
               </ul>
             </Section>
             <Section title="Coverage" icon={<BookOpen className="w-4 h-4" />}>
@@ -448,22 +560,304 @@ const Stats = ({ group, profiles, members }: Props) => {
           </div>
         </>
       )}
+
+      {/* Drill-down dialog */}
+      <Dialog
+        open={drill !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDrill(null);
+            setSelectedPickId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedPickId && drill && drill.pickIds.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 -ml-1"
+                  onClick={() => setSelectedPickId(null)}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+              )}
+              <span>
+                {selectedPickId && drill && drill.pickIds.length > 1
+                  ? pickIdToEntry.get(selectedPickId)?.canonical.title
+                  : drill?.title}
+                {!selectedPickId && drill && drill.pickIds.length > 1 && (
+                  <span className="text-muted-foreground text-sm font-normal ml-2">
+                    · {drill.pickIds.length} {labels.items}
+                  </span>
+                )}
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+
+          {drill && !selectedPickId && drill.pickIds.length > 1 && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
+              {drill.pickIds.map(pid => {
+                const entry = pickIdToEntry.get(pid);
+                if (!entry) return null;
+                const p = entry.canonical;
+                return (
+                  <button
+                    key={pid}
+                    onClick={() => setSelectedPickId(pid)}
+                    className="text-left group"
+                  >
+                    <div className="aspect-[2/3] rounded-md overflow-hidden bg-muted">
+                      {p.poster_url ? (
+                        <img src={p.poster_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center p-1">
+                          <Film className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] mt-1 line-clamp-2 group-hover:text-primary transition-colors">{p.title}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {selectedPickId && (
+            <MovieDetailView
+              entry={pickIdToEntry.get(selectedPickId)!}
+              guesses={guesses}
+              rankings={rankings}
+              members={members}
+              getName={getName}
+              getProfile={getProfile}
+              tmdb={tmdbDetails[selectedPickId]}
+              seasons={seasons}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-const StatCard = ({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) => (
-  <div className="glass-card rounded-xl p-3 sm:p-4">
-    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-      {icon}
-      <span className="truncate">{label}</span>
-    </div>
-    <div className="text-lg sm:text-2xl font-display font-bold text-gradient-gold leading-tight">{value}</div>
-    {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
-  </div>
-);
+// --- Movie detail view -------------------------------------------------------
 
-const Section = ({ title, icon, children, sub }: { title: string; icon: React.ReactNode; children: React.ReactNode; sub?: string }) => (
+const MovieDetailView = ({
+  entry,
+  guesses,
+  rankings,
+  members,
+  getName,
+  getProfile,
+  tmdb,
+  seasons,
+}: {
+  entry: { canonical: PickRow; pickerIds: string[]; siblingPickIds: string[] };
+  guesses: GuessRow[];
+  rankings: RankingRow[];
+  members: { user_id: string }[];
+  getName: (uid: string) => string;
+  getProfile: (uid: string) => Profile | undefined;
+  tmdb?: TmdbDetails;
+  seasons: SeasonInfo[];
+}) => {
+  const p = entry.canonical;
+  const season = seasons.find(s => s.id === p.season_id);
+  const validPickerIds = new Set(entry.pickerIds);
+  const siblingSet = new Set(entry.siblingPickIds);
+
+  // Guesses for this movie entry — dedupe per guesser
+  const guessByUser = new Map<string, GuessRow>();
+  for (const g of guesses) {
+    if (siblingSet.has(g.movie_pick_id) && !guessByUser.has(g.guesser_id)) {
+      guessByUser.set(g.guesser_id, g);
+    }
+  }
+
+  // Rankings for this movie entry — combine across sibling picks (each member ranks each pick once)
+  const rankByUser = new Map<string, number>();
+  for (const r of rankings) {
+    if (siblingSet.has(r.movie_pick_id) && !rankByUser.has(r.user_id)) {
+      rankByUser.set(r.user_id, r.rank);
+    }
+  }
+
+  const guessRows = members
+    .filter(m => !validPickerIds.has(m.user_id)) // pickers don't guess themselves
+    .map(m => ({
+      uid: m.user_id,
+      name: getName(m.user_id),
+      guess: guessByUser.get(m.user_id),
+    }));
+
+  const rankRows = members
+    .map(m => ({
+      uid: m.user_id,
+      name: getName(m.user_id),
+      rank: rankByUser.get(m.user_id),
+    }))
+    .filter(r => r.rank != null)
+    .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
+
+  const yearText = tmdb?.release_date?.slice(0, 4) || p.year || '';
+
+  return (
+    <div className="space-y-4 pt-1">
+      <div className="flex gap-3">
+        <div className="w-20 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-muted">
+          {p.poster_url ? (
+            <img src={p.poster_url} alt={p.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Film className="w-6 h-6 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0 text-sm space-y-1">
+          <div className="font-display font-semibold text-base leading-snug">{p.title}</div>
+          <div className="text-muted-foreground text-xs">
+            {[yearText, tmdb?.runtime ? formatRuntime(tmdb.runtime) : null, tmdb?.vote_average ? `★ ${tmdb.vote_average.toFixed(1)}` : null]
+              .filter(Boolean)
+              .join(' · ')}
+          </div>
+          {season && (
+            <div className="text-[11px] text-muted-foreground">
+              Season {season.season_number}{season.title ? ` — ${season.title}` : ''}
+            </div>
+          )}
+          {tmdb?.genres && tmdb.genres.length > 0 && (
+            <div className="flex flex-wrap gap-1 pt-1">
+              {tmdb.genres.map(g => (
+                <span key={g.id} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/15 text-primary">
+                  {g.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Pickers */}
+      <div className="space-y-1.5">
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Picked by</div>
+        <div className="flex flex-wrap gap-2">
+          {entry.pickerIds.map(uid => (
+            <div key={uid} className="flex items-center gap-1.5 text-sm bg-primary/10 border border-primary/20 rounded-full px-2 py-1">
+              <Avatar profile={getProfile(uid)} size={20} />
+              <span>{getName(uid)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Guesses */}
+      {guessRows.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Guesses</div>
+          <ul className="text-sm divide-y divide-border/40 rounded-lg border border-border/40 overflow-hidden">
+            {guessRows.map(r => {
+              const correct = r.guess && validPickerIds.has(r.guess.guessed_user_id);
+              return (
+                <li key={r.uid} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Avatar profile={getProfile(r.uid)} size={20} />
+                    <span>{r.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    {r.guess ? (
+                      <>
+                        <span className="text-muted-foreground">guessed</span>
+                        <span className="font-medium">{getName(r.guess.guessed_user_id)}</span>
+                        {correct ? (
+                          <Check className="w-4 h-4 text-emerald-500" />
+                        ) : (
+                          <X className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground italic">no guess</span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* Rankings */}
+      {rankRows.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+            <TrophyIcon className="w-3 h-3" /> Rankings
+          </div>
+          <ul className="text-sm divide-y divide-border/40 rounded-lg border border-border/40 overflow-hidden">
+            {rankRows.map(r => (
+              <li key={r.uid} className="flex items-center justify-between gap-2 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Avatar profile={getProfile(r.uid)} size={20} />
+                  <span>{r.name}</span>
+                </div>
+                <span className="text-xs font-medium tabular-nums">#{r.rank}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Small UI primitives -----------------------------------------------------
+
+const Avatar = ({ profile, size = 24 }: { profile?: Profile; size?: number }) => {
+  const initial = (profile?.display_name || '?').slice(0, 1).toUpperCase();
+  return (
+    <div
+      className="rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden text-[10px] font-semibold text-primary shrink-0"
+      style={{ width: size, height: size }}
+    >
+      {profile?.avatar_url ? (
+        <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+      ) : (
+        initial
+      )}
+    </div>
+  );
+};
+
+const StatCard = ({
+  icon, label, value, sub, onClick,
+}: { icon: React.ReactNode; label: string; value: string; sub?: string; onClick?: () => void }) => {
+  const inner = (
+    <>
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+        {icon}
+        <span className="truncate">{label}</span>
+      </div>
+      <div className="text-lg sm:text-2xl font-display font-bold text-gradient-gold leading-tight">{value}</div>
+      {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        className="glass-card rounded-xl p-3 sm:p-4 text-left hover:ring-1 hover:ring-primary/40 transition-all"
+      >
+        {inner}
+      </button>
+    );
+  }
+  return <div className="glass-card rounded-xl p-3 sm:p-4">{inner}</div>;
+};
+
+const Section = ({
+  title, icon, children, sub,
+}: { title: string; icon: React.ReactNode; children: React.ReactNode; sub?: string }) => (
   <div className="glass-card rounded-2xl p-4 sm:p-5">
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2 text-sm font-semibold">
@@ -476,25 +870,57 @@ const Section = ({ title, icon, children, sub }: { title: string; icon: React.Re
   </div>
 );
 
-const BarRow = ({ label, count, max }: { label: string; count: number; max: number }) => (
-  <div className="flex items-center gap-3">
-    <div className="w-24 sm:w-32 text-xs sm:text-sm truncate">{label}</div>
-    <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden">
-      <div
-        className="h-full bg-gradient-to-r from-primary/70 to-primary rounded-full"
-        style={{ width: `${(count / max) * 100}%` }}
-      />
-    </div>
-    <div className="w-8 text-right text-xs sm:text-sm font-medium tabular-nums">{count}</div>
-  </div>
-);
+const BarRow = ({
+  label, count, max, onClick,
+}: { label: string; count: number; max: number; onClick?: () => void }) => {
+  const content = (
+    <>
+      <div className="w-24 sm:w-32 text-xs sm:text-sm truncate text-left">{label}</div>
+      <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-primary/70 to-primary rounded-full"
+          style={{ width: `${(count / max) * 100}%` }}
+        />
+      </div>
+      <div className="w-8 text-right text-xs sm:text-sm font-medium tabular-nums">{count}</div>
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        className="w-full flex items-center gap-3 rounded-md px-1 -mx-1 py-1 hover:bg-primary/5 transition-colors"
+      >
+        {content}
+      </button>
+    );
+  }
+  return <div className="flex items-center gap-3 px-1 py-1">{content}</div>;
+};
 
-const RecordRow = ({ label, value }: { label: string; value: string }) => (
-  <li className="flex justify-between gap-3">
-    <span className="text-muted-foreground shrink-0">{label}</span>
-    <span className="font-medium text-right truncate">{value}</span>
-  </li>
-);
+const RecordRow = ({
+  label, value, onClick,
+}: { label: string; value: string; onClick?: () => void }) => {
+  const content = (
+    <>
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="font-medium text-right truncate">{value}</span>
+    </>
+  );
+  if (onClick) {
+    return (
+      <li>
+        <button
+          onClick={onClick}
+          className="w-full flex justify-between gap-3 rounded-md px-1 -mx-1 py-1 hover:bg-primary/5 transition-colors text-left"
+        >
+          {content}
+        </button>
+      </li>
+    );
+  }
+  return <li className="flex justify-between gap-3 px-1 py-1">{content}</li>;
+};
 
 const Empty = ({ hint }: { hint?: string } = {}) => (
   <p className="text-sm text-muted-foreground">No data yet{hint ? ` — ${hint}` : ''}.</p>
