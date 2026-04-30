@@ -195,7 +195,7 @@ export function computeMemberBadges(
     | 'releaseYear'
     | 'groupLove';
 
-  const badgeToMetric: Record<BadgeId, MetricKey> = {
+  const badgeToMetric: Partial<Record<BadgeId, MetricKey>> = {
     crowd_pleaser: 'popularity',
     hidden_gems: 'popularity',
     futurist: 'releaseYear',
