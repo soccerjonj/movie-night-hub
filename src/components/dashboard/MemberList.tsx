@@ -216,7 +216,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       setLoading(true);
       const { data: seasonData } = await supabase
         .from('seasons')
-        .select('id, season_number, title, status, current_movie_index')
+        .select('id, season_number, title, status, current_movie_index, guessing_enabled')
         .eq('group_id', group.id)
         .order('season_number', { ascending: false });
       const s = (seasonData || []) as SeasonInfo[];
@@ -226,18 +226,21 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       if (seasonIds.length === 0) {
         setPicks([]);
         setGuesses([]);
+        setSeasonParticipants([]);
         setLoading(false);
         return;
       }
 
-      const [picksRes, guessesRes, rankingsRes] = await Promise.all([
+      const [picksRes, guessesRes, rankingsRes, participantsRes] = await Promise.all([
         supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed, tmdb_id').in('season_id', seasonIds),
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
         supabase.from('movie_rankings').select('user_id, movie_pick_id, rank, season_id').in('season_id', seasonIds),
+        supabase.from('season_participants').select('user_id, season_id').in('season_id', seasonIds),
       ]);
       setPicks((picksRes.data || []) as PickRow[]);
       setGuesses((guessesRes.data || []) as GuessRow[]);
       setRankings(rankingsRes.data || []);
+      setSeasonParticipants(participantsRes.data || []);
       setLoading(false);
     };
     fetchData();
