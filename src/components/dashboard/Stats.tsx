@@ -290,6 +290,7 @@ const Stats = ({ group, profiles, members }: Props) => {
               runtime: d2.runtime ?? null,
               vote_average: d2.vote_average ?? null,
               release_date: d2.release_date ?? null,
+              popularity: typeof d2.popularity === 'number' ? d2.popularity : null,
               genres: Array.isArray(d2.genres) ? d2.genres : [],
               original_language: d2.original_language ?? null,
               production_countries: Array.isArray(d2.production_countries) ? d2.production_countries : [],
