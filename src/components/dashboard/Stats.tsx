@@ -896,6 +896,11 @@ const MovieDetailView = ({
               Season {season.season_number}{season.title ? ` — ${season.title}` : ''}
             </div>
           )}
+          {tmdb?.directors && tmdb.directors.length > 0 && (
+            <div className="text-[11px] text-muted-foreground">
+              Dir. {tmdb.directors.map(d => d.name).join(', ')}
+            </div>
+          )}
           {tmdb?.genres && tmdb.genres.length > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
               {tmdb.genres.map(g => (
