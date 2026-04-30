@@ -33,7 +33,7 @@ const Dashboard = () => {
   const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup(groupId);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [tab, setTab] = useState<'current' | 'history' | 'stats'>('current');
+  const [tab, setTab] = useState<'current' | 'club' | 'history' | 'stats'>('current');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminViewAsMember, setAdminViewAsMember] = useState(false);
   const [hasEverGuessed, setHasEverGuessed] = useState(false);
@@ -204,6 +204,16 @@ const Dashboard = () => {
               Current {labels.seasonNoun}
             </button>
             <button
+              onClick={() => setTab('club')}
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
+                tab === 'club'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Club
+            </button>
+            <button
               onClick={() => setTab('history')}
               className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                 tab === 'history'
@@ -281,9 +291,6 @@ const Dashboard = () => {
                 <Scoreboard group={group} season={season} profiles={profiles} members={members} collapsed={!season?.guessing_enabled} />
               )}
 
-              {/* Members */}
-              <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} externalSelectedUserId={openProfileUserId} onExternalSelectedClear={() => setOpenProfileUserId(null)} />
-
               {/* Guesses reminder (shows first) */}
               <UnsubmittedGuessesReminder season={season} moviePicks={moviePicks} members={members} profiles={profiles} onDismissed={() => setGuessesDismissed(true)} onUpdate={refetch} />
 
@@ -301,14 +308,17 @@ const Dashboard = () => {
                 </div>
               )}
             </>
+          ) : tab === 'club' ? (
+            <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} externalSelectedUserId={openProfileUserId} onExternalSelectedClear={() => setOpenProfileUserId(null)} />
           ) : tab === 'history' ? (
             <History group={group} profiles={profiles} members={members} />
           ) : (
             <Stats group={group} profiles={profiles} members={members} />
           )}
 
-          {/* Always render MemberList dialog for profile access from any tab */}
-          {tab !== 'current' && (
+          {/* Always mount MemberList (hidden) on non-Club tabs so the profile dialog
+              can still open when avatars are tapped from anywhere. */}
+          {tab !== 'club' && (
             <div className="hidden">
               <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} externalSelectedUserId={openProfileUserId} onExternalSelectedClear={() => setOpenProfileUserId(null)} />
             </div>
