@@ -12,7 +12,8 @@ export type BadgeId =
   | 'quick_watch'
   | 'critics_choice'
   | 'group_favorite'
-  | 'bold_choices';
+  | 'bold_choices'
+  | 'casual_viewer';
 
 export interface BadgeDef {
   id: BadgeId;
