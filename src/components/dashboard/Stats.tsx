@@ -657,6 +657,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       medianYear,
       tasteDecadeRows,
       tasteMembers,
+      pickLove,
     };
   }, [movieEntries, tmdbDetails, profiles, rankings]);
 
