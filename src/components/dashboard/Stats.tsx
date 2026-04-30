@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useGroup';
-import { Film, Clock, Star, Globe, Calendar, Tag, Trophy, BarChart3, Languages, BookOpen, ChevronLeft, Check, X, Trophy as TrophyIcon } from 'lucide-react';
+import { Film, Clock, Star, Globe, Calendar, Tag, Trophy, BarChart3, Languages, BookOpen, ChevronLeft, Check, X, Trophy as TrophyIcon, Users } from 'lucide-react';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { getClubLabels } from '@/lib/clubTypes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -46,6 +46,13 @@ interface RankingRow {
   season_id: string;
 }
 
+interface CastMember {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  character?: string | null;
+}
+
 interface TmdbDetails {
   runtime: number | null;
   vote_average: number | null;
@@ -53,9 +60,10 @@ interface TmdbDetails {
   genres: { id: number; name: string }[];
   original_language: string | null;
   production_countries: { iso_3166_1: string; name: string }[];
+  cast?: CastMember[];
 }
 
-const TMDB_CACHE_KEY = 'mc_tmdb_details_v1';
+const TMDB_CACHE_KEY = 'mc_tmdb_details_v2';
 
 const loadTmdbCache = (): Record<string, TmdbDetails> => {
   try {
@@ -205,9 +213,18 @@ const Stats = ({ group, profiles, members }: Props) => {
               tmdbId = d.results?.[0]?.id || null;
             }
             if (!tmdbId) continue;
-            const r2 = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`, { headers });
+            const r2 = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US&append_to_response=credits`, { headers });
             if (!r2.ok) continue;
             const d2 = await r2.json();
+            const rawCast = Array.isArray(d2.credits?.cast) ? d2.credits.cast : [];
+            const cast: CastMember[] = rawCast
+              .slice(0, 10)
+              .map((c: any) => ({
+                id: c.id,
+                name: c.name,
+                profile_path: c.profile_path ?? null,
+                character: c.character ?? null,
+              }));
             const details: TmdbDetails = {
               runtime: d2.runtime ?? null,
               vote_average: d2.vote_average ?? null,
@@ -215,6 +232,7 @@ const Stats = ({ group, profiles, members }: Props) => {
               genres: Array.isArray(d2.genres) ? d2.genres : [],
               original_language: d2.original_language ?? null,
               production_countries: Array.isArray(d2.production_countries) ? d2.production_countries : [],
+              cast,
             };
             cache[cacheKey] = details;
             if (!cancelled) {
@@ -322,6 +340,28 @@ const Stats = ({ group, profiles, members }: Props) => {
       .sort((a, b) => b[1].length - a[1].length)
       .map(([name, ids]) => ({ key: name, label: name, count: ids.length, pickIds: ids }));
 
+    // Actors — aggregate top-billed cast across canonical picks
+    const actorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[] }>();
+    for (const p of canonicalPicks) {
+      const det = tmdbDetails[p.id];
+      if (!det?.cast) continue;
+      const seen = new Set<number>();
+      for (const c of det.cast) {
+        if (seen.has(c.id)) continue;
+        seen.add(c.id);
+        const existing = actorMap.get(c.id);
+        if (existing) {
+          existing.pickIds.push(p.id);
+        } else {
+          actorMap.set(c.id, { name: c.name, profile_path: c.profile_path, pickIds: [p.id] });
+        }
+      }
+    }
+    const actorRows = Array.from(actorMap.entries())
+      .map(([id, v]) => ({ key: String(id), id, label: v.name, profile_path: v.profile_path, count: v.pickIds.length, pickIds: v.pickIds }))
+      .filter(r => r.count >= 1)
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
     // Picker — uses ALL pick rows (so co-picks credit each picker)
     const pickerMap = new Map<string, string[]>(); // user_id -> pick entry canonical ids
     for (const e of movieEntries) {
@@ -382,6 +422,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       genreRows,
       langRows,
       countryRows,
+      actorRows,
       pickerRows,
       totalRuntime,
       runtimeCount,
@@ -513,6 +554,22 @@ const Stats = ({ group, profiles, members }: Props) => {
               )}
             </Section>
           </div>
+
+          {/* Actors */}
+          <Section
+            title="Actors"
+            icon={<Users className="w-4 h-4" />}
+            sub={enrichLoading ? 'Loading TMDB data…' : (stats.actorRows.length > 0 ? `${stats.actorRows.length} unique` : undefined)}
+          >
+            {stats.actorRows.length === 0 ? (
+              <Empty hint="Top-billed cast pulled from TMDB" />
+            ) : (
+              <ActorGrid
+                actors={stats.actorRows}
+                onSelect={(a) => openDrill(a.label, a.pickIds)}
+              />
+            )}
+          </Section>
 
           <div className="grid md:grid-cols-2 gap-4">
             <Section title="Records" icon={<Trophy className="w-4 h-4" />}>
@@ -743,6 +800,34 @@ const MovieDetailView = ({
         </div>
       </div>
 
+      {/* Cast */}
+      {tmdb?.cast && tmdb.cast.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Top cast</div>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {tmdb.cast.slice(0, 8).map(c => (
+              <div key={c.id} className="shrink-0 w-16 text-center">
+                <div className="aspect-[2/3] rounded-md overflow-hidden bg-muted">
+                  {c.profile_path ? (
+                    <img
+                      src={`https://image.tmdb.org/t/p/w185${c.profile_path}`}
+                      alt={c.name}
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] mt-1 line-clamp-2 leading-tight">{c.name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Guesses */}
       {guessRows.length > 0 && (
         <div className="space-y-1.5">
@@ -802,6 +887,73 @@ const MovieDetailView = ({
 };
 
 // --- Small UI primitives -----------------------------------------------------
+
+const ActorGrid = ({
+  actors,
+  onSelect,
+}: {
+  actors: { id: number; label: string; profile_path: string | null; count: number; pickIds: string[] }[];
+  onSelect: (a: { label: string; pickIds: string[] }) => void;
+}) => {
+  const [showAll, setShowAll] = useState(false);
+  const repeats = actors.filter(a => a.count >= 2);
+  const headline = repeats.length > 0 ? repeats : actors.slice(0, 12);
+  const list = showAll ? actors : headline;
+
+  return (
+    <div className="space-y-3">
+      {repeats.length > 0 && !showAll && (
+        <p className="text-[11px] text-muted-foreground">
+          {repeats.length} {repeats.length === 1 ? 'actor appears' : 'actors appear'} in multiple {repeats.length === 1 ? 'movie' : 'movies'}.
+        </p>
+      )}
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+        {list.map(a => (
+          <button
+            key={a.id}
+            onClick={() => onSelect(a)}
+            className="text-left group"
+          >
+            <div className="aspect-[2/3] rounded-md overflow-hidden bg-muted relative">
+              {a.profile_path ? (
+                <img
+                  src={`https://image.tmdb.org/t/p/w185${a.profile_path}`}
+                  alt={a.label}
+                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Users className="w-6 h-6 text-muted-foreground" />
+                </div>
+              )}
+              {a.count >= 2 && (
+                <span className="absolute top-1 right-1 text-[10px] font-semibold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
+                  ×{a.count}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] mt-1 line-clamp-2 leading-tight min-h-[2.2em] group-hover:text-primary transition-colors">
+              {a.label}
+            </p>
+          </button>
+        ))}
+      </div>
+      {actors.length > headline.length && (
+        <div className="flex justify-center pt-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAll(s => !s)}
+            className="text-xs"
+          >
+            {showAll ? 'Show less' : `Show all ${actors.length}`}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Avatar = ({ profile, size = 24 }: { profile?: Profile; size?: number }) => {
   const initial = (profile?.display_name || '?').slice(0, 1).toUpperCase();
