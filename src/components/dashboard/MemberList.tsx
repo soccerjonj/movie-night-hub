@@ -526,27 +526,29 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                 <h4 className="font-display text-sm font-bold">Badges</h4>
                 <span className="text-xs text-muted-foreground">· {earned.length}</span>
               </div>
-              <TooltipProvider delayDuration={150}>
-                <div className="flex flex-wrap gap-1.5">
-                  {earned.map(({ badge, metricLabel }) => (
-                    <Tooltip key={badge.id}>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background border border-primary/20 text-xs font-medium hover:border-primary/50 transition-colors"
-                        >
-                          <span className="text-sm leading-none">{badge.emoji}</span>
-                          <span>{badge.label}</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[220px]">
-                        <p className="font-medium">{badge.description}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{metricLabel}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
-              </TooltipProvider>
+              <div className="flex flex-wrap gap-1.5">
+                {earned.map(({ badge, metricLabel }) => (
+                  <Popover key={badge.id}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background border border-primary/20 text-xs font-medium hover:border-primary/50 active:border-primary transition-colors"
+                      >
+                        <span className="text-sm leading-none">{badge.emoji}</span>
+                        <span>{badge.label}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" className="max-w-[240px] p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-base leading-none">{badge.emoji}</span>
+                        <p className="font-display text-sm font-bold">{badge.label}</p>
+                      </div>
+                      <p className="text-xs">{badge.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{metricLabel}</p>
+                    </PopoverContent>
+                  </Popover>
+                ))}
+              </div>
             </div>
           );
         })()}
