@@ -88,6 +88,13 @@ export const BADGES: Record<BadgeId, BadgeDef> = {
     description: 'Picks the group rarely loves — worn proudly',
     direction: 'low',
   },
+  casual_viewer: {
+    id: 'casual_viewer',
+    emoji: '🛋️',
+    label: 'Casual Viewer',
+    description: "Skips a lot of guesses and rankings — here for the vibes, not the homework",
+    direction: 'low',
+  },
 };
 
 const MIN_PICKS_PER_MEMBER = 3;
