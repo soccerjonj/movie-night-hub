@@ -249,6 +249,7 @@ const Stats = ({ group, profiles, members }: Props) => {
                 id: c.id,
                 name: c.name,
                 profile_path: c.profile_path ?? null,
+                popularity: typeof c.popularity === 'number' ? c.popularity : null,
               }));
             const rawCompanies = Array.isArray(d2.production_companies) ? d2.production_companies : [];
             const production_companies: ProductionCompany[] = rawCompanies.map((c: any) => ({
