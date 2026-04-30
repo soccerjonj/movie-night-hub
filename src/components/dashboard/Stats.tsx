@@ -1199,14 +1199,16 @@ const TasteByDecade = ({
           {overall.map(r => (
             <div key={r.decade} className="flex items-center gap-3 py-1">
               <div className="w-16 text-xs sm:text-sm">{r.label}</div>
-              {scoreBar(r.avg, r.count)}
+              <div className="flex-1">
+                <StarRating avg={r.avg} size={16} />
+              </div>
               <div className="w-10 text-right text-xs font-medium tabular-nums">
-                {Math.round(r.avg * 100)}
+                {toStars(r.avg).toFixed(1)}
               </div>
             </div>
           ))}
           <p className="text-[11px] text-muted-foreground pt-1">
-            Score = avg of (rank position / season size). Higher = decades the club ranks higher overall.
+            Stars = avg of how high the club ranked picks from each decade.
           </p>
         </div>
       )}
