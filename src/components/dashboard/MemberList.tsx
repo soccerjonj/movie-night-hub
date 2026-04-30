@@ -515,6 +515,42 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           </div>
         </div>
 
+        {/* Badges */}
+        {(() => {
+          const earned = memberBadgesMap.get(selectedUserId) || [];
+          if (earned.length === 0) return null;
+          return (
+            <div className="bg-primary/5 rounded-xl p-3 space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-primary" />
+                <h4 className="font-display text-sm font-bold">Badges</h4>
+                <span className="text-xs text-muted-foreground">· {earned.length}</span>
+              </div>
+              <TooltipProvider delayDuration={150}>
+                <div className="flex flex-wrap gap-1.5">
+                  {earned.map(({ badge, metricLabel }) => (
+                    <Tooltip key={badge.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background border border-primary/20 text-xs font-medium hover:border-primary/50 transition-colors"
+                        >
+                          <span className="text-sm leading-none">{badge.emoji}</span>
+                          <span>{badge.label}</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[220px]">
+                        <p className="font-medium">{badge.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{metricLabel}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+              </TooltipProvider>
+            </div>
+          );
+        })()}
+
         {/* Score summary */}
         <div className="flex gap-3">
           <div className="flex-1 bg-muted/20 rounded-xl p-3 text-center">
