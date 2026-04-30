@@ -103,7 +103,7 @@ const ClubSelect = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <img src={logo} alt="Loading" className="h-12 object-contain rounded-xl animate-pulse" />
+        <img src={logo} alt="Loading" className="h-12 object-contain rounded-xl animate-pulse mix-blend-screen" />
       </div>
     );
   }
@@ -125,7 +125,7 @@ const ClubSelect = () => {
           <div className="text-center">
             <div className="relative inline-block mb-4">
               <div className="absolute inset-0 rounded-2xl blur-xl bg-primary/20 scale-110" />
-              <img src={logo} alt="Movie Club" className="h-16 object-contain rounded-2xl relative" />
+              <img src={logo} alt="Movie Club" className="h-16 object-contain rounded-2xl relative mix-blend-screen" />
             </div>
             <h1 className="text-2xl font-display font-bold text-gradient-gold">Your Clubs</h1>
             <p className="text-muted-foreground mt-2 text-sm">Choose a club to enter</p>
