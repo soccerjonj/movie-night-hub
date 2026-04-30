@@ -569,6 +569,7 @@ const Stats = ({ group, profiles, members }: Props) => {
         label: `${dec}s`,
         avg: agg.sum / agg.count,
         count: agg.count,
+        pickIds: decadeMap.get(dec) || [],
       }));
 
     const tasteMembers = Array.from(memberDecade.entries()).map(([uid, m]) => {
@@ -579,6 +580,7 @@ const Stats = ({ group, profiles, members }: Props) => {
           label: `${dec}s`,
           avg: agg.sum / agg.count,
           count: agg.count,
+          pickIds: decadeMap.get(dec) || [],
         }));
       const sortedByAvg = [...rows].sort((a, b) => b.avg - a.avg);
       return {
@@ -708,6 +710,7 @@ const Stats = ({ group, profiles, members }: Props) => {
             overall={stats.tasteDecadeRows}
             members={stats.tasteMembers}
             profiles={profiles}
+            onSelectDecade={(r) => openDrill(r.label, r.pickIds)}
           />
         </Section>
       )}
@@ -1130,7 +1133,7 @@ const MovieDetailView = ({
 
 // --- Taste by decade ---------------------------------------------------------
 
-type TasteRow = { decade: number; label: string; avg: number; count: number };
+type TasteRow = { decade: number; label: string; avg: number; count: number; pickIds: string[] };
 type TasteMember = {
   user_id: string;
   name: string;
@@ -1143,10 +1146,12 @@ const TasteByDecade = ({
   overall,
   members,
   profiles,
+  onSelectDecade,
 }: {
   overall: TasteRow[];
   members: TasteMember[];
   profiles: Profile[];
+  onSelectDecade?: (row: TasteRow) => void;
 }) => {
   const [tab, setTab] = useState<'overall' | 'members'>('overall');
 
@@ -1196,17 +1201,32 @@ const TasteByDecade = ({
 
       {tab === 'overall' && (
         <div className="space-y-1.5">
-          {overall.map(r => (
-            <div key={r.decade} className="flex items-center gap-3 py-1">
-              <div className="w-16 text-xs sm:text-sm">{r.label}</div>
-              <div className="flex-1">
-                <StarRating avg={r.avg} size={16} />
+          {overall.map(r => {
+            const inner = (
+              <>
+                <div className="w-16 text-xs sm:text-sm text-left">{r.label}</div>
+                <div className="flex-1">
+                  <StarRating avg={r.avg} size={16} />
+                </div>
+                <div className="w-10 text-right text-xs font-medium tabular-nums">
+                  {toStars(r.avg).toFixed(1)}
+                </div>
+              </>
+            );
+            return onSelectDecade && r.pickIds.length > 0 ? (
+              <button
+                key={r.decade}
+                onClick={() => onSelectDecade(r)}
+                className="w-full flex items-center gap-3 rounded-md px-1 -mx-1 py-1 hover:bg-primary/5 transition-colors"
+              >
+                {inner}
+              </button>
+            ) : (
+              <div key={r.decade} className="flex items-center gap-3 px-1 py-1">
+                {inner}
               </div>
-              <div className="w-10 text-right text-xs font-medium tabular-nums">
-                {toStars(r.avg).toFixed(1)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
           <p className="text-[11px] text-muted-foreground pt-1">
             Stars = avg of how high the club ranked picks from each decade.
           </p>
@@ -1237,20 +1257,35 @@ const TasteByDecade = ({
                   )}
                 </div>
                 <div className="space-y-1 pl-8">
-                  {m.rows.map(r => (
-                    <div key={r.decade} className="flex items-center gap-2">
-                      <div className="w-12 text-[11px] text-muted-foreground">{r.label}</div>
-                      <div className="flex-1">
-                        <StarRating avg={r.avg} size={13} />
+                  {m.rows.map(r => {
+                    const inner = (
+                      <>
+                        <div className="w-12 text-[11px] text-muted-foreground text-left">{r.label}</div>
+                        <div className="flex-1">
+                          <StarRating avg={r.avg} size={13} />
+                        </div>
+                        <div className="w-8 text-right text-[11px] tabular-nums">
+                          {toStars(r.avg).toFixed(1)}
+                        </div>
+                        <div className="w-6 text-right text-[10px] text-muted-foreground tabular-nums">
+                          ({r.count})
+                        </div>
+                      </>
+                    );
+                    return onSelectDecade && r.pickIds.length > 0 ? (
+                      <button
+                        key={r.decade}
+                        onClick={() => onSelectDecade(r)}
+                        className="w-full flex items-center gap-2 rounded-md px-1 -mx-1 py-1 hover:bg-primary/5 transition-colors"
+                      >
+                        {inner}
+                      </button>
+                    ) : (
+                      <div key={r.decade} className="flex items-center gap-2 px-1 py-1">
+                        {inner}
                       </div>
-                      <div className="w-8 text-right text-[11px] tabular-nums">
-                        {toStars(r.avg).toFixed(1)}
-                      </div>
-                      <div className="w-6 text-right text-[10px] text-muted-foreground tabular-nums">
-                        ({r.count})
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
