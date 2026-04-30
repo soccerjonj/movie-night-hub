@@ -1256,20 +1256,35 @@ const TasteByDecade = ({
                   )}
                 </div>
                 <div className="space-y-1 pl-8">
-                  {m.rows.map(r => (
-                    <div key={r.decade} className="flex items-center gap-2">
-                      <div className="w-12 text-[11px] text-muted-foreground">{r.label}</div>
-                      <div className="flex-1">
-                        <StarRating avg={r.avg} size={13} />
+                  {m.rows.map(r => {
+                    const inner = (
+                      <>
+                        <div className="w-12 text-[11px] text-muted-foreground text-left">{r.label}</div>
+                        <div className="flex-1">
+                          <StarRating avg={r.avg} size={13} />
+                        </div>
+                        <div className="w-8 text-right text-[11px] tabular-nums">
+                          {toStars(r.avg).toFixed(1)}
+                        </div>
+                        <div className="w-6 text-right text-[10px] text-muted-foreground tabular-nums">
+                          ({r.count})
+                        </div>
+                      </>
+                    );
+                    return onSelectDecade && r.pickIds.length > 0 ? (
+                      <button
+                        key={r.decade}
+                        onClick={() => onSelectDecade(r)}
+                        className="w-full flex items-center gap-2 rounded-md px-1 -mx-1 py-1 hover:bg-primary/5 transition-colors"
+                      >
+                        {inner}
+                      </button>
+                    ) : (
+                      <div key={r.decade} className="flex items-center gap-2 px-1 py-1">
+                        {inner}
                       </div>
-                      <div className="w-8 text-right text-[11px] tabular-nums">
-                        {toStars(r.avg).toFixed(1)}
-                      </div>
-                      <div className="w-6 text-right text-[10px] text-muted-foreground tabular-nums">
-                        ({r.count})
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
