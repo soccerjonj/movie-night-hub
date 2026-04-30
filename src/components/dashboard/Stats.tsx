@@ -739,7 +739,7 @@ const Stats = ({ group, profiles, members }: Props) => {
           }
         }}
       >
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedPickId && drill && drill.pickIds.length > 1 && (
