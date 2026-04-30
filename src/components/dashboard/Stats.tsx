@@ -618,7 +618,7 @@ const Stats = ({ group, profiles, members }: Props) => {
                         </div>
                       )}
                     </div>
-                    <p className="text-[11px] mt-1 line-clamp-2 group-hover:text-primary transition-colors">{p.title}</p>
+                    <p className="text-[11px] mt-1 line-clamp-2 leading-tight min-h-[2.2em] group-hover:text-primary transition-colors">{p.title}</p>
                   </button>
                 );
               })}
