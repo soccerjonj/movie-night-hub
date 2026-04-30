@@ -578,6 +578,11 @@ const Stats = ({ group, profiles, members }: Props) => {
               ? `${stats.oldest.y}–${stats.newest.y}`
               : '—'
           }
+          sub={
+            stats.avgYear != null && stats.medianYear != null
+              ? `avg ${stats.avgYear} · med ${stats.medianYear}`
+              : undefined
+          }
         />
       </div>
 
