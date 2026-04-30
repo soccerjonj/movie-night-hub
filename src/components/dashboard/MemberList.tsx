@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star } from 'lucide-react';
+import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -11,6 +12,8 @@ import 'react-image-crop/dist/ReactCrop.css';
 import PastRankingsDialog from './PastRankingsDialog';
 import RankingInsights from './RankingInsights';
 import { validateImageFile, getSafeErrorMessage, safeFilename } from '@/lib/security';
+import { TMDB_API_TOKEN } from '@/lib/apiKeys';
+import { computeMemberBadges, type BadgeId, type BadgePickInput } from '@/lib/memberBadges';
 
 interface Props {
   members: GroupMember[];
