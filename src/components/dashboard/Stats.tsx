@@ -422,6 +422,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       genreRows,
       langRows,
       countryRows,
+      actorRows,
       pickerRows,
       totalRuntime,
       runtimeCount,
