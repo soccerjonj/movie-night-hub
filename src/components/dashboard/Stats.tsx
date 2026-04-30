@@ -491,6 +491,94 @@ const Stats = ({ group, profiles, members }: Props) => {
       medianYear = sorted.length % 2 === 0 ? Math.round((sorted[mid - 1] + sorted[mid]) / 2) : sorted[mid];
     }
 
+    // --- Taste by decade -----------------------------------------------------
+    // "Love score" = (N - rank + 1) / N within a season (1 = favorite, ~0 = least)
+    // Group rankings by season to find N
+    const rankingsBySeason = new Map<string, RankingRow[]>();
+    for (const r of rankings) {
+      if (!rankingsBySeason.has(r.season_id)) rankingsBySeason.set(r.season_id, []);
+      rankingsBySeason.get(r.season_id)!.push(r);
+    }
+    // For each season+user, compute N (their max rank); fall back to count
+    const seasonUserMax = new Map<string, number>();
+    for (const [seasonId, rs] of rankingsBySeason) {
+      const byUser = new Map<string, number[]>();
+      for (const r of rs) {
+        if (!byUser.has(r.user_id)) byUser.set(r.user_id, []);
+        byUser.get(r.user_id)!.push(r.rank);
+      }
+      for (const [uid, ranks] of byUser) {
+        seasonUserMax.set(`${seasonId}:${uid}`, Math.max(...ranks));
+      }
+    }
+
+    // Map pickId -> decade
+    const pickDecade = new Map<string, number>();
+    for (const p of canonicalPicks) {
+      const det = tmdbDetails[p.id];
+      const yr = det?.release_date?.slice(0, 4) || p.year || null;
+      const dec = decadeOf(yr);
+      if (dec != null) pickDecade.set(p.id, dec);
+    }
+    // Sibling pick IDs share the canonical decade
+    const siblingDecade = new Map<string, number>();
+    for (const e of movieEntries) {
+      const dec = pickDecade.get(e.canonical.id);
+      if (dec == null) continue;
+      for (const sid of e.siblingPickIds) siblingDecade.set(sid, dec);
+    }
+
+    // Overall avg love-score per decade
+    type DecadeAgg = { sum: number; count: number };
+    const decadeOverall = new Map<number, DecadeAgg>();
+    // Per-member avg love-score per decade
+    const memberDecade = new Map<string, Map<number, DecadeAgg>>(); // user_id -> decade -> agg
+
+    for (const r of rankings) {
+      const dec = siblingDecade.get(r.movie_pick_id);
+      if (dec == null) continue;
+      const N = seasonUserMax.get(`${r.season_id}:${r.user_id}`);
+      if (!N || N < 2) continue; // need at least 2 to differentiate
+      const love = (N - r.rank + 1) / N; // 1 favorite, ~0 least
+      const o = decadeOverall.get(dec) || { sum: 0, count: 0 };
+      o.sum += love; o.count += 1;
+      decadeOverall.set(dec, o);
+
+      let m = memberDecade.get(r.user_id);
+      if (!m) { m = new Map(); memberDecade.set(r.user_id, m); }
+      const ma = m.get(dec) || { sum: 0, count: 0 };
+      ma.sum += love; ma.count += 1;
+      m.set(dec, ma);
+    }
+
+    const tasteDecadeRows = Array.from(decadeOverall.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([dec, agg]) => ({
+        decade: dec,
+        label: `${dec}s`,
+        avg: agg.sum / agg.count,
+        count: agg.count,
+      }));
+
+    const tasteMembers = Array.from(memberDecade.entries()).map(([uid, m]) => {
+      const rows = Array.from(m.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([dec, agg]) => ({
+          decade: dec,
+          label: `${dec}s`,
+          avg: agg.sum / agg.count,
+          count: agg.count,
+        }));
+      const sortedByAvg = [...rows].sort((a, b) => b.avg - a.avg);
+      return {
+        user_id: uid,
+        name: getName(uid),
+        rows,
+        favorite: sortedByAvg[0],
+        least: sortedByAvg[sortedByAvg.length - 1],
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+
     return {
       total,
       decadeRows,
@@ -512,8 +600,10 @@ const Stats = ({ group, profiles, members }: Props) => {
       newest,
       avgYear,
       medianYear,
+      tasteDecadeRows,
+      tasteMembers,
     };
-  }, [movieEntries, tmdbDetails, profiles]);
+  }, [movieEntries, tmdbDetails, profiles, rankings]);
 
   if (loading) {
     return <div className="text-center text-muted-foreground py-12">Loading stats...</div>;
@@ -599,6 +689,17 @@ const Stats = ({ group, profiles, members }: Props) => {
           </div>
         )}
       </Section>
+
+      {/* Taste by decade */}
+      {stats.tasteDecadeRows.length > 0 && (
+        <Section title="Taste by decade" icon={<Star className="w-4 h-4" />} sub="Avg ranking score (100 = favorite)">
+          <TasteByDecade
+            overall={stats.tasteDecadeRows}
+            members={stats.tasteMembers}
+            profiles={profiles}
+          />
+        </Section>
+      )}
 
       {/* Movie-only sections */}
       {!isBookClub && (
@@ -739,7 +840,7 @@ const Stats = ({ group, profiles, members }: Props) => {
           }
         }}
       >
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedPickId && drill && drill.pickIds.length > 1 && (
@@ -873,7 +974,7 @@ const MovieDetailView = ({
   const yearText = tmdb?.release_date?.slice(0, 4) || p.year || '';
 
   return (
-    <div className="space-y-4 pt-1">
+    <div className="space-y-4 pt-1 min-w-0">
       <div className="flex gap-3">
         <div className="w-20 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-muted">
           {p.poster_url ? (
@@ -928,28 +1029,30 @@ const MovieDetailView = ({
 
       {/* Cast */}
       {tmdb?.cast && tmdb.cast.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 min-w-0">
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Top cast</div>
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-            {tmdb.cast.slice(0, 8).map(c => (
-              <div key={c.id} className="shrink-0 w-16 text-center">
-                <div className="aspect-[2/3] rounded-md overflow-hidden bg-muted">
-                  {c.profile_path ? (
-                    <img
-                      src={`https://image.tmdb.org/t/p/w185${c.profile_path}`}
-                      alt={c.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  )}
+          <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-1">
+            <div className="flex gap-2 w-max">
+              {tmdb.cast.slice(0, 10).map(c => (
+                <div key={c.id} className="shrink-0 w-16 text-center">
+                  <div className="aspect-[2/3] rounded-md overflow-hidden bg-muted">
+                    {c.profile_path ? (
+                      <img
+                        src={`https://image.tmdb.org/t/p/w185${c.profile_path}`}
+                        alt={c.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] mt-1 line-clamp-2 leading-tight">{c.name}</p>
                 </div>
-                <p className="text-[10px] mt-1 line-clamp-2 leading-tight">{c.name}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1013,6 +1116,120 @@ const MovieDetailView = ({
 };
 
 // --- Small UI primitives -----------------------------------------------------
+
+// --- Taste by decade ---------------------------------------------------------
+
+type TasteRow = { decade: number; label: string; avg: number; count: number };
+type TasteMember = {
+  user_id: string;
+  name: string;
+  rows: TasteRow[];
+  favorite?: TasteRow;
+  least?: TasteRow;
+};
+
+const TasteByDecade = ({
+  overall,
+  members,
+  profiles,
+}: {
+  overall: TasteRow[];
+  members: TasteMember[];
+  profiles: Profile[];
+}) => {
+  const [tab, setTab] = useState<'overall' | 'members'>('overall');
+  // Color score 0..1 -> red-ish (low) to green-ish (high), via primary
+  const scoreBar = (avg: number, count: number) => (
+    <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden relative">
+      <div
+        className="h-full rounded-full transition-all"
+        style={{
+          width: `${Math.max(4, Math.round(avg * 100))}%`,
+          background: `linear-gradient(90deg, hsl(var(--primary) / 0.5), hsl(var(--primary)))`,
+        }}
+      />
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1 p-1 bg-muted/40 rounded-lg w-fit">
+        <button
+          onClick={() => setTab('overall')}
+          className={`text-xs px-3 py-1 rounded-md transition-colors ${tab === 'overall' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+        >
+          Overall
+        </button>
+        <button
+          onClick={() => setTab('members')}
+          className={`text-xs px-3 py-1 rounded-md transition-colors ${tab === 'members' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+        >
+          Per member
+        </button>
+      </div>
+
+      {tab === 'overall' && (
+        <div className="space-y-1.5">
+          {overall.map(r => (
+            <div key={r.decade} className="flex items-center gap-3 py-1">
+              <div className="w-16 text-xs sm:text-sm">{r.label}</div>
+              {scoreBar(r.avg, r.count)}
+              <div className="w-10 text-right text-xs font-medium tabular-nums">
+                {Math.round(r.avg * 100)}
+              </div>
+            </div>
+          ))}
+          <p className="text-[11px] text-muted-foreground pt-1">
+            Score = avg of (rank position / season size). Higher = decades the club ranks higher overall.
+          </p>
+        </div>
+      )}
+
+      {tab === 'members' && (
+        <div className="space-y-4">
+          {members.length === 0 && (
+            <p className="text-sm text-muted-foreground">Not enough rankings yet.</p>
+          )}
+          {members.map(m => {
+            const profile = profiles.find(p => p.user_id === m.user_id);
+            const initial = (profile?.display_name || '?').slice(0, 1).toUpperCase();
+            return (
+              <div key={m.user_id} className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden text-[10px] font-semibold text-primary shrink-0">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : initial}
+                  </div>
+                  <div className="text-sm font-medium">{m.name}</div>
+                  {m.favorite && m.least && m.favorite.decade !== m.least.decade && (
+                    <div className="text-[11px] text-muted-foreground ml-auto">
+                      ❤ {m.favorite.label} · ✗ {m.least.label}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1 pl-8">
+                  {m.rows.map(r => (
+                    <div key={r.decade} className="flex items-center gap-2">
+                      <div className="w-12 text-[11px] text-muted-foreground">{r.label}</div>
+                      {scoreBar(r.avg, r.count)}
+                      <div className="w-8 text-right text-[11px] tabular-nums">
+                        {Math.round(r.avg * 100)}
+                      </div>
+                      <div className="w-6 text-right text-[10px] text-muted-foreground tabular-nums">
+                        ({r.count})
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 type GridItem = {
   id: number;
