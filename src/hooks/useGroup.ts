@@ -11,6 +11,7 @@ export interface Group {
   club_type: 'movie' | 'book';
   meeting_type: 'remote' | 'in_person';
   meeting_location: string | null;
+  created_at: string;
 }
 
 export interface Season {
