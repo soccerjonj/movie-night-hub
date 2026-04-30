@@ -283,7 +283,7 @@ const Dashboard = () => {
 
               {/* No season yet */}
               {!season && !isAdmin && (
-                <div className="glass-card p-12 text-center">
+                <div className="glass-card rounded-2xl p-12 text-center">
                   <img src={logo} alt="" className="h-16 object-contain mx-auto mb-4 opacity-30" />
                   <h2 className="text-xl font-display font-bold mb-2">No {labels.seasonNoun} Yet</h2>
                   <p className="text-muted-foreground">Waiting for your admin to start a new {labels.seasonNoun.toLowerCase()}.</p>
