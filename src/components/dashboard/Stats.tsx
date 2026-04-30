@@ -58,6 +58,7 @@ interface CrewMember {
   id: number;
   name: string;
   profile_path: string | null;
+  popularity?: number | null;
 }
 
 interface ProductionCompany {
@@ -78,7 +79,7 @@ interface TmdbDetails {
   production_companies?: ProductionCompany[];
 }
 
-const TMDB_CACHE_KEY = 'mc_tmdb_details_v4';
+const TMDB_CACHE_KEY = 'mc_tmdb_details_v5';
 
 const loadTmdbCache = (): Record<string, TmdbDetails> => {
   try {
@@ -248,6 +249,7 @@ const Stats = ({ group, profiles, members }: Props) => {
                 id: c.id,
                 name: c.name,
                 profile_path: c.profile_path ?? null,
+                popularity: typeof c.popularity === 'number' ? c.popularity : null,
               }));
             const rawCompanies = Array.isArray(d2.production_companies) ? d2.production_companies : [];
             const production_companies: ProductionCompany[] = rawCompanies.map((c: any) => ({
@@ -397,7 +399,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       .sort((a, b) => b.count - a.count || (b.popularity - a.popularity) || a.label.localeCompare(b.label));
 
     // Directors
-    const directorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[] }>();
+    const directorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[]; popularity: number }>();
     for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
       if (!det?.directors) continue;
@@ -405,14 +407,19 @@ const Stats = ({ group, profiles, members }: Props) => {
       for (const c of det.directors) {
         if (seen.has(c.id)) continue;
         seen.add(c.id);
+        const pop = typeof c.popularity === 'number' ? c.popularity : 0;
         const existing = directorMap.get(c.id);
-        if (existing) existing.pickIds.push(p.id);
-        else directorMap.set(c.id, { name: c.name, profile_path: c.profile_path, pickIds: [p.id] });
+        if (existing) {
+          existing.pickIds.push(p.id);
+          if (pop > existing.popularity) existing.popularity = pop;
+        } else {
+          directorMap.set(c.id, { name: c.name, profile_path: c.profile_path, pickIds: [p.id], popularity: pop });
+        }
       }
     }
     const directorRows = Array.from(directorMap.entries())
-      .map(([id, v]) => ({ key: String(id), id, label: v.name, profile_path: v.profile_path, count: v.pickIds.length, pickIds: v.pickIds }))
-      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+      .map(([id, v]) => ({ key: String(id), id, label: v.name, profile_path: v.profile_path, count: v.pickIds.length, pickIds: v.pickIds, popularity: v.popularity }))
+      .sort((a, b) => b.count - a.count || (b.popularity - a.popularity) || a.label.localeCompare(b.label));
 
     // Production companies
     const companyMap = new Map<number, { name: string; logo_path: string | null; pickIds: string[] }>();
