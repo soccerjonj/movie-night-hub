@@ -209,9 +209,9 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     }
   };
 
-  // Fetch data when a member is selected
+  // Fetch group-wide data once on mount — needed for the Club header card,
+  // member-card badges, and the per-member profile dialog.
   useEffect(() => {
-    if (!selectedUserId) return;
     const fetchData = async () => {
       setLoading(true);
       const { data: seasonData } = await supabase
@@ -244,7 +244,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       setLoading(false);
     };
     fetchData();
-  }, [selectedUserId, group.id]);
+  }, [group.id]);
 
   const isPickWatched = (pick: PickRow) => {
     const s = seasons.find(ss => ss.id === pick.season_id);
