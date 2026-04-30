@@ -33,7 +33,7 @@ const Dashboard = () => {
   const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup(groupId);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [tab, setTab] = useState<'current' | 'history' | 'stats'>('current');
+  const [tab, setTab] = useState<'current' | 'club' | 'history' | 'stats'>('current');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminViewAsMember, setAdminViewAsMember] = useState(false);
   const [hasEverGuessed, setHasEverGuessed] = useState(false);
