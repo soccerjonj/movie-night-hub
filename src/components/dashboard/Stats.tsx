@@ -1150,8 +1150,8 @@ const TasteByDecade = ({
 }) => {
   const [tab, setTab] = useState<'overall' | 'members'>('overall');
 
-  // Convert 0..1 love score → 0..5 stars (rounded to half)
-  const toStars = (avg: number) => Math.round(avg * 5 * 2) / 2;
+  // Convert 0..1 love score → 0..5 stars (continuous decimal)
+  const toStars = (avg: number) => Math.max(0, Math.min(5, avg * 5));
 
   const StarRating = ({ avg, size = 14 }: { avg: number; size?: number }) => {
     const stars = toStars(avg);
