@@ -394,9 +394,9 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                 <div key={pick.id} className="bg-muted/20 rounded-xl p-3 space-y-2">
                   <div className="flex items-start gap-3">
                     {pick.poster_url ? (
-                      <img src={pick.poster_url} alt={pick.title} className="w-10 h-[60px] sm:w-12 sm:h-18 rounded-lg object-cover flex-shrink-0" />
+                      <img src={pick.poster_url} alt={pick.title} className="w-12 h-[72px] sm:w-14 sm:h-[84px] rounded-lg object-cover flex-shrink-0 shadow-md" />
                     ) : (
-                      <div className="w-10 h-[60px] sm:w-12 sm:h-18 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-[72px] sm:w-14 sm:h-[84px] rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                         <Film className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                       </div>
                     )}
@@ -456,15 +456,17 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
             })}
           </div>
 
+          <div className={`mt-6 rounded-xl transition-all duration-500 ${allGuessed && !submitting ? 'shadow-[0_0_24px_-6px_hsl(38_90%_55%_/_0.5)]' : ''}`}>
           <Button
             variant="gold"
-            className="mt-6 w-full"
+            className="w-full"
             onClick={submitGuesses}
             disabled={!allGuessed || submitting}
           >
             <Check className="w-4 h-4 mr-2" />
             {submitting ? 'Submitting...' : editing ? 'Re-Submit Guesses' : 'Submit Guesses'}
           </Button>
+          </div>
         </>
       )}
 

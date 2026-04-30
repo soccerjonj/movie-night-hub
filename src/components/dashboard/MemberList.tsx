@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star, Award } from 'lucide-react';
+import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -12,8 +11,6 @@ import 'react-image-crop/dist/ReactCrop.css';
 import PastRankingsDialog from './PastRankingsDialog';
 import RankingInsights from './RankingInsights';
 import { validateImageFile, getSafeErrorMessage, safeFilename } from '@/lib/security';
-import { TMDB_API_TOKEN } from '@/lib/apiKeys';
-import { computeMemberBadges, computeCasualViewerBadges, type BadgePickInput, type EarnedBadge } from '@/lib/memberBadges';
 
 interface Props {
   members: GroupMember[];
@@ -31,7 +28,6 @@ interface SeasonInfo {
   title: string | null;
   status: string;
   current_movie_index: number;
-  guessing_enabled: boolean;
 }
 
 interface PickRow {
@@ -43,17 +39,7 @@ interface PickRow {
   watch_order: number | null;
   season_id: string;
   revealed: boolean;
-  tmdb_id: number | null;
 }
-
-// Same cache key + shape as Stats.tsx so the two share TMDB enrichment.
-interface TmdbDetails {
-  runtime: number | null;
-  vote_average: number | null;
-  release_date: string | null;
-  popularity: number | null;
-}
-const TMDB_CACHE_KEY = 'mc_tmdb_details_v6';
 
 interface GuessRow {
   guesser_id: string;
@@ -92,8 +78,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const [picks, setPicks] = useState<PickRow[]>([]);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
   const [rankings, setRankings] = useState<{ user_id: string; movie_pick_id: string; rank: number; season_id: string }[]>([]);
-  const [seasonParticipants, setSeasonParticipants] = useState<{ user_id: string; season_id: string }[]>([]);
-  const [tmdbDetails, setTmdbDetails] = useState<Record<string, TmdbDetails>>({});
   const [loading, setLoading] = useState(false);
 
   // Crop state
@@ -209,14 +193,14 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     }
   };
 
-  // Fetch group-wide data once on mount — needed for the Club header card,
-  // member-card badges, and the per-member profile dialog.
+  // Fetch data when a member is selected
   useEffect(() => {
+    if (!selectedUserId) return;
     const fetchData = async () => {
       setLoading(true);
       const { data: seasonData } = await supabase
         .from('seasons')
-        .select('id, season_number, title, status, current_movie_index, guessing_enabled')
+        .select('id, season_number, title, status, current_movie_index')
         .eq('group_id', group.id)
         .order('season_number', { ascending: false });
       const s = (seasonData || []) as SeasonInfo[];
@@ -226,25 +210,22 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       if (seasonIds.length === 0) {
         setPicks([]);
         setGuesses([]);
-        setSeasonParticipants([]);
         setLoading(false);
         return;
       }
 
-      const [picksRes, guessesRes, rankingsRes, participantsRes] = await Promise.all([
-        supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed, tmdb_id').in('season_id', seasonIds),
+      const [picksRes, guessesRes, rankingsRes] = await Promise.all([
+        supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed').in('season_id', seasonIds),
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
         supabase.from('movie_rankings').select('user_id, movie_pick_id, rank, season_id').in('season_id', seasonIds),
-        supabase.from('season_participants').select('user_id, season_id').in('season_id', seasonIds),
       ]);
       setPicks((picksRes.data || []) as PickRow[]);
       setGuesses((guessesRes.data || []) as GuessRow[]);
       setRankings(rankingsRes.data || []);
-      setSeasonParticipants(participantsRes.data || []);
       setLoading(false);
     };
     fetchData();
-  }, [group.id]);
+  }, [selectedUserId, group.id]);
 
   const isPickWatched = (pick: PickRow) => {
     const s = seasons.find(ss => ss.id === pick.season_id);
@@ -259,280 +240,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     // to prevent leaking who picked an unwatched movie in member profiles
     return isPickWatched(pick);
   };
-
-  // Enrich watched picks with TMDB details (shares cache with Stats.tsx)
-  useEffect(() => {
-    if (group.club_type === 'book') return;
-    if (picks.length === 0) return;
-    let cancelled = false;
-
-    const enrich = async () => {
-      let cache: Record<string, TmdbDetails> = {};
-      try {
-        const raw = sessionStorage.getItem(TMDB_CACHE_KEY);
-        if (raw) cache = JSON.parse(raw);
-      } catch { /* ignore */ }
-
-      const initial: Record<string, TmdbDetails> = {};
-      const toFetch: PickRow[] = [];
-      for (const p of picks) {
-        // Only enrich watched picks — anonymity for unwatched is preserved.
-        if (!isPickWatched(p)) continue;
-        const cacheKey = p.tmdb_id ? `id:${p.tmdb_id}` : `t:${p.title}|${p.year || ''}`;
-        if (cache[cacheKey]) {
-          initial[p.id] = {
-            runtime: cache[cacheKey].runtime ?? null,
-            vote_average: cache[cacheKey].vote_average ?? null,
-            release_date: cache[cacheKey].release_date ?? null,
-            popularity: cache[cacheKey].popularity ?? null,
-          };
-        } else {
-          toFetch.push(p);
-        }
-      }
-      if (Object.keys(initial).length) setTmdbDetails(prev => ({ ...prev, ...initial }));
-      if (toFetch.length === 0 || !TMDB_API_TOKEN) return;
-
-      const headers = { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' };
-      const queue = [...toFetch];
-      const workers = Array.from({ length: 4 }, async () => {
-        while (queue.length && !cancelled) {
-          const p = queue.shift()!;
-          const cacheKey = p.tmdb_id ? `id:${p.tmdb_id}` : `t:${p.title}|${p.year || ''}`;
-          try {
-            let tmdbId = p.tmdb_id;
-            if (!tmdbId) {
-              const yp = p.year ? `&year=${p.year}` : '';
-              const r = await fetch(
-                `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(p.title)}&include_adult=false&language=en-US&page=1${yp}`,
-                { headers }
-              );
-              const d = await r.json();
-              tmdbId = d.results?.[0]?.id || null;
-            }
-            if (!tmdbId) continue;
-            const r2 = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`, { headers });
-            if (!r2.ok) continue;
-            const d2 = await r2.json();
-            const details: TmdbDetails = {
-              runtime: typeof d2.runtime === 'number' ? d2.runtime : null,
-              vote_average: typeof d2.vote_average === 'number' ? d2.vote_average : null,
-              release_date: d2.release_date ?? null,
-              popularity: typeof d2.popularity === 'number' ? d2.popularity : null,
-            };
-            // Don't clobber richer Stats cache entries — only fill if missing.
-            if (!cache[cacheKey]) {
-              cache[cacheKey] = details as TmdbDetails;
-            } else {
-              cache[cacheKey] = { ...cache[cacheKey], ...details };
-            }
-            if (!cancelled) {
-              setTmdbDetails(prev => ({ ...prev, [p.id]: details }));
-            }
-          } catch { /* skip */ }
-        }
-      });
-
-      await Promise.all(workers);
-      try { sessionStorage.setItem(TMDB_CACHE_KEY, JSON.stringify(cache)); } catch { /* ignore */ }
-    };
-
-    enrich();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picks, group.club_type]);
-
-  // Compute badges for ALL members (group context). Only watched picks count.
-  const memberBadgesMap = useMemo(() => {
-    if (group.club_type === 'book') {
-      // Books don't have runtime/popularity from TMDB — skip badges for now.
-      return new Map();
-    }
-    if (picks.length === 0) return new Map();
-
-    // Group co-pickers by season+watch_order so a co-picked movie is one entry
-    // counted toward each picker.
-    const slotMap = new Map<string, PickRow[]>();
-    for (const p of picks) {
-      if (!isPickWatched(p)) continue;
-      const key = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `${p.season_id}:single:${p.id}`;
-      if (!slotMap.has(key)) slotMap.set(key, []);
-      slotMap.get(key)!.push(p);
-    }
-
-    // Build per-season ranking max (N) per user for love-score normalization
-    const seasonUserMax = new Map<string, number>(); // `${season}:${user}` -> N
-    const ranksBySeason = new Map<string, Map<string, number[]>>();
-    for (const r of rankings) {
-      let bySeason = ranksBySeason.get(r.season_id);
-      if (!bySeason) { bySeason = new Map(); ranksBySeason.set(r.season_id, bySeason); }
-      const arr = bySeason.get(r.user_id) || [];
-      arr.push(r.rank);
-      bySeason.set(r.user_id, arr);
-    }
-    for (const [seasonId, byUser] of ranksBySeason) {
-      for (const [uid, ranks] of byUser) {
-        seasonUserMax.set(`${seasonId}:${uid}`, Math.max(...ranks));
-      }
-    }
-
-    // For each slot, compute group love (avg across users for any pick in slot)
-    const slotLove = new Map<string, number | null>();
-    for (const [key, slotPicks] of slotMap) {
-      const slotPickIds = new Set(slotPicks.map(p => p.id));
-      const seasonId = slotPicks[0].season_id;
-      const loves: number[] = [];
-      for (const r of rankings) {
-        if (r.season_id !== seasonId) continue;
-        if (!slotPickIds.has(r.movie_pick_id)) continue;
-        const N = seasonUserMax.get(`${seasonId}:${r.user_id}`);
-        if (!N || N < 2) continue;
-        loves.push((N - r.rank + 1) / N);
-      }
-      slotLove.set(key, loves.length ? loves.reduce((s, v) => s + v, 0) / loves.length : null);
-    }
-
-    const inputs: BadgePickInput[] = [];
-    for (const [key, slotPicks] of slotMap) {
-      const canonical = slotPicks[0];
-      const det = tmdbDetails[canonical.id];
-      const releaseYearStr = det?.release_date?.slice(0, 4) || canonical.year || null;
-      const releaseYear = releaseYearStr ? parseInt(releaseYearStr.slice(0, 4), 10) : null;
-      inputs.push({
-        pickId: canonical.id,
-        pickerIds: Array.from(new Set(slotPicks.map(p => p.user_id))),
-        runtime: det?.runtime ?? null,
-        voteAverage: det?.vote_average ?? null,
-        popularity: det?.popularity ?? null,
-        releaseYear: Number.isFinite(releaseYear as number) ? (releaseYear as number) : null,
-        groupLove: slotLove.get(key) ?? null,
-      });
-    }
-
-    return computeMemberBadges(inputs);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picks, rankings, tmdbDetails, group.club_type, seasons]);
-
-  // Casual Viewer — works for any club type, based on engagement (guesses & rankings)
-  const casualViewerMap = useMemo(() => {
-    if (picks.length === 0 || seasons.length === 0) return new Map<string, EarnedBadge>();
-
-    // Map season -> participant user ids. If no participants recorded for a
-    // season, fall back to all current group members (older seasons).
-    const participantsBySeason = new Map<string, Set<string>>();
-    for (const sp of seasonParticipants) {
-      let set = participantsBySeason.get(sp.season_id);
-      if (!set) { set = new Set(); participantsBySeason.set(sp.season_id, set); }
-      set.add(sp.user_id);
-    }
-    const allMemberIds = members.map(m => m.user_id);
-    const participantsFor = (seasonId: string): string[] => {
-      const set = participantsBySeason.get(seasonId);
-      return set && set.size > 0 ? Array.from(set) : allMemberIds;
-    };
-
-    const guessesExpected: Record<string, number> = {};
-    const guessesMade: Record<string, number> = {};
-    const rankingsExpected: Record<string, number> = {};
-    const rankingsMade: Record<string, number> = {};
-
-    for (const s of seasons) {
-      const participants = participantsFor(s.id);
-      const seasonPicks = picks.filter(p => p.season_id === s.id);
-
-      // --- Guessing expectations ---
-      if (s.guessing_enabled && (s.status === 'watching' || s.status === 'reviewing' || s.status === 'completed')) {
-        const watchedPicks = seasonPicks.filter(p => isPickWatched(p));
-        for (const uid of participants) {
-          const expected = watchedPicks.filter(p => p.user_id !== uid).length;
-          if (expected > 0) {
-            guessesExpected[uid] = (guessesExpected[uid] || 0) + expected;
-          }
-        }
-      }
-
-      // --- Ranking expectations ---
-      if (s.status === 'reviewing' || s.status === 'completed') {
-        for (const uid of participants) {
-          const expected = seasonPicks.filter(p => p.user_id !== uid).length;
-          if (expected > 0) {
-            rankingsExpected[uid] = (rankingsExpected[uid] || 0) + expected;
-          }
-        }
-      }
-    }
-
-    // Tally actual guesses (only counted against picks that are watched in their season)
-    for (const g of guesses) {
-      const s = seasons.find(ss => ss.id === g.season_id);
-      if (!s || !s.guessing_enabled) continue;
-      const pick = picks.find(p => p.id === g.movie_pick_id);
-      if (!pick || !isPickWatched(pick)) continue;
-      guessesMade[g.guesser_id] = (guessesMade[g.guesser_id] || 0) + 1;
-    }
-
-    // Tally actual rankings (only seasons in reviewing/completed)
-    for (const r of rankings) {
-      const s = seasons.find(ss => ss.id === r.season_id);
-      if (!s || (s.status !== 'reviewing' && s.status !== 'completed')) continue;
-      rankingsMade[r.user_id] = (rankingsMade[r.user_id] || 0) + 1;
-    }
-
-    return computeCasualViewerBadges({
-      memberIds: allMemberIds,
-      guessesExpected,
-      guessesMade,
-      rankingsExpected,
-      rankingsMade,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picks, guesses, rankings, seasons, seasonParticipants, members]);
-
-  // Merge: pick/group badges + casual viewer
-  const allMemberBadgesMap = useMemo(() => {
-    const merged = new Map<string, EarnedBadge[]>();
-    for (const [uid, list] of memberBadgesMap) merged.set(uid, [...list]);
-    for (const [uid, badge] of casualViewerMap) {
-      const list = merged.get(uid) || [];
-      list.push(badge);
-      merged.set(uid, list);
-    }
-    return merged;
-  }, [memberBadgesMap, casualViewerMap]);
-
-  // Club-level stats for the header card
-  const clubStats = useMemo(() => {
-    const completedSeasons = seasons.filter(s => s.status === 'completed').length;
-    const watchedPicks = picks.filter(p => isPickWatched(p));
-    // Dedupe co-picks (same season + watch_order = one shared movie/book)
-    const watchedSlots = new Set<string>();
-    for (const p of watchedPicks) {
-      const key = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `single:${p.id}`;
-      watchedSlots.add(key);
-    }
-    const totalWatched = watchedSlots.size;
-
-    let totalRuntimeMin = 0;
-    const countedSlots = new Set<string>();
-    for (const p of watchedPicks) {
-      const key = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `single:${p.id}`;
-      if (countedSlots.has(key)) continue;
-      const det = tmdbDetails[p.id];
-      if (det?.runtime) {
-        totalRuntimeMin += det.runtime;
-        countedSlots.add(key);
-      }
-    }
-
-    return {
-      completedSeasons,
-      totalWatched,
-      totalRuntimeMin,
-      memberCount: members.length,
-      foundedAt: group.created_at,
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seasons, picks, tmdbDetails, members, group.created_at]);
 
   const renderMemberProfile = () => {
     if (!selectedUserId) return null;
@@ -640,44 +347,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             )}
           </div>
         </div>
-
-        {/* Badges */}
-        {(() => {
-          const earned = allMemberBadgesMap.get(selectedUserId) || [];
-          if (earned.length === 0) return null;
-          return (
-            <div className="bg-primary/5 rounded-xl p-3 space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-primary" />
-                <h4 className="font-display text-sm font-bold">Badges</h4>
-                <span className="text-xs text-muted-foreground">· {earned.length}</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {earned.map(({ badge, metricLabel }) => (
-                  <Popover key={badge.id}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background border border-primary/20 text-xs font-medium hover:border-primary/50 active:border-primary transition-colors"
-                      >
-                        <span className="text-sm leading-none">{badge.emoji}</span>
-                        <span>{badge.label}</span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent side="top" className="max-w-[240px] p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-base leading-none">{badge.emoji}</span>
-                        <p className="font-display text-sm font-bold">{badge.label}</p>
-                      </div>
-                      <p className="text-xs">{badge.description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{metricLabel}</p>
-                    </PopoverContent>
-                  </Popover>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
 
         {/* Score summary */}
         <div className="flex gap-3">
@@ -838,67 +507,8 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
   };
 
-  const isBookClub = group.club_type === 'book';
-  const watchedNoun = isBookClub ? 'books read' : 'movies watched';
-  const runtimeNoun = isBookClub ? null : 'watched together';
-  const formatRuntimeShort = (mins: number) => {
-    if (mins <= 0) return null;
-    const totalH = mins / 60;
-    if (totalH >= 100) return `${Math.round(totalH)} hours`;
-    if (totalH >= 10) return `${totalH.toFixed(1)} hours`;
-    const h = Math.floor(mins / 60);
-    const m = Math.round(mins - h * 60);
-    if (h === 0) return `${m} min`;
-    return m === 0 ? `${h}h` : `${h}h ${m}m`;
-  };
-  const runtimeStr = formatRuntimeShort(clubStats.totalRuntimeMin);
-  const foundedDate = clubStats.foundedAt
-    ? new Date(clubStats.foundedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-    : null;
-
   return (
     <>
-      {/* Club header card */}
-      <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
-        <div className="flex items-start justify-between gap-3 mb-3 sm:mb-4">
-          <div className="min-w-0">
-            <h2 className="font-display text-xl sm:text-2xl font-bold truncate">{group.name}</h2>
-            {foundedDate && (
-              <p className="text-xs text-muted-foreground mt-0.5">Founded {foundedDate}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-          <div className="rounded-xl bg-muted/20 p-3 text-center">
-            <p className="font-display text-lg sm:text-xl font-bold text-primary">{clubStats.memberCount}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">members</p>
-          </div>
-          <div className="rounded-xl bg-muted/20 p-3 text-center">
-            <p className="font-display text-lg sm:text-xl font-bold text-primary">{clubStats.completedSeasons}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">seasons done</p>
-          </div>
-          <div className="rounded-xl bg-muted/20 p-3 text-center">
-            <p className="font-display text-lg sm:text-xl font-bold text-primary">{clubStats.totalWatched}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">{watchedNoun}</p>
-          </div>
-          <div className="rounded-xl bg-muted/20 p-3 text-center">
-            {runtimeStr && runtimeNoun ? (
-              <>
-                <p className="font-display text-lg sm:text-xl font-bold text-primary">{runtimeStr}</p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">{runtimeNoun}</p>
-              </>
-            ) : (
-              <>
-                <p className="font-display text-lg sm:text-xl font-bold text-primary">{seasons.length}</p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">total seasons</p>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Member cards */}
       <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
         <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <Users className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -906,53 +516,34 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           <span className="text-[10px] sm:text-xs text-muted-foreground ml-auto">{members.length} members</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2">
           {members.map((member) => {
             const profile = getProfile(member.user_id);
             const isGroupAdmin = member.user_id === group.admin_user_id;
             const isPlaceholder = profile?.is_placeholder === true;
-            const earned = allMemberBadgesMap.get(member.user_id) || [];
-            const topBadges = earned.slice(0, 2);
             return (
               <button
                 key={member.id}
                 onClick={() => setSelectedUserId(member.user_id)}
-                className={`flex flex-col items-center gap-2 rounded-xl p-3 sm:p-4 text-center transition-colors hover:ring-1 hover:ring-primary/30 ${isPlaceholder ? 'bg-muted/10 border border-dashed border-border' : 'bg-muted/20 hover:bg-muted/30'}`}
+                className={`flex items-center gap-2 rounded-xl p-2 sm:p-3 text-left transition-all duration-200 ${isPlaceholder ? 'bg-muted/10 border border-dashed border-border/50 hover:border-border' : 'bg-muted/20 hover:bg-primary/5 hover:ring-1 hover:ring-primary/20'}`}
               >
-                <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden flex items-center justify-center text-xl sm:text-2xl font-bold shrink-0 ${isPlaceholder ? 'bg-muted/30 text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
-                  {isPlaceholder ? <Ghost className="w-6 h-6 sm:w-8 sm:h-8" /> : profile?.avatar_url ? (
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex items-center justify-center text-[10px] sm:text-xs font-bold shrink-0 ${isPlaceholder ? 'bg-muted/30 text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                  {isPlaceholder ? <Ghost className="w-3 h-3 sm:w-4 sm:h-4" /> : profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
                   ) : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
                 </div>
-                <div className="w-full min-w-0">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{profile?.display_name || 'Unknown'}</p>
                   {isGroupAdmin ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-primary">
+                    <span className="flex items-center gap-1 text-xs text-primary">
                       <Crown className="w-3 h-3" /> Admin
                     </span>
                   ) : isPlaceholder ? (
-                    <span className="text-xs text-muted-foreground">Unregistered</span>
+                    <span className="text-xs text-muted-foreground">Unregistered member</span>
                   ) : (
-                    <span className="text-xs text-green-400">Member</span>
+                    <span className="text-xs text-muted-foreground/50">Member</span>
                   )}
                 </div>
-                {topBadges.length > 0 && (
-                  <div className="flex flex-wrap items-center justify-center gap-1 mt-0.5">
-                    {topBadges.map(({ badge }) => (
-                      <span
-                        key={badge.id}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-background border border-primary/20 text-[10px]"
-                        title={badge.label}
-                      >
-                        <span>{badge.emoji}</span>
-                        <span className="truncate max-w-[64px] sm:max-w-[80px]">{badge.label}</span>
-                      </span>
-                    ))}
-                    {earned.length > topBadges.length && (
-                      <span className="text-[10px] text-muted-foreground">+{earned.length - topBadges.length}</span>
-                    )}
-                  </div>
-                )}
               </button>
             );
           })}

@@ -43,19 +43,24 @@ const AuthPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
-      {/* Ambient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
-      
+      {/* Ambient glows */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-primary/5 blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-primary/3 blur-[120px] pointer-events-none" />
+
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="glass-card rounded-2xl p-8 w-full max-w-md mx-4 relative z-10"
+        style={{ boxShadow: '0 0 60px -20px hsl(38 90% 55% / 0.12), 0 32px 64px -12px rgba(0,0,0,0.6)' }}
       >
         <div className="text-center mb-8">
-          <img src={logo} alt="Movie Club" className="h-16 object-contain mx-auto mb-4" />
-          <h1 className="text-3xl font-display font-bold text-gradient-gold">Movie Club</h1>
-          <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1">
+          <div className="relative inline-block mb-4">
+            <div className="absolute inset-0 rounded-2xl blur-xl bg-primary/15 scale-110" />
+            <img src={logo} alt="Movie Club Hub" className="h-16 object-contain rounded-2xl relative mix-blend-screen" />
+          </div>
+          <h1 className="text-3xl font-display font-bold text-gradient-gold">Movie Club Hub</h1>
+          <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1.5 text-sm">
             <Popcorn className="w-4 h-4" />
             Your private screening room
           </p>
@@ -63,7 +68,7 @@ const AuthPage = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium">Email</Label>
             <Input
               id="email"
               type="email"
@@ -71,11 +76,11 @@ const AuthPage = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
-              className="bg-muted/50 border-border"
+              className="bg-muted/40 border-border/60 focus:border-primary/50 transition-colors h-11"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm font-medium">Password</Label>
             <Input
               id="password"
               type="password"
@@ -84,10 +89,10 @@ const AuthPage = () => {
               placeholder="••••••••"
               required
               minLength={6}
-              className="bg-muted/50 border-border"
+              className="bg-muted/40 border-border/60 focus:border-primary/50 transition-colors h-11"
             />
           </div>
-          <Button type="submit" variant="gold" className="w-full" disabled={loading}>
+          <Button type="submit" variant="gold" className="w-full h-11 text-base" disabled={loading}>
             {loading ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
           </Button>
         </form>
