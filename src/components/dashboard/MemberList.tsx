@@ -500,6 +500,40 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     return merged;
   }, [memberBadgesMap, casualViewerMap]);
 
+  // Club-level stats for the header card
+  const clubStats = useMemo(() => {
+    const completedSeasons = seasons.filter(s => s.status === 'completed').length;
+    const watchedPicks = picks.filter(p => isPickWatched(p));
+    // Dedupe co-picks (same season + watch_order = one shared movie/book)
+    const watchedSlots = new Set<string>();
+    for (const p of watchedPicks) {
+      const key = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `single:${p.id}`;
+      watchedSlots.add(key);
+    }
+    const totalWatched = watchedSlots.size;
+
+    let totalRuntimeMin = 0;
+    const countedSlots = new Set<string>();
+    for (const p of watchedPicks) {
+      const key = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `single:${p.id}`;
+      if (countedSlots.has(key)) continue;
+      const det = tmdbDetails[p.id];
+      if (det?.runtime) {
+        totalRuntimeMin += det.runtime;
+        countedSlots.add(key);
+      }
+    }
+
+    return {
+      completedSeasons,
+      totalWatched,
+      totalRuntimeMin,
+      memberCount: members.length,
+      foundedAt: group.created_at,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seasons, picks, tmdbDetails, members, group.created_at]);
+
   const renderMemberProfile = () => {
     if (!selectedUserId) return null;
     const profile = getProfile(selectedUserId);
