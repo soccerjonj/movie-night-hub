@@ -1200,17 +1200,32 @@ const TasteByDecade = ({
 
       {tab === 'overall' && (
         <div className="space-y-1.5">
-          {overall.map(r => (
-            <div key={r.decade} className="flex items-center gap-3 py-1">
-              <div className="w-16 text-xs sm:text-sm">{r.label}</div>
-              <div className="flex-1">
-                <StarRating avg={r.avg} size={16} />
+          {overall.map(r => {
+            const inner = (
+              <>
+                <div className="w-16 text-xs sm:text-sm text-left">{r.label}</div>
+                <div className="flex-1">
+                  <StarRating avg={r.avg} size={16} />
+                </div>
+                <div className="w-10 text-right text-xs font-medium tabular-nums">
+                  {toStars(r.avg).toFixed(1)}
+                </div>
+              </>
+            );
+            return onSelectDecade && r.pickIds.length > 0 ? (
+              <button
+                key={r.decade}
+                onClick={() => onSelectDecade(r)}
+                className="w-full flex items-center gap-3 rounded-md px-1 -mx-1 py-1 hover:bg-primary/5 transition-colors"
+              >
+                {inner}
+              </button>
+            ) : (
+              <div key={r.decade} className="flex items-center gap-3 px-1 py-1">
+                {inner}
               </div>
-              <div className="w-10 text-right text-xs font-medium tabular-nums">
-                {toStars(r.avg).toFixed(1)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
           <p className="text-[11px] text-muted-foreground pt-1">
             Stars = avg of how high the club ranked picks from each decade.
           </p>
