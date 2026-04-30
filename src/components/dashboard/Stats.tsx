@@ -1117,6 +1117,120 @@ const MovieDetailView = ({
 
 // --- Small UI primitives -----------------------------------------------------
 
+// --- Taste by decade ---------------------------------------------------------
+
+type TasteRow = { decade: number; label: string; avg: number; count: number };
+type TasteMember = {
+  user_id: string;
+  name: string;
+  rows: TasteRow[];
+  favorite?: TasteRow;
+  least?: TasteRow;
+};
+
+const TasteByDecade = ({
+  overall,
+  members,
+  profiles,
+}: {
+  overall: TasteRow[];
+  members: TasteMember[];
+  profiles: Profile[];
+}) => {
+  const [tab, setTab] = useState<'overall' | 'members'>('overall');
+  // Color score 0..1 -> red-ish (low) to green-ish (high), via primary
+  const scoreBar = (avg: number, count: number) => (
+    <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden relative">
+      <div
+        className="h-full rounded-full transition-all"
+        style={{
+          width: `${Math.max(4, Math.round(avg * 100))}%`,
+          background: `linear-gradient(90deg, hsl(var(--primary) / 0.5), hsl(var(--primary)))`,
+        }}
+      />
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1 p-1 bg-muted/40 rounded-lg w-fit">
+        <button
+          onClick={() => setTab('overall')}
+          className={`text-xs px-3 py-1 rounded-md transition-colors ${tab === 'overall' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+        >
+          Overall
+        </button>
+        <button
+          onClick={() => setTab('members')}
+          className={`text-xs px-3 py-1 rounded-md transition-colors ${tab === 'members' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+        >
+          Per member
+        </button>
+      </div>
+
+      {tab === 'overall' && (
+        <div className="space-y-1.5">
+          {overall.map(r => (
+            <div key={r.decade} className="flex items-center gap-3 py-1">
+              <div className="w-16 text-xs sm:text-sm">{r.label}</div>
+              {scoreBar(r.avg, r.count)}
+              <div className="w-10 text-right text-xs font-medium tabular-nums">
+                {Math.round(r.avg * 100)}
+              </div>
+            </div>
+          ))}
+          <p className="text-[11px] text-muted-foreground pt-1">
+            Score = avg of (rank position / season size). Higher = decades the club ranks higher overall.
+          </p>
+        </div>
+      )}
+
+      {tab === 'members' && (
+        <div className="space-y-4">
+          {members.length === 0 && (
+            <p className="text-sm text-muted-foreground">Not enough rankings yet.</p>
+          )}
+          {members.map(m => {
+            const profile = profiles.find(p => p.user_id === m.user_id);
+            const initial = (profile?.display_name || '?').slice(0, 1).toUpperCase();
+            return (
+              <div key={m.user_id} className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden text-[10px] font-semibold text-primary shrink-0">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : initial}
+                  </div>
+                  <div className="text-sm font-medium">{m.name}</div>
+                  {m.favorite && m.least && m.favorite.decade !== m.least.decade && (
+                    <div className="text-[11px] text-muted-foreground ml-auto">
+                      ❤ {m.favorite.label} · ✗ {m.least.label}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1 pl-8">
+                  {m.rows.map(r => (
+                    <div key={r.decade} className="flex items-center gap-2">
+                      <div className="w-12 text-[11px] text-muted-foreground">{r.label}</div>
+                      {scoreBar(r.avg, r.count)}
+                      <div className="w-8 text-right text-[11px] tabular-nums">
+                        {Math.round(r.avg * 100)}
+                      </div>
+                      <div className="w-6 text-right text-[10px] text-muted-foreground tabular-nums">
+                        ({r.count})
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 type GridItem = {
   id: number;
   label: string;
