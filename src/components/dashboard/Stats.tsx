@@ -1132,7 +1132,7 @@ const MovieDetailView = ({
 
 // --- Taste by decade ---------------------------------------------------------
 
-type TasteRow = { decade: number; label: string; avg: number; count: number };
+type TasteRow = { decade: number; label: string; avg: number; count: number; pickIds: string[] };
 type TasteMember = {
   user_id: string;
   name: string;
@@ -1145,10 +1145,12 @@ const TasteByDecade = ({
   overall,
   members,
   profiles,
+  onSelectDecade,
 }: {
   overall: TasteRow[];
   members: TasteMember[];
   profiles: Profile[];
+  onSelectDecade?: (row: TasteRow) => void;
 }) => {
   const [tab, setTab] = useState<'overall' | 'members'>('overall');
 
