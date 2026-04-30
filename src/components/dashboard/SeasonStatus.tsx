@@ -125,7 +125,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
           {labels.seasonNoun} {season.season_number}
           {season.title ? ` — ${season.title}` : ''}
         </h2>
-        <span className="text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary font-medium w-fit">
+        <span className="text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium w-fit">
           {season.status === 'watching'
             ? clubType === 'book'
               ? `Currently reading: ${readingStatus ?? 'Chapters TBD'}`
@@ -135,49 +135,70 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
       </div>
 
       {season.status === 'watching' && currentMovie && clubType !== 'book' && (
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 mt-4">
-          <div className="flex flex-row sm:flex-col items-start gap-3 sm:gap-0 w-full sm:w-auto">
-            {posterUrl ? (
-              <img
-                src={posterUrl}
-                alt={currentMovie.title}
-                className="w-36 sm:w-44 rounded-xl shadow-xl ring-1 ring-border/20 shrink-0"
+        <div className="relative overflow-hidden rounded-xl mt-2">
+          {/* Cinematic blurred backdrop */}
+          {posterUrl && (
+            <>
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `url(${posterUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                  filter: 'blur(28px) saturate(1.4)',
+                  transform: 'scale(1.15)',
+                  opacity: 0.22,
+                }}
               />
-            ) : (
-              <div className="w-36 sm:w-44 aspect-[2/3] rounded-xl bg-muted/30 flex items-center justify-center shrink-0">
-                <ItemIcon className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/30" />
+              <div className="absolute inset-0 cinematic-backdrop" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-transparent to-transparent" />
+            </>
+          )}
+          {!posterUrl && <div className="absolute inset-0 bg-muted/10 rounded-xl" />}
+
+          <div className="relative flex items-start gap-4 sm:gap-5 p-4 sm:p-5">
+            {/* Poster */}
+            <div className="shrink-0">
+              {posterUrl ? (
+                <img
+                  src={posterUrl}
+                  alt={currentMovie.title}
+                  className="w-24 sm:w-32 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] ring-1 ring-white/10"
+                />
+              ) : (
+                <div className="w-24 sm:w-32 aspect-[2/3] rounded-xl bg-muted/30 flex items-center justify-center">
+                  <ItemIcon className="w-8 h-8 text-muted-foreground/30" />
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0 py-1">
+              <p className="text-[10px] sm:text-[11px] text-primary uppercase tracking-[0.2em] font-bold mb-2">{labels.nowAction}</p>
+              <h3 className="font-display text-xl sm:text-2xl font-bold leading-tight">{currentMovie.title}</h3>
+              <div className="flex flex-wrap items-center gap-x-2 mt-1.5">
+                {currentMovie.year && (
+                  <span className="text-xs text-muted-foreground">{currentMovie.year}</span>
+                )}
+                {director && (
+                  <>
+                    <span className="text-muted-foreground/30">·</span>
+                    <span className="text-xs text-muted-foreground">Directed by {director}</span>
+                  </>
+                )}
               </div>
-            )}
-            <div className="sm:hidden flex-1 min-w-0">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{labels.nowAction}</p>
-              <h3 className="font-display text-lg font-bold">{currentMovie.title}</h3>
-              {currentMovie.year && <p className="text-xs text-muted-foreground mt-0.5">{currentMovie.year}</p>}
-              {director && <p className="text-xs text-muted-foreground mt-0.5">Directed by {director}</p>}
+              {currentMovie.overview && (
+                <p className="text-xs sm:text-sm text-muted-foreground mt-2 line-clamp-2 sm:line-clamp-3 leading-relaxed">
+                  {currentMovie.overview}
+                </p>
+              )}
               {currentMovie.revealed && (currentMovie.watch_order ?? 0) < season.current_movie_index && (
-                <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                <p className="text-xs text-primary mt-2 flex items-center gap-1.5">
                   <Eye className="w-3 h-3" />
                   Picked by {getProfile(currentMovie.user_id)?.display_name}
                 </p>
               )}
             </div>
-          </div>
-          {currentMovie.overview && (
-            <p className="text-xs text-muted-foreground sm:hidden">{currentMovie.overview}</p>
-          )}
-          <div className="flex-1 hidden sm:block text-left">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{labels.nowAction}</p>
-            <h3 className="font-display text-2xl font-bold">{currentMovie.title}</h3>
-            {currentMovie.year && <p className="text-sm text-muted-foreground mt-0.5">{currentMovie.year}</p>}
-            {director && <p className="text-sm text-muted-foreground mt-0.5">Directed by {director}</p>}
-            {currentMovie.overview && (
-              <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{currentMovie.overview}</p>
-            )}
-            {currentMovie.revealed && (currentMovie.watch_order ?? 0) < season.current_movie_index && (
-              <p className="text-sm text-primary mt-2 flex items-center gap-1">
-                <Eye className="w-3 h-3" />
-                Picked by {getProfile(currentMovie.user_id)?.display_name}
-              </p>
-            )}
           </div>
         </div>
       )}

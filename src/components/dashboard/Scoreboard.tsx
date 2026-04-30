@@ -274,6 +274,13 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
     return `${index + 1}`;
   };
 
+  const getMedalStyle = (index: number, hasPoints: boolean) => {
+    if (index === 0 && hasPoints) return 'bg-amber-500/10 ring-1 ring-amber-500/35 glow-gold-sm';
+    if (index === 1 && hasPoints) return 'bg-slate-400/8 ring-1 ring-slate-400/25 glow-silver-sm';
+    if (index === 2 && hasPoints) return 'bg-amber-700/8 ring-1 ring-amber-700/25 glow-bronze-sm';
+    return 'bg-muted/20 hover:bg-muted/30';
+  };
+
   const renderUserGuesses = (userId: string) => {
     const userGuesses = guesses.filter(g => g.guesser_id === userId);
     const watchedPicks = picks.filter(p => isPickWatchedCheck(p)).sort((a, b) => {
@@ -462,8 +469,10 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
         onClick={() => collapsed && setIsOpen(!isOpen)}
         className={`flex items-center justify-between w-full mb-${isOpen ? '4' : '0'} ${collapsed ? 'cursor-pointer' : 'cursor-default'}`}
       >
-        <div className="flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-primary" />
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/15 border border-primary/25">
+            <Trophy className="w-4 h-4 text-primary" />
+          </div>
           <h2 className="font-display text-lg sm:text-xl font-bold">Scoreboard</h2>
           {collapsed && !isOpen && (
             <span className="text-xs text-muted-foreground ml-2">(from past seasons)</span>
@@ -561,19 +570,17 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                       <div key={entry.user_id}>
                         <button
                           onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
-                          className={`w-full flex items-center gap-3 rounded-xl p-3 transition-colors text-left ${
-                            i === 0 && entry.correct > 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20 hover:bg-muted/30'
-                          }`}
+                          className={`w-full flex items-center gap-3 rounded-xl p-3 transition-all text-left ${getMedalStyle(i, entry.correct > 0)}`}
                         >
-                          <span className="text-lg w-8 text-center">{getMedal(i)}</span>
+                          <span className={`text-lg w-8 text-center shrink-0 ${i === 0 && entry.correct > 0 ? 'drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' : ''}`}>{getMedal(i)}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
+                            <p className={`font-semibold text-sm truncate ${i === 0 && entry.correct > 0 ? 'text-amber-200' : ''}`}>{profile?.display_name || 'Unknown'}</p>
                             <p className="text-xs text-muted-foreground">
                               {entry.correct}/{entry.total} correct ({pct}%)
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-display text-lg font-bold text-primary">{entry.correct}</p>
+                            <p className={`font-display text-xl font-bold ${i === 0 && entry.correct > 0 ? 'text-gradient-gold' : 'text-primary'}`}>{entry.correct}</p>
                             <p className="text-xs text-muted-foreground">pts</p>
                           </div>
                         </button>
@@ -616,13 +623,11 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                       <div key={entry.user_id}>
                         <button
                           onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
-                          className={`w-full flex items-center gap-3 rounded-xl p-3 transition-colors text-left ${
-                            i === 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20 hover:bg-muted/30'
-                          }`}
+                          className={`w-full flex items-center gap-3 rounded-xl p-3 transition-all text-left ${getMedalStyle(i, true)}`}
                         >
-                          <span className="text-lg w-8 text-center">{getMedal(i)}</span>
+                          <span className={`text-lg w-8 text-center shrink-0 ${i === 0 ? 'drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' : ''}`}>{getMedal(i)}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
+                            <p className={`font-semibold text-sm truncate ${i === 0 ? 'text-amber-200' : ''}`}>{profile?.display_name || 'Unknown'}</p>
                             {showInlinePick ? (
                               inlinePick ? (
                                 inlinePick.revealed ? (

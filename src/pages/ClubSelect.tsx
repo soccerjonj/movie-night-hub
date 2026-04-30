@@ -110,29 +110,41 @@ const ClubSelect = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
+      {/* Ambient glows */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-primary/5 blur-[140px]" />
+      <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] rounded-full bg-primary/3 blur-[120px]" />
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         className="glass-card rounded-2xl p-8 w-full max-w-md mx-4 relative z-10"
+        style={{ boxShadow: '0 0 60px -20px hsl(38 90% 55% / 0.15), 0 25px 50px -12px rgba(0,0,0,0.5)' }}
       >
         <div className="space-y-6">
           <div className="text-center">
-            <img src={logo} alt="Movie Club" className="h-16 object-contain rounded-2xl mx-auto mb-4" />
-            <h1 className="text-2xl font-display font-bold">Your Clubs</h1>
-            <p className="text-muted-foreground mt-2">Choose a club to enter</p>
+            <div className="relative inline-block mb-4">
+              <div className="absolute inset-0 rounded-2xl blur-xl bg-primary/20 scale-110" />
+              <img src={logo} alt="Movie Club" className="h-16 object-contain rounded-2xl relative" />
+            </div>
+            <h1 className="text-2xl font-display font-bold text-gradient-gold">Your Clubs</h1>
+            <p className="text-muted-foreground mt-2 text-sm">Choose a club to enter</p>
           </div>
 
-          <div className="space-y-3">
-            {groups.map((g) => (
-              <div key={g.id} className="flex items-center gap-2">
+          <div className="space-y-2.5">
+            {groups.map((g, index) => (
+              <motion.div
+                key={g.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.08 }}
+                className="flex items-center gap-2"
+              >
                 <button
                   onClick={() => navigate(`/dashboard/${g.id}`)}
-                  className="flex-1 flex items-center gap-4 rounded-xl p-4 border border-border bg-muted/10 hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
+                  className="flex-1 flex items-center gap-4 rounded-xl p-4 border border-border/50 bg-gradient-to-r from-muted/20 to-muted/5 hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_0_20px_-8px_hsl(38_90%_55%_/_0.3)] transition-all text-left group"
                 >
-                  <div className="flex items-center gap-2 h-10 w-10 justify-center shrink-0">
+                  <div className="flex items-center justify-center h-11 w-11 rounded-xl bg-primary/10 border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/35 transition-colors shrink-0">
                     {g.club_type === 'book' ? (
                       <BookOpen className="w-5 h-5 text-primary" />
                     ) : (
@@ -140,23 +152,23 @@ const ClubSelect = () => {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{g.name}</p>
+                    <p className="font-semibold truncate group-hover:text-primary/90 transition-colors">{g.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Users className="w-3 h-3" /> {g.member_count} members
                       </p>
                       {g.season_status && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/15 text-primary capitalize">
                           {g.season_status === 'completed' ? 'Completed' : g.season_status}
                         </span>
                       )}
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                 </button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors">
                       <X className="w-4 h-4" />
                     </Button>
                   </AlertDialogTrigger>
@@ -171,13 +183,13 @@ const ClubSelect = () => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </div>
+              </motion.div>
             ))}
           </div>
 
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full border-border/50 hover:border-primary/40 hover:bg-primary/5 transition-all"
             onClick={() => navigate('/setup')}
           >
             <Plus className="w-4 h-4 mr-2" /> Join or Create Another Club
