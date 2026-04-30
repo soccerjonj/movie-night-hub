@@ -491,6 +491,94 @@ const Stats = ({ group, profiles, members }: Props) => {
       medianYear = sorted.length % 2 === 0 ? Math.round((sorted[mid - 1] + sorted[mid]) / 2) : sorted[mid];
     }
 
+    // --- Taste by decade -----------------------------------------------------
+    // "Love score" = (N - rank + 1) / N within a season (1 = favorite, ~0 = least)
+    // Group rankings by season to find N
+    const rankingsBySeason = new Map<string, RankingRow[]>();
+    for (const r of rankings) {
+      if (!rankingsBySeason.has(r.season_id)) rankingsBySeason.set(r.season_id, []);
+      rankingsBySeason.get(r.season_id)!.push(r);
+    }
+    // For each season+user, compute N (their max rank); fall back to count
+    const seasonUserMax = new Map<string, number>();
+    for (const [seasonId, rs] of rankingsBySeason) {
+      const byUser = new Map<string, number[]>();
+      for (const r of rs) {
+        if (!byUser.has(r.user_id)) byUser.set(r.user_id, []);
+        byUser.get(r.user_id)!.push(r.rank);
+      }
+      for (const [uid, ranks] of byUser) {
+        seasonUserMax.set(`${seasonId}:${uid}`, Math.max(...ranks));
+      }
+    }
+
+    // Map pickId -> decade
+    const pickDecade = new Map<string, number>();
+    for (const p of canonicalPicks) {
+      const det = tmdbDetails[p.id];
+      const yr = det?.release_date?.slice(0, 4) || p.year || null;
+      const dec = decadeOf(yr);
+      if (dec != null) pickDecade.set(p.id, dec);
+    }
+    // Sibling pick IDs share the canonical decade
+    const siblingDecade = new Map<string, number>();
+    for (const e of movieEntries) {
+      const dec = pickDecade.get(e.canonical.id);
+      if (dec == null) continue;
+      for (const sid of e.siblingPickIds) siblingDecade.set(sid, dec);
+    }
+
+    // Overall avg love-score per decade
+    type DecadeAgg = { sum: number; count: number };
+    const decadeOverall = new Map<number, DecadeAgg>();
+    // Per-member avg love-score per decade
+    const memberDecade = new Map<string, Map<number, DecadeAgg>>(); // user_id -> decade -> agg
+
+    for (const r of rankings) {
+      const dec = siblingDecade.get(r.movie_pick_id);
+      if (dec == null) continue;
+      const N = seasonUserMax.get(`${r.season_id}:${r.user_id}`);
+      if (!N || N < 2) continue; // need at least 2 to differentiate
+      const love = (N - r.rank + 1) / N; // 1 favorite, ~0 least
+      const o = decadeOverall.get(dec) || { sum: 0, count: 0 };
+      o.sum += love; o.count += 1;
+      decadeOverall.set(dec, o);
+
+      let m = memberDecade.get(r.user_id);
+      if (!m) { m = new Map(); memberDecade.set(r.user_id, m); }
+      const ma = m.get(dec) || { sum: 0, count: 0 };
+      ma.sum += love; ma.count += 1;
+      m.set(dec, ma);
+    }
+
+    const tasteDecadeRows = Array.from(decadeOverall.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([dec, agg]) => ({
+        decade: dec,
+        label: `${dec}s`,
+        avg: agg.sum / agg.count,
+        count: agg.count,
+      }));
+
+    const tasteMembers = Array.from(memberDecade.entries()).map(([uid, m]) => {
+      const rows = Array.from(m.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([dec, agg]) => ({
+          decade: dec,
+          label: `${dec}s`,
+          avg: agg.sum / agg.count,
+          count: agg.count,
+        }));
+      const sortedByAvg = [...rows].sort((a, b) => b.avg - a.avg);
+      return {
+        user_id: uid,
+        name: getName(uid),
+        rows,
+        favorite: sortedByAvg[0],
+        least: sortedByAvg[sortedByAvg.length - 1],
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+
     return {
       total,
       decadeRows,
