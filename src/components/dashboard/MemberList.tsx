@@ -42,7 +42,17 @@ interface PickRow {
   watch_order: number | null;
   season_id: string;
   revealed: boolean;
+  tmdb_id: number | null;
 }
+
+// Same cache key + shape as Stats.tsx so the two share TMDB enrichment.
+interface TmdbDetails {
+  runtime: number | null;
+  vote_average: number | null;
+  release_date: string | null;
+  popularity: number | null;
+}
+const TMDB_CACHE_KEY = 'mc_tmdb_details_v6';
 
 interface GuessRow {
   guesser_id: string;
