@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star, Award, Clock, Sparkles } from 'lucide-react';
+import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star, Award, Clock, Sparkles, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
@@ -83,6 +83,15 @@ const cardVariants = {
     transition: { duration: 0.32, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] as number[] },
   }),
 };
+
+/** Rotating banner accents so member tiles feel unique (admin gets gold). */
+const MEMBER_BANNER_ACCENTS = [
+  'from-violet-500/45 via-primary/25 to-background',
+  'from-sky-500/40 via-cyan-500/10 to-background',
+  'from-rose-500/40 via-primary/20 to-background',
+  'from-emerald-500/40 via-teal-500/10 to-background',
+  'from-fuchsia-500/35 via-primary/15 to-background',
+] as const;
 
 const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelectedUserId, onExternalSelectedClear }: Props) => {
   const { user } = useAuth();
@@ -591,19 +600,19 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         key={id}
         type="button"
         onClick={() => setProfileTab(id)}
-        className={`relative flex-1 sm:flex-none px-3 py-2.5 text-xs font-semibold tracking-wide transition-colors shrink-0 ${
+        className={`relative min-w-0 flex-1 sm:flex-none px-2 sm:px-3 py-2.5 text-xs font-semibold tracking-wide transition-colors ${
           profileTab === id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/90'
         }`}
       >
         {label}
         {profileTab === id && (
-          <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-gradient-to-r from-primary to-amber-400" />
+          <span className="absolute bottom-0 left-2 right-2 sm:left-3 sm:right-3 h-0.5 rounded-full bg-gradient-to-r from-primary to-amber-400" />
         )}
       </button>
     );
 
     const profileHero = (
-      <div className="relative -mx-4">
+      <div className="relative w-full min-w-0">
         <div className="relative h-32 sm:h-36 overflow-hidden bg-muted/30">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/10 to-background" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_50%_-30%,hsl(38_90%_55%/0.35),transparent_55%)]" />
@@ -704,8 +713,8 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     const stickyTabs = (
-      <div className="sticky top-0 z-20 -mx-4 px-2 bg-background/90 backdrop-blur-xl border-b border-border/40">
-        <div className="flex justify-center sm:justify-start gap-0 sm:gap-1">
+      <div className="sticky top-0 z-20 w-full min-w-0 bg-background/90 backdrop-blur-xl border-b border-border/40 px-1 sm:px-2">
+        <div className="flex min-w-0 justify-center sm:justify-start gap-0 sm:gap-1">
           {tabBtn('overview', 'Overview')}
           {tabBtn('picks', 'Picks')}
           {tabBtn('guessing', 'Guessing')}
@@ -768,7 +777,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     const overviewTab = (
-      <div className="space-y-5 pt-1">
+      <div className="min-w-0 space-y-5 pt-1">
         <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 sm:p-4 space-y-2.5">
           <div className="flex items-center gap-2">
             <Award className="w-4 h-4 text-primary shrink-0" aria-hidden />
@@ -809,7 +818,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     const picksTab = (
-      <div className="space-y-4 pt-2">
+      <div className="min-w-0 space-y-4 pt-2">
         <p className="text-xs text-muted-foreground text-center sm:text-left">Posters from every season they chose a title.</p>
         {memberPicks.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 px-4 py-10 text-center space-y-2">
@@ -818,13 +827,13 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             <p className="text-xs text-muted-foreground max-w-xs mx-auto">When a season starts, their choices appear here like a gallery.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+          <div className="grid min-w-0 grid-cols-3 sm:grid-cols-4 gap-2.5">
             {memberPicks.map(pick => {
               const revealed = isPickRevealed(pick);
               return (
                 <div
                   key={pick.id}
-                  className="group aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/30 shadow-sm transition-all duration-300 hover:ring-primary/35 hover:shadow-[0_8px_28px_-8px_hsl(38_90%_55%/0.25)] hover:-translate-y-0.5"
+                  className="group aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/30 shadow-sm transition-all duration-300 hover:ring-primary/35 hover:shadow-[0_8px_28px_-8px_hsl(38_90%_55%/0.25)]"
                 >
                   {revealed
                     ? pick.poster_url
@@ -840,7 +849,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     const guessingTab = (
-      <div className="space-y-4 pt-2">
+      <div className="min-w-0 space-y-4 pt-2">
         <p className="text-xs text-muted-foreground text-center sm:text-left">Who they thought picked each watched title.</p>
         {uniqueWatched.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 px-4 py-10 text-center space-y-2">
@@ -918,10 +927,10 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     return (
-      <div className="space-y-0 -mx-4">
+      <div className="min-w-0 max-w-full space-y-0 overflow-x-hidden -mx-4">
         {profileHero}
         {stickyTabs}
-        <div className="px-4 pt-4 pb-3">
+        <div className="min-w-0 px-4 pt-4 pb-3">
           {profileTab === 'overview' && overviewTab}
           {profileTab === 'picks' && picksTab}
           {profileTab === 'guessing' && guessingTab}
@@ -1012,90 +1021,137 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         </div>
       </motion.div>
 
-      {/* Member cards */}
+      {/* Member preview wall — social-style tiles */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-        className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6"
+        className="glass-card relative mt-4 sm:mt-6 overflow-hidden rounded-3xl border border-border/50 p-4 sm:p-6"
       >
-        <div className="flex items-center gap-2 mb-3 sm:mb-4">
-          <Users className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-          <h2 className="font-display text-base sm:text-lg font-bold">Members</h2>
-          <span className="text-[10px] sm:text-xs text-muted-foreground ml-auto">{members.length} members</span>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:gap-3">
-          {members.map((member, i) => {
-            const profile = getProfile(member.user_id);
-            const isGroupAdmin = member.user_id === group.admin_user_id;
-            const isPlaceholder = profile?.is_placeholder === true;
-            const isOwnCard = member.user_id === user?.id;
-            const earned = allMemberBadgesMap.get(member.user_id) || [];
-            const topBadges = earned.slice(0, 2);
-            return (
-              <motion.button
-                key={member.id}
-                custom={i}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                onClick={() => setSelectedUserId(member.user_id)}
-                className={`flex flex-row sm:flex-col items-center gap-3 sm:gap-2 rounded-xl p-3 sm:p-4 text-left sm:text-center transition-all duration-200 ${
-                  isGroupAdmin
-                    ? 'bg-primary/5 ring-1 ring-primary/30 hover:ring-primary/50 hover:shadow-[0_0_16px_-4px_hsl(38_90%_55%_/_0.35)]'
-                    : isPlaceholder
-                      ? 'bg-muted/10 border border-dashed border-border/50 hover:border-border'
-                      : 'bg-muted/20 hover:bg-primary/5 hover:ring-1 hover:ring-primary/25 hover:shadow-[0_0_16px_-6px_hsl(38_90%_55%_/_0.25)]'
-                }`}
-              >
-                <div className="relative shrink-0">
-                  <div className={`w-14 h-14 sm:w-20 sm:h-20 rounded-full overflow-hidden flex items-center justify-center text-lg sm:text-2xl font-bold ring-2 ${
-                    isGroupAdmin ? 'bg-primary/15 text-primary ring-primary/40' : isPlaceholder ? 'bg-muted/30 text-muted-foreground ring-border/30' : 'bg-primary/10 text-primary ring-primary/20'
-                  }`}>
-                    {isPlaceholder
-                      ? <Ghost className="w-6 h-6 sm:w-8 sm:h-8" />
-                      : profile?.avatar_url
-                        ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                        : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
-                  </div>
-                  {isOwnCard && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                      className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-primary border-2 border-background flex items-center justify-center shadow-sm hover:bg-primary/90 transition-colors"
-                      title="Change photo"
-                    >
-                      <Camera className="w-3 h-3 text-primary-foreground" />
-                    </button>
-                  )}
+        <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-primary/10 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -left-12 bottom-0 h-40 w-40 rounded-full bg-amber-500/8 blur-3xl" aria-hidden />
+        <div className="relative">
+          <div className="mb-5 sm:mb-6">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary shrink-0" />
+                  <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight">The crew</h2>
                 </div>
+                <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
+                  Tap anyone for picks, badges, taste insights, and guess history — same energy as their full profile.
+                </p>
+              </div>
+              <span className="rounded-full bg-muted/50 border border-border/50 px-3 py-1 text-[11px] font-medium text-muted-foreground tabular-nums shrink-0">
+                {members.length} {members.length === 1 ? 'member' : 'members'}
+              </span>
+            </div>
+          </div>
 
-                <div className="flex-1 min-w-0 sm:w-full">
-                  <p className="text-sm font-medium truncate">{profile?.display_name || 'Unknown'}</p>
-                  {isGroupAdmin ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-primary mt-0.5"><Crown className="w-3 h-3" /> Admin</span>
-                  ) : isPlaceholder ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground mt-0.5">Unregistered</span>
-                  ) : null}
-                </div>
-
-                {topBadges.length > 0 && (
-                  <div className="flex flex-wrap items-center justify-end sm:justify-center gap-1 sm:mt-0.5 shrink-0 max-w-[42%] sm:max-w-none">
-                    {topBadges.map(({ badge }) => (
-                      <span key={badge.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-background border border-primary/20 text-[10px]" title={badge.label}>
-                        <span>{badge.emoji}</span>
-                        <span className="truncate max-w-[56px] sm:max-w-[80px]">{badge.label}</span>
-                      </span>
-                    ))}
-                    {earned.length > topBadges.length && (
-                      <span className="text-[10px] text-muted-foreground">+{earned.length - topBadges.length}</span>
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {members.map((member, i) => {
+              const profile = getProfile(member.user_id);
+              const isGroupAdmin = member.user_id === group.admin_user_id;
+              const isPlaceholder = profile?.is_placeholder === true;
+              const isOwnCard = member.user_id === user?.id;
+              const earned = allMemberBadgesMap.get(member.user_id) || [];
+              const bannerAccent = isGroupAdmin
+                ? 'from-amber-500/50 via-primary/35 to-background'
+                : MEMBER_BANNER_ACCENTS[i % MEMBER_BANNER_ACCENTS.length];
+              const emojiStrip = earned.slice(0, 6);
+              const moreBadges = earned.length - emojiStrip.length;
+              return (
+                <motion.button
+                  key={member.id}
+                  type="button"
+                  custom={i}
+                  variants={cardVariants}
+                  initial="hidden"
+                  animate="visible"
+                  onClick={() => setSelectedUserId(member.user_id)}
+                  className={`group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                    isPlaceholder
+                      ? 'border-dashed border-border/60 bg-muted/15 hover:border-border hover:bg-muted/25'
+                      : 'border-border/45 bg-card/55 hover:border-primary/35 hover:bg-card/80 hover:shadow-[0_16px_48px_-16px_hsl(38_90%_55%/0.22)]'
+                  }`}
+                >
+                  <div className={`relative h-16 shrink-0 bg-gradient-to-br sm:h-[4.25rem] ${bannerAccent}`}>
+                    <div className="absolute inset-0 bg-gradient-to-t from-card/90 to-transparent" />
+                    {isGroupAdmin && (
+                      <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-background/85 px-2 py-0.5 text-[10px] font-semibold text-primary shadow-sm ring-1 ring-primary/25 backdrop-blur-sm">
+                        <Crown className="w-3 h-3" /> Host
+                      </div>
                     )}
                   </div>
-                )}
-              </motion.button>
-            );
-          })}
+                  <div className="relative -mt-9 flex flex-col items-center px-3 pb-3 pt-0">
+                    <div className="relative">
+                      <div
+                        className={`relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-2xl shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)] ring-[3px] ${
+                          isPlaceholder ? 'bg-muted ring-border/50' : 'bg-card ring-background'
+                        } ${isGroupAdmin ? 'ring-primary/35' : ''}`}
+                      >
+                        {isPlaceholder ? (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Ghost className="h-8 w-8 text-muted-foreground/60" />
+                          </div>
+                        ) : profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/30 to-muted text-xl font-bold text-primary">
+                            {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                          </div>
+                        )}
+                      </div>
+                      {isOwnCard && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                          className="absolute -bottom-1 -right-1 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition-transform hover:scale-105 active:scale-95"
+                          title="Change photo"
+                        >
+                          <Camera className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="mt-2.5 w-full truncate text-center font-display text-base font-bold tracking-tight text-foreground sm:text-lg">
+                      {profile?.display_name || 'Unknown'}
+                    </p>
+                    {isPlaceholder ? (
+                      <span className="mt-1 text-[11px] text-muted-foreground">Invite pending</span>
+                    ) : (
+                      <span className="mt-0.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80 opacity-80 group-hover:text-primary group-hover:opacity-100 transition-colors">
+                        View profile
+                      </span>
+                    )}
+                    {!isPlaceholder && emojiStrip.length > 0 && (
+                      <div className="mt-2.5 flex max-w-full flex-wrap items-center justify-center gap-1.5 px-1" aria-hidden>
+                        {emojiStrip.map(({ badge }) => (
+                          <span
+                            key={badge.id}
+                            className="flex h-8 w-8 items-center justify-center rounded-xl bg-background/90 text-lg shadow-sm ring-1 ring-border/40 transition-transform group-hover:scale-105"
+                            title={badge.label}
+                          >
+                            {badge.emoji}
+                          </span>
+                        ))}
+                        {moreBadges > 0 && (
+                          <span className="flex h-8 min-w-8 items-center justify-center rounded-xl bg-primary/15 px-1.5 text-[11px] font-bold text-primary ring-1 ring-primary/25">
+                            +{moreBadges}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {!isPlaceholder && (
+                      <div className="mt-3 flex w-full items-center justify-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors group-hover:text-primary">
+                        <span>Explore</span>
+                        <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    )}
+                  </div>
+                </motion.button>
+              );
+            })}
+          </div>
         </div>
       </motion.div>
 
@@ -1103,13 +1159,13 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       {isDesktopProfile ? (
         <Dialog open={!!selectedUserId} onOpenChange={(open) => !open && handleClose()}>
           <DialogContent className="max-w-lg w-[calc(100%-1.5rem)] max-h-[min(88vh,720px)] p-0 gap-0 flex flex-col overflow-hidden rounded-2xl">
-            <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40 shrink-0 text-left space-y-1">
+            <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40 shrink-0 text-left space-y-1 min-w-0">
               <DialogTitle className="font-display text-lg pr-8">{profileSheetTitle}</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 Member profile, stats, picks, and guessing history for this club.
               </DialogDescription>
             </DialogHeader>
-            <div className="overflow-y-auto flex-1 min-h-0 px-4 pb-6 pt-1">
+            <div className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-4 pb-6 pt-1">
               {loading
                 ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
                 : renderMemberProfile()}
@@ -1118,12 +1174,12 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         </Dialog>
       ) : (
         <Drawer open={!!selectedUserId} onOpenChange={(open) => !open && handleClose()} shouldScaleBackground={false}>
-          <DrawerContent className="max-h-[88vh] outline-none flex flex-col">
+          <DrawerContent className="max-h-[88vh] outline-none flex flex-col overflow-x-hidden">
             <DrawerTitle className="sr-only">{profileSheetTitle}</DrawerTitle>
             <DrawerDescription className="sr-only">
               Member profile for this club. Swipe down to close.
             </DrawerDescription>
-            <div className="overflow-y-auto flex-1 min-h-0 px-4 pb-8 pt-1">
+            <div className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-4 pb-8 pt-1">
               {loading
                 ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
                 : renderMemberProfile()}
