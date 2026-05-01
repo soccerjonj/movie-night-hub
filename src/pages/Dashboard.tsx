@@ -220,7 +220,7 @@ const Dashboard = () => {
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
+              className={`flex flex-1 flex-col items-center gap-1 py-4 text-[10px] font-medium transition-colors ${
                 tab === id ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
