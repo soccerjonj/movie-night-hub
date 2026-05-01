@@ -135,46 +135,38 @@ const ClubSelect = () => {
               {/* Left status accent strip */}
               <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${g.season_status ? (STATUS_STRIP[g.season_status] ?? 'bg-border') : 'bg-border/30'}`} />
 
-              <button
-                onClick={() => navigate(`/dashboard/${g.id}`)}
-                className="w-full flex items-center gap-3.5 pl-4 pr-10 py-3.5 text-left"
-              >
-                {/* Club type icon */}
-                <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
-                  {g.club_type === 'book'
-                    ? <BookOpen className="w-4.5 h-4.5 text-primary" />
-                    : <Film className="w-4.5 h-4.5 text-primary" />}
-                </div>
-
-                {/* Text */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{g.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Users className="w-3 h-3" /> {g.member_count}
-                    </span>
-                    {g.season_number && (
-                      <span className="text-xs text-muted-foreground">
-                        {g.club_type === 'book' ? 'Season' : 'Season'} {g.season_number}
-                      </span>
-                    )}
-                    {g.season_status && (
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border capitalize ${STATUS_STYLES[g.season_status] ?? 'bg-muted/30 text-muted-foreground border-border/40'}`}>
-                        {g.season_status}
-                      </span>
-                    )}
+              <div className="flex items-center">
+                <button
+                  onClick={() => navigate(`/dashboard/${g.id}`)}
+                  className="flex-1 flex items-center gap-3.5 pl-4 pr-3 py-3.5 text-left"
+                >
+                  <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
+                    {g.club_type === 'book'
+                      ? <BookOpen className="w-4.5 h-4.5 text-primary" />
+                      : <Film className="w-4.5 h-4.5 text-primary" />}
                   </div>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{g.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Users className="w-3 h-3" /> {g.member_count}
+                      </span>
+                      {g.season_number && (
+                        <span className="text-xs text-muted-foreground">Season {g.season_number}</span>
+                      )}
+                      {g.season_status && (
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border capitalize ${STATUS_STYLES[g.season_status] ?? 'bg-muted/30 text-muted-foreground border-border/40'}`}>
+                          {g.season_status}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                </button>
 
-                {/* Chevron */}
-                <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-              </button>
-
-              {/* ··· menu */}
-              <div className="absolute right-8 top-1/2 -translate-y-1/2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/30">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 mr-1.5 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/30 shrink-0">
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
