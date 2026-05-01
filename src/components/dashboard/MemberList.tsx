@@ -1237,7 +1237,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         </Dialog>
       ) : (
         <Drawer open={!!selectedUserId} onOpenChange={(open) => !open && handleClose()} shouldScaleBackground={false}>
-          <DrawerContent className="max-h-[88vh] outline-none flex flex-col overflow-x-hidden">
+          <DrawerContent className="max-h-[88vh] outline-none flex flex-col overflow-hidden">
             <DrawerTitle className="sr-only">{profileSheetTitle}</DrawerTitle>
             <DrawerDescription className="sr-only">
               Member profile for this club. Swipe down to close.
