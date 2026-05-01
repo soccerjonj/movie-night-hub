@@ -1228,7 +1228,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                 Member profile, stats, picks, and guessing history for this club.
               </DialogDescription>
             </DialogHeader>
-            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 pb-6">
+            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 min-h-0 pb-4">
               {loading
                 ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
                 : renderMemberProfile()}
@@ -1242,7 +1242,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             <DrawerDescription className="sr-only">
               Member profile for this club. Swipe down to close.
             </DrawerDescription>
-            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 pb-8">
+            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 min-h-0 pb-4">
               {loading
                 ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
                 : renderMemberProfile()}
