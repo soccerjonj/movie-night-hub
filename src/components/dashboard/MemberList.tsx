@@ -792,26 +792,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
 
     const stickyTabs = (
       <div className="sticky top-0 z-20 w-full min-w-0 bg-background/90 backdrop-blur-xl border-b border-border/40">
-        <AnimatePresence>
-          {heroScrolledPast && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="flex items-center gap-2.5 px-3 pt-2.5 pb-1"
-            >
-              <div className="w-7 h-7 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-border/40">
-                {profile?.avatar_url
-                  ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                  : <span className="text-[10px] font-bold text-primary">{profileDisplayName.charAt(0).toUpperCase()}</span>
-                }
-              </div>
-              <p className="font-display text-sm font-bold truncate">{profileDisplayName}</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <div className="flex w-full min-w-0 justify-stretch sm:justify-start gap-0 px-0 sm:px-2">
+<div className="flex w-full min-w-0 justify-stretch sm:justify-start gap-0 px-0 sm:px-2">
           {tabBtn('overview', 'Overview')}
           {tabBtn('picks', isBookClub ? 'Books' : 'Picks', picksCount)}
           {tabBtn('guessing', 'Guessing', guessCount)}
