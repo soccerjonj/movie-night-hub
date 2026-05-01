@@ -294,7 +294,8 @@ const Stats = ({ group, profiles, members }: Props) => {
       const toFetch: PickRow[] = [];
       for (const p of picks) {
         const cacheKey = p.tmdb_id ? `id:${p.tmdb_id}` : `t:${p.title}|${p.year || ''}`;
-        if (cache[cacheKey]) {
+        // Only use cache if it has full stats data (cast present = fetched by Stats, not MemberList)
+        if (cache[cacheKey] && cache[cacheKey].cast !== undefined) {
           initial[p.id] = cache[cacheKey];
         } else {
           toFetch.push(p);
