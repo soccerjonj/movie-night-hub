@@ -122,7 +122,7 @@ const ClubSelect = () => {
         </Button>
       </header>
 
-      <main className="flex-1 px-4 pt-5 pb-28 space-y-3">
+      <main className="flex-1 px-4 pb-28 flex flex-col justify-center gap-3 max-w-lg mx-auto w-full py-8">
         {groups.map((g, i) => (
           <motion.div
             key={g.id}
