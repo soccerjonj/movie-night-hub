@@ -16,7 +16,7 @@ import RankingInsights from './RankingInsights';
 import { validateImageFile, getSafeErrorMessage, safeFilename } from '@/lib/security';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { computeMemberBadges, computeCasualViewerBadges, type BadgePickInput, type EarnedBadge } from '@/lib/memberBadges';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import ClubStatNumber from '@/components/dashboard/ClubStatNumber';
 
@@ -93,6 +93,15 @@ const MEMBER_BANNER_ACCENTS = [
   'from-fuchsia-500/35 via-primary/15 to-background',
 ] as const;
 
+/** Profile cover accent — mirrors MEMBER_BANNER_ACCENTS index for continuity. Admin gets gold. */
+const PROFILE_COVER_ACCENTS = [
+  'from-violet-600/35 via-violet-500/10',
+  'from-sky-600/35 via-sky-500/10',
+  'from-rose-600/35 via-rose-500/10',
+  'from-emerald-600/35 via-emerald-500/10',
+  'from-fuchsia-600/30 via-fuchsia-500/10',
+] as const;
+
 const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelectedUserId, onExternalSelectedClear }: Props) => {
   const { user } = useAuth();
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
@@ -133,11 +142,18 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
 
   const [guessFilter, setGuessFilter] = useState<'all' | 'correct' | 'miss' | 'none'>('all');
   const [guessOlderExpanded, setGuessOlderExpanded] = useState(false);
+  const profileScrollRef = useRef<HTMLDivElement>(null);
+  const [heroScrolledPast, setHeroScrolledPast] = useState(false);
+  const handleProfileScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    setHeroScrolledPast(e.currentTarget.scrollTop > 110);
+  }, []);
 
   useEffect(() => {
     setProfileTab('overview');
     setGuessFilter('all');
     setGuessOlderExpanded(false);
+    setHeroScrolledPast(false);
+    if (profileScrollRef.current) profileScrollRef.current.scrollTop = 0;
   }, [selectedUserId]);
 
   useEffect(() => {
@@ -520,6 +536,9 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       }
     });
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const accuracyTier = total === 0 ? 'none' : pct >= 70 ? 'gold' : pct >= 50 ? 'good' : 'low';
+    const accuracyTextClass = accuracyTier === 'gold' ? 'text-gradient-gold' : accuracyTier === 'good' ? 'text-green-400' : accuracyTier === 'low' ? 'text-foreground/60' : 'text-muted-foreground';
+    const accuracyCellClass = accuracyTier === 'gold' ? 'bg-primary/10' : accuracyTier === 'good' ? 'bg-green-500/10' : '';
 
     const watchedPicks = picks.filter(p => isPickWatched(p)).sort((a, b) => {
       const sA = seasons.find(s => s.id === a.season_id)?.season_number ?? 0;
@@ -556,11 +575,51 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     const overallAvg = perPickAvgs.length > 0 ? perPickAvgs.reduce((s, v) => s + v, 0) / perPickAvgs.length : null;
 
     const profileDisplayName = profile?.display_name || 'Unknown';
+
+    // Cover accent — mirrors wall tile accent for visual continuity
+    const memberIndex = members.findIndex(m => m.user_id === selectedUserId);
+    const isGroupAdmin = selectedUserId === group.admin_user_id;
+    const coverAccentClass = isGroupAdmin
+      ? 'from-amber-500/45 via-primary/25'
+      : PROFILE_COVER_ACCENTS[(memberIndex >= 0 ? memberIndex : 0) % PROFILE_COVER_ACCENTS.length];
+
+    // Up to 4 revealed posters for the blurred mosaic strip behind the cover
+    const coverPosters = memberPicks.filter(p => isPickRevealed(p) && p.poster_url).slice(0, 4);
+
+    // Featured pick — the member's most loved pick (lowest avg rank with at least 2 rankings)
+    let featuredPick: PickRow | null = null;
+    let featuredAvgRank: number | null = null;
+    let featuredRankCount = 0;
+    {
+      let bestAvg = Infinity;
+      for (const [slotKey, stats] of slotRankings) {
+        if (stats.count < 2) continue;
+        const avg = stats.total / stats.count;
+        if (avg < bestAvg) {
+          bestAvg = avg;
+          const matchPick = memberPicks.find(p => getSlotKey(p) === slotKey);
+          if (matchPick && isPickRevealed(matchPick)) {
+            featuredPick = matchPick;
+            featuredAvgRank = avg;
+            featuredRankCount = stats.count;
+          }
+        }
+      }
+    }
+
     const seasonNumForPick = (pick: PickRow) => seasons.find(s => s.id === pick.season_id)?.season_number ?? 0;
     const seasonHeading = (sn: number) => {
       const s = seasons.find(ss => ss.season_number === sn);
       return s?.title ? `Season ${sn} — ${s.title}` : `Season ${sn}`;
     };
+
+    // Picks grouped by season (descending) for the Picks tab
+    const pickSeasonNums = [...new Set(memberPicks.map(p => seasonNumForPick(p)))].sort((a, b) => b - a);
+    const picksSeasonGroups = pickSeasonNums.map(sn => ({
+      sn,
+      label: seasonHeading(sn),
+      picks: memberPicks.filter(p => seasonNumForPick(p) === sn),
+    }));
 
     type GuessMeta = { pick: PickRow; guess?: GuessRow; guessedName: string | null; isCorrect: boolean; isOwnPick: boolean };
     const guessMetasRaw: GuessMeta[] = uniqueWatched.map(pick => {
@@ -595,16 +654,24 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       </div>
     );
 
-    const tabBtn = (id: 'overview' | 'picks' | 'guessing', label: string) => (
+    const picksCount = memberPicks.length;
+    const guessCount = uniqueWatched.length;
+
+    const tabBtn = (id: 'overview' | 'picks' | 'guessing', label: string, count?: number) => (
       <button
         key={id}
         type="button"
         onClick={() => setProfileTab(id)}
-        className={`relative min-w-0 flex-1 sm:flex-none px-2 sm:px-3 py-2.5 text-xs font-semibold tracking-wide transition-colors ${
+        className={`relative min-w-0 flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2.5 text-xs font-semibold tracking-wide transition-colors ${
           profileTab === id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/90'
         }`}
       >
         {label}
+        {count !== undefined && count > 0 && (
+          <span className={`rounded-full px-1.5 leading-4 text-[9px] font-bold tabular-nums ${profileTab === id ? 'bg-primary/20 text-primary' : 'bg-muted/60 text-muted-foreground'}`}>
+            {count}
+          </span>
+        )}
         {profileTab === id && (
           <span className="absolute bottom-0 left-2 right-2 sm:left-3 sm:right-3 h-0.5 rounded-full bg-gradient-to-r from-primary to-amber-400" />
         )}
@@ -614,8 +681,18 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     const profileHero = (
       <div className="relative w-full min-w-0">
         <div className="relative h-32 sm:h-36 overflow-hidden bg-muted/30">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/10 to-background" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_50%_-30%,hsl(38_90%_55%/0.35),transparent_55%)]" />
+          {/* Blurred poster mosaic behind the cover */}
+          {coverPosters.length > 0 && (
+            <div className="absolute inset-0 flex opacity-25">
+              {coverPosters.map(p => (
+                <div key={p.id} className="flex-1 h-full overflow-hidden">
+                  <img src={p.poster_url!} alt="" className="h-full w-full object-cover blur-sm scale-110" />
+                </div>
+              ))}
+            </div>
+          )}
+          <div className={`absolute inset-0 bg-gradient-to-br ${coverAccentClass} to-background`} />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_50%_-30%,hsl(38_90%_55%/0.3),transparent_55%)]" />
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background via-background/80 to-transparent" />
         </div>
         <div className="relative z-10 px-3 sm:px-4 -mt-16 sm:-mt-[4.5rem] pb-1">
@@ -695,8 +772,8 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                   <p className="font-display text-base sm:text-xl font-bold text-foreground tabular-nums">{earned.length}</p>
                   <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Badges</p>
                 </div>
-                <div className="py-2.5 px-1 sm:px-1.5 text-center min-w-0">
-                  <p className={`font-display text-base sm:text-xl font-bold tabular-nums ${total > 0 ? (pct >= 50 ? 'text-gradient-gold' : 'text-foreground') : 'text-muted-foreground'}`}>
+                <div className={`py-2.5 px-1 sm:px-1.5 text-center min-w-0 transition-colors rounded-r-xl ${accuracyCellClass}`}>
+                  <p className={`font-display text-base sm:text-xl font-bold tabular-nums ${accuracyTextClass}`}>
                     {total > 0 ? `${pct}%` : '—'}
                   </p>
                   <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">Guess hit</p>
@@ -714,11 +791,30 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     const stickyTabs = (
-      <div className="sticky top-0 z-20 w-full min-w-0 bg-background/90 backdrop-blur-xl border-b border-border/40 px-0 sm:px-2">
-        <div className="flex w-full min-w-0 justify-stretch sm:justify-start gap-0 sm:gap-1">
+      <div className="sticky top-0 z-20 w-full min-w-0 bg-background/90 backdrop-blur-xl border-b border-border/40">
+        <AnimatePresence>
+          {heroScrolledPast && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="flex items-center gap-2.5 px-3 pt-2.5 pb-1"
+            >
+              <div className="w-7 h-7 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-border/40">
+                {profile?.avatar_url
+                  ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : <span className="text-[10px] font-bold text-primary">{profileDisplayName.charAt(0).toUpperCase()}</span>
+                }
+              </div>
+              <p className="font-display text-sm font-bold truncate">{profileDisplayName}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <div className="flex w-full min-w-0 justify-stretch sm:justify-start gap-0 px-0 sm:px-2">
           {tabBtn('overview', 'Overview')}
-          {tabBtn('picks', 'Picks')}
-          {tabBtn('guessing', 'Guessing')}
+          {tabBtn('picks', isBookClub ? 'Books' : 'Picks', picksCount)}
+          {tabBtn('guessing', 'Guessing', guessCount)}
         </div>
       </div>
     );
@@ -779,6 +875,30 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
 
     const overviewTab = (
       <div className="min-w-0 space-y-5 pt-1">
+        {featuredPick && featuredAvgRank !== null && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-3 flex items-center gap-3"
+          >
+            <div className="w-12 aspect-[2/3] rounded-xl overflow-hidden bg-muted shrink-0 ring-1 ring-primary/30 shadow-md">
+              {featuredPick.poster_url
+                ? <img src={featuredPick.poster_url} alt={featuredPick.title} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center"><Film className="w-4 h-4 text-muted-foreground" /></div>
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1">
+                <Star className="w-3 h-3 fill-primary/80" /> Most loved pick
+              </p>
+              <p className="text-sm font-bold truncate">{featuredPick.title}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                avg rank {featuredAvgRank.toFixed(1)} · {featuredRankCount} ranking{featuredRankCount !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </motion.div>
+        )}
         <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 sm:p-4 space-y-2.5">
           <div className="flex items-center gap-2">
             <Award className="w-4 h-4 text-primary shrink-0" aria-hidden />
@@ -819,32 +939,36 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     const picksTab = (
-      <div className="min-w-0 space-y-4 pt-2">
-        <p className="text-xs text-muted-foreground text-left">Posters from every season they chose a title.</p>
+      <div className="min-w-0 space-y-5 pt-2">
         {memberPicks.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 px-4 py-10 text-center space-y-2">
             <Film className="w-10 h-10 mx-auto text-muted-foreground/35" />
             <p className="text-sm font-medium text-foreground/90">No picks yet</p>
-            <p className="text-xs text-muted-foreground w-full text-left">When a season starts, their choices appear here like a gallery.</p>
+            <p className="text-xs text-muted-foreground w-full text-left">When a season starts, their choices appear here.</p>
           </div>
         ) : (
-          <div className="grid min-w-0 grid-cols-4 gap-2 sm:grid-cols-4 sm:gap-2.5">
-            {memberPicks.map(pick => {
-              const revealed = isPickRevealed(pick);
-              return (
-                <div
-                  key={pick.id}
-                  className="group aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/30 shadow-sm transition-all duration-300 hover:ring-primary/35 hover:shadow-[0_8px_28px_-8px_hsl(38_90%_55%/0.25)]"
-                >
-                  {revealed
-                    ? pick.poster_url
-                      ? <img src={pick.poster_url} alt={pick.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
-                      : <div className="w-full h-full flex items-center justify-center p-1.5 bg-muted/80"><span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-4 font-medium">{pick.title}</span></div>
-                    : <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-muted to-muted/60"><span className="text-xl text-muted-foreground/70 font-bold">?</span></div>}
-                </div>
-              );
-            })}
-          </div>
+          picksSeasonGroups.map(sg => (
+            <div key={sg.sn} className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-primary/80 pl-0.5">{sg.label}</p>
+              <div className="grid min-w-0 grid-cols-4 gap-2 sm:gap-2.5">
+                {sg.picks.map(pick => {
+                  const revealed = isPickRevealed(pick);
+                  return (
+                    <div
+                      key={pick.id}
+                      className="group aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/30 shadow-sm transition-all duration-300 hover:ring-primary/35 hover:shadow-[0_8px_28px_-8px_hsl(38_90%_55%/0.25)]"
+                    >
+                      {revealed
+                        ? pick.poster_url
+                          ? <img src={pick.poster_url} alt={pick.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+                          : <div className="w-full h-full flex items-center justify-center p-1.5 bg-muted/80"><span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-4 font-medium">{pick.title}</span></div>
+                        : <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-muted to-muted/60"><span className="text-xl text-muted-foreground/70 font-bold">?</span></div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
         )}
       </div>
     );
@@ -932,9 +1056,19 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         {profileHero}
         {stickyTabs}
         <div className="min-w-0 w-full px-3 pt-4 pb-3 sm:px-4">
-          {profileTab === 'overview' && overviewTab}
-          {profileTab === 'picks' && picksTab}
-          {profileTab === 'guessing' && guessingTab}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={profileTab}
+              initial={{ opacity: 0, y: 7 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {profileTab === 'overview' && overviewTab}
+              {profileTab === 'picks' && picksTab}
+              {profileTab === 'guessing' && guessingTab}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     );
@@ -1166,7 +1300,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                 Member profile, stats, picks, and guessing history for this club.
               </DialogDescription>
             </DialogHeader>
-            <div className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-3 pb-6 pt-1 sm:px-4">
+            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-3 pb-6 pt-1 sm:px-4">
               {loading
                 ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
                 : renderMemberProfile()}
@@ -1180,7 +1314,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             <DrawerDescription className="sr-only">
               Member profile for this club. Swipe down to close.
             </DrawerDescription>
-            <div className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-3 pb-8 pt-1 sm:px-4">
+            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-3 pb-8 pt-1 sm:px-4">
               {loading
                 ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
                 : renderMemberProfile()}
