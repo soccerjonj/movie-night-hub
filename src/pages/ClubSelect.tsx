@@ -59,14 +59,11 @@ const ClubSelect = () => {
     const fetchGroups = async () => {
       if (!user) return;
       setLoading(true);
-
       const [{ data: memberships }, { data: profile }] = await Promise.all([
         supabase.from('group_members').select('group_id').eq('user_id', user.id),
         supabase.from('profiles').select('display_name').eq('id', user.id).single(),
       ]);
-
       if (profile?.display_name) setDisplayName(profile.display_name);
-
       if (!memberships || memberships.length === 0) { navigate('/setup', { replace: true }); return; }
       const groupIds = memberships.map(m => m.group_id);
       const { data: groupsData } = await supabase
@@ -79,9 +76,7 @@ const ClubSelect = () => {
           supabase.from('seasons').select('status, season_number').eq('group_id', g.id).order('season_number', { ascending: false }).limit(1),
         ]);
         groupInfos.push({
-          id: g.id,
-          name: g.name,
-          member_count: count ?? 0,
+          id: g.id, name: g.name, member_count: count ?? 0,
           season_status: latestSeason?.[0]?.status ?? null,
           season_number: latestSeason?.[0]?.season_number ?? null,
           club_type: (g as any).club_type || 'movie',
@@ -101,85 +96,108 @@ const ClubSelect = () => {
     );
   }
 
-  const greeting = displayName ? `Hey, ${displayName.split(' ')[0]} 👋` : 'Your Clubs';
+  const firstName = displayName?.split(' ')[0] ?? null;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-10 bg-card/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <img src={logo} alt="Movie Club Hub" className="h-8 object-contain" />
-          <div>
-            <h1 className="font-display text-base font-bold text-gradient-gold leading-tight">{greeting}</h1>
-            {groups.length > 0 && (
-              <p className="text-[11px] text-muted-foreground leading-tight">
-                {groups.length} {groups.length === 1 ? 'club' : 'clubs'}
-              </p>
-            )}
-          </div>
-        </div>
-        <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onClick={() => { signOut(); navigate('/'); }}>
+      {/* Sign-out — top right corner */}
+      <div className="absolute top-4 right-4 z-10">
+        <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground/50 hover:text-muted-foreground" onClick={() => { signOut(); navigate('/'); }}>
           <LogOut className="w-4 h-4" />
         </Button>
-      </header>
+      </div>
 
-      <main className="flex-1 px-4 pb-28 flex flex-col justify-center gap-3 max-w-lg mx-auto w-full py-8">
-        {groups.map((g, i) => (
-          <motion.div
-            key={g.id}
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: i * 0.07, ease: [0.16, 1, 0.3, 1] }}
-            className="relative"
-          >
-            <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/70 shadow-sm hover:border-primary/30 hover:shadow-md hover:bg-card/90 transition-all duration-200">
-              {/* Left status accent strip */}
-              <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${g.season_status ? (STATUS_STRIP[g.season_status] ?? 'bg-border') : 'bg-border/30'}`} />
+      {/* Main content — vertically centered */}
+      <main className="flex-1 flex flex-col items-center justify-center px-5 py-12 gap-8">
 
-              <div className="flex items-center">
-                <button
-                  onClick={() => navigate(`/dashboard/${g.id}`)}
-                  className="flex-1 flex items-center gap-3.5 pl-4 pr-3 py-3.5 text-left"
-                >
-                  <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
-                    {g.club_type === 'book'
-                      ? <BookOpen className="w-4.5 h-4.5 text-primary" />
-                      : <Film className="w-4.5 h-4.5 text-primary" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{g.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Users className="w-3 h-3" /> {g.member_count}
-                      </span>
-                      {g.season_number && (
-                        <span className="text-xs text-muted-foreground">Season {g.season_number}</span>
-                      )}
-                      {g.season_status && (
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border capitalize ${STATUS_STYLES[g.season_status] ?? 'bg-muted/30 text-muted-foreground border-border/40'}`}>
-                          {g.season_status}
-                        </span>
-                      )}
+        {/* Hero */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col items-center text-center gap-3"
+        >
+          <img src={logo} alt="Club Hub" className="h-14 object-contain drop-shadow-[0_0_18px_hsl(38_90%_55%/0.25)]" />
+          <div>
+            <h1 className="font-display text-2xl font-bold text-gradient-gold">
+              {firstName ? `Welcome back, ${firstName}` : 'Your Clubs'}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {groups.length === 1 ? 'Jump back into your club' : `You're in ${groups.length} clubs`}
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Club cards */}
+        <div className="w-full max-w-sm flex flex-col gap-2.5">
+          <p className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-widest px-1 mb-0.5">
+            Your Clubs
+          </p>
+          {groups.map((g, i) => (
+            <motion.div
+              key={g.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.1 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/70 shadow-sm hover:border-primary/30 hover:shadow-md hover:bg-card/90 transition-all duration-200">
+                <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${g.season_status ? (STATUS_STRIP[g.season_status] ?? 'bg-border') : 'bg-border/30'}`} />
+                <div className="flex items-center">
+                  <button
+                    onClick={() => navigate(`/dashboard/${g.id}`)}
+                    className="flex-1 flex items-center gap-3.5 pl-4 pr-3 py-3.5 text-left"
+                  >
+                    <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
+                      {g.club_type === 'book'
+                        ? <BookOpen className="w-4.5 h-4.5 text-primary" />
+                        : <Film className="w-4.5 h-4.5 text-primary" />}
                     </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-                </button>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 mr-1.5 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/30 shrink-0">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setConfirmLeave(g)} className="text-destructive focus:text-destructive">
-                      Leave club
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{g.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Users className="w-3 h-3" /> {g.member_count}
+                        </span>
+                        {g.season_number && (
+                          <span className="text-xs text-muted-foreground">Season {g.season_number}</span>
+                        )}
+                        {g.season_status && (
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border capitalize ${STATUS_STYLES[g.season_status] ?? 'bg-muted/30 text-muted-foreground border-border/40'}`}>
+                            {g.season_status}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 mr-1.5 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/30 shrink-0">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => setConfirmLeave(g)} className="text-destructive focus:text-destructive">
+                        Leave club
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Join / Create button */}
+        <motion.button
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          onClick={() => navigate('/setup')}
+          className="w-full max-w-sm flex items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-[0_8px_32px_-8px_hsl(38_90%_55%/0.4)] hover:bg-primary/90 active:scale-[0.98] transition-all"
+        >
+          <Plus className="w-4 h-4" /> Join or Create a Club
+        </motion.button>
       </main>
 
       <AlertDialog open={!!confirmLeave} onOpenChange={open => !open && setConfirmLeave(null)}>
@@ -194,13 +212,6 @@ const ClubSelect = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <button
-        onClick={() => navigate('/setup')}
-        className="fixed bottom-6 right-5 z-20 flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[0_8px_32px_-8px_hsl(38_90%_55%/0.5)] hover:bg-primary/90 active:scale-95 transition-all"
-      >
-        <Plus className="w-4 h-4" /> Join or Create
-      </button>
     </div>
   );
 };
