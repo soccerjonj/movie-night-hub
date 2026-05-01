@@ -83,6 +83,26 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense
         }
       });
 
+      /** All movie_pick ids for the same slot (co-picks share one slot, multiple row ids). */
+      const slotToPickIds = new Map<string, string[]>();
+      picks.forEach(p => {
+        const slot = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `solo:${p.id}`;
+        if (!slotToPickIds.has(slot)) slotToPickIds.set(slot, []);
+        slotToPickIds.get(slot)!.push(p.id);
+      });
+
+      /**
+       * Pick ids that represent "this member's movies" for fan/critic — includes sibling co-pick rows.
+       * Rankings often reference only one co-picker's row; without this, co-pickers saw empty insights.
+       */
+      const userPickIds = new Set<string>();
+      picks.forEach(p => {
+        const pickers = moviePickerMap.get(p.id) || [];
+        if (!pickers.includes(userId)) return;
+        const slot = p.watch_order != null ? `${p.season_id}:${p.watch_order}` : `solo:${p.id}`;
+        for (const id of slotToPickIds.get(slot) || [p.id]) userPickIds.add(id);
+      });
+
       const pickerScoresFromUser: Record<string, { total: number; count: number }> = {};
       rankings
         .filter(r => r.user_id === userId)
@@ -95,14 +115,6 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense
             pickerScoresFromUser[pickerId].count += 1;
           });
         });
-
-      const userPickIds = new Set<string>();
-      picks.forEach(p => {
-        const pickers = moviePickerMap.get(p.id) || [];
-        if (pickers.includes(userId)) {
-          userPickIds.add(p.id);
-        }
-      });
 
       const rankerScoresForUser: Record<string, { total: number; count: number }> = {};
       rankings
@@ -149,9 +161,26 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense
         </div>
       );
     }
-    return null;
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-12 rounded-lg bg-muted/30 animate-pulse" />
+        ))}
+      </div>
+    );
   }
-  if (!favoritePicker && !biggestFan && !biggestCritic) return null;
+
+  if (!favoritePicker && !biggestFan && !biggestCritic) {
+    return (
+      <div className="rounded-xl border border-dashed border-border/50 bg-muted/10 px-3 py-3.5 text-left space-y-2">
+        <p className="text-xs font-semibold text-foreground/90">No taste signals yet</p>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <span className="block">Favorite picker appears after you rank other members&apos; movies in completed or reviewing seasons.</span>
+          <span className="block mt-1.5">Biggest fan and biggest critic use how others ranked movies you picked — including co-picks, as long as someone ranked that title.</span>
+        </p>
+      </div>
+    );
+  }
 
   const InsightCard = ({ icon, label, insight, color, borderColor }: { icon: React.ReactNode; label: string; insight: Insight; color: string; borderColor: string }) => {
     const firstUser = insight.users[0];
