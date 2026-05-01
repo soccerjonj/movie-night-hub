@@ -1052,7 +1052,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     return (
-      <div className="min-w-0 max-w-full space-y-0 overflow-x-hidden -mx-3 sm:-mx-4">
+      <div className="min-w-0 max-w-full space-y-0 overflow-x-hidden">
         {profileHero}
         {stickyTabs}
         <div className="min-w-0 w-full px-3 pt-4 pb-3 sm:px-4">
@@ -1247,7 +1247,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                 Member profile, stats, picks, and guessing history for this club.
               </DialogDescription>
             </DialogHeader>
-            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-3 pb-6 pt-1 sm:px-4">
+            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 pb-6">
               {loading
                 ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
                 : renderMemberProfile()}
@@ -1261,7 +1261,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             <DrawerDescription className="sr-only">
               Member profile for this club. Swipe down to close.
             </DrawerDescription>
-            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-3 pb-8 pt-1 sm:px-4">
+            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 pb-8">
               {loading
                 ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
                 : renderMemberProfile()}
