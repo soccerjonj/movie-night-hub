@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Users, ArrowRight, Film, BookOpen, LogOut, MoreHorizontal } from 'lucide-react';
+import { Plus, Users, Film, BookOpen, LogOut, MoreHorizontal } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { motion } from 'framer-motion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -18,14 +18,11 @@ interface GroupInfo {
   club_type: 'movie' | 'book';
 }
 
-const statusStyle = (s: string) => {
-  switch (s) {
-    case 'watching':  return 'bg-amber-500/15 border-amber-500/25 text-amber-400';
-    case 'reviewing': return 'bg-sky-500/15 border-sky-500/25 text-sky-400';
-    case 'completed': return 'bg-green-500/15 border-green-500/25 text-green-400';
-    case 'picking':   return 'bg-violet-500/15 border-violet-500/25 text-violet-400';
-    default:          return 'bg-muted/30 border-border/40 text-muted-foreground';
-  }
+const STATUS_STYLES: Record<string, string> = {
+  watching:  'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  reviewing: 'bg-sky-500/15 text-sky-400 border-sky-500/20',
+  completed: 'bg-green-500/15 text-green-400 border-green-500/20',
+  picking:   'bg-violet-500/15 text-violet-400 border-violet-500/20',
 };
 
 const ClubSelect = () => {
@@ -84,7 +81,6 @@ const ClubSelect = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <header className="sticky top-0 z-10 bg-card/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <img src={logo} alt="Movie Club Hub" className="h-8 object-contain" />
@@ -95,56 +91,56 @@ const ClubSelect = () => {
         </Button>
       </header>
 
-      {/* Club list */}
-      <main className="flex-1 px-4 pt-4 pb-28 space-y-2.5">
+      <main className="flex-1 px-4 pt-4 pb-28 space-y-3">
         {groups.map((g, i) => (
           <motion.div
             key={g.id}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: i * 0.07, ease: [0.16, 1, 0.3, 1] }}
-            className="flex items-center gap-2"
+            className="relative"
           >
             <button
               onClick={() => navigate(`/dashboard/${g.id}`)}
-              className="flex-1 flex items-center gap-4 rounded-xl p-4 border border-border/50 bg-card/60 hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_0_20px_-8px_hsl(38_90%_55%/0.3)] transition-all text-left group"
+              className="w-full flex items-center gap-4 rounded-xl p-4 border border-border/50 bg-card/60 hover:border-primary/40 hover:bg-primary/5 transition-all text-left group"
             >
-              <div className="flex items-center justify-center h-11 w-11 rounded-xl bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-colors shrink-0">
-                {g.club_type === 'book' ? <BookOpen className="w-5 h-5 text-primary" /> : <Film className="w-5 h-5 text-primary" />}
+              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
+                {g.club_type === 'book' ? <BookOpen className="w-4.5 h-4.5 text-primary" /> : <Film className="w-4.5 h-4.5 text-primary" />}
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 pr-6">
                 <p className="font-semibold truncate">{g.name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Users className="w-3 h-3" /> {g.member_count}
-                  </p>
+                  </span>
                   {g.season_status && (
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full border capitalize ${statusStyle(g.season_status)}`}>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border capitalize ${STATUS_STYLES[g.season_status] ?? 'bg-muted/30 text-muted-foreground border-border/40'}`}>
                       {g.season_status}
                     </span>
                   )}
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
             </button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground/50 hover:text-muted-foreground">
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setConfirmLeave(g)} className="text-destructive focus:text-destructive">
-                  Leave club
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* ··· menu — absolutely positioned inside card top-right */}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/30">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setConfirmLeave(g)} className="text-destructive focus:text-destructive">
+                    Leave club
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </motion.div>
         ))}
       </main>
 
-      {/* Leave confirm dialog */}
       <AlertDialog open={!!confirmLeave} onOpenChange={open => !open && setConfirmLeave(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -158,7 +154,6 @@ const ClubSelect = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* FAB */}
       <button
         onClick={() => navigate('/setup')}
         className="fixed bottom-6 right-5 z-20 flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[0_8px_32px_-8px_hsl(38_90%_55%/0.5)] hover:bg-primary/90 active:scale-95 transition-all"
