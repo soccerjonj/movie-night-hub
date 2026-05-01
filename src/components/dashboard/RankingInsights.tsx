@@ -10,6 +10,10 @@ interface Props {
   profiles: Profile[];
   /** default = always show all cards. teaser = compact summary + expand for full breakdown. */
   variant?: 'default' | 'teaser';
+  /** Tighter padding and type for profile sheets. */
+  dense?: boolean;
+  /** Omit the "Ranking insights" heading (use when a parent section label is enough). */
+  hideTitle?: boolean;
 }
 
 interface Insight {
@@ -17,7 +21,7 @@ interface Insight {
   avgRank: number;
 }
 
-const RankingInsights = ({ userId, groupId, profiles, variant = 'default' }: Props) => {
+const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense = false, hideTitle = false }: Props) => {
   const [favoritePicker, setFavoritePicker] = useState<Insight | null>(null);
   const [biggestFan, setBiggestFan] = useState<Insight | null>(null);
   const [biggestCritic, setBiggestCritic] = useState<Insight | null>(null);
@@ -129,7 +133,7 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default' }: Pro
 
       const rankerEntries = Object.entries(rankerScoresForUser).filter(([, v]) => v.count > 0);
       setBiggestFan(findTied(rankerEntries, 'min'));
-      setBiggestCritic(rankerEntries.length > 1 ? findTied(rankerEntries, 'max') : null);
+      setBiggestCritic(rankerEntries.length > 0 ? findTied(rankerEntries, 'max') : null);
 
       setLoading(false);
     };
@@ -152,6 +156,27 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default' }: Pro
   const InsightCard = ({ icon, label, insight, color, borderColor }: { icon: React.ReactNode; label: string; insight: Insight; color: string; borderColor: string }) => {
     const firstUser = insight.users[0];
     const names = insight.users.map(u => u.displayName).join(', ');
+    if (dense) {
+      return (
+        <div className={`flex items-center gap-1.5 rounded-lg bg-muted/15 py-1 px-2 border-l-2 ${borderColor}`}>
+          <div className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-bold shrink-0 ${color}`}>
+            {firstUser.avatarUrl ? (
+              <img src={firstUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              firstUser.displayName.charAt(0).toUpperCase()
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-0.5">
+              {icon}
+              <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+            </div>
+            <p className="text-[11px] font-medium truncate leading-tight">{names}</p>
+          </div>
+          <p className="text-[9px] text-muted-foreground shrink-0 tabular-nums">{insight.avgRank.toFixed(1)}</p>
+        </div>
+      );
+    }
     return (
       <div className={`flex items-center gap-2 rounded-xl bg-muted/20 p-2.5 border-l-2 ${borderColor}`}>
         <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0 ${color}`}>
@@ -208,19 +233,21 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default' }: Pro
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <h4 className="font-display text-sm font-bold flex items-center gap-1.5">
-          <Heart className="w-4 h-4 text-primary" />
-          Ranking insights
-        </h4>
-        {variant === 'teaser' && expanded && (
-          <Button variant="ghost" size="sm" className="h-7 text-[10px] shrink-0" onClick={() => setExpanded(false)}>
-            <ChevronUp className="w-3 h-3 mr-0.5" />
-            Collapse
-          </Button>
-        )}
-      </div>
-      <div className="space-y-1.5">
+      {!hideTitle && (
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h4 className="font-display text-sm font-bold flex items-center gap-1.5">
+            <Heart className="w-4 h-4 text-primary" />
+            Ranking insights
+          </h4>
+          {variant === 'teaser' && expanded && (
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] shrink-0" onClick={() => setExpanded(false)}>
+              <ChevronUp className="w-3 h-3 mr-0.5" />
+              Collapse
+            </Button>
+          )}
+        </div>
+      )}
+      <div className={dense ? 'space-y-1' : 'space-y-1.5'}>
         {favoritePicker && (
           <InsightCard
             icon={<Heart className="w-3 h-3 text-pink-400" />}

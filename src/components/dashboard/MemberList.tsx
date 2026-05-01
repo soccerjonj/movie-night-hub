@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star, Award, Clock, Sparkles, ChevronRight } from 'lucide-react';
+import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star, Award, Clock, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
@@ -117,7 +117,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const [pastRankingsOpen, setPastRankingsOpen] = useState(false);
   const [hasUnrankedSeasons, setHasUnrankedSeasons] = useState(false);
   const isDesktopProfile = useMediaQuery('(min-width: 1024px)');
-  const [profileTab, setProfileTab] = useState<'overview' | 'picks' | 'guessing' | 'taste'>('overview');
+  const [profileTab, setProfileTab] = useState<'overview' | 'picks' | 'guessing'>('overview');
   const [badgeIntroPlayed, setBadgeIntroPlayed] = useState(
     () => typeof window !== 'undefined' && sessionStorage.getItem('mnh_badge_intro') === '1'
   );
@@ -411,14 +411,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     return () => window.clearTimeout(t);
   }, [selectedUserId, selectedBadgeCount, badgeIntroPlayed]);
 
-  const pickCountByUser = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const p of picks) {
-      m.set(p.user_id, (m.get(p.user_id) || 0) + 1);
-    }
-    return m;
-  }, [picks]);
-
   const clubStats = useMemo(() => {
     const completedSeasons = seasons.filter(s => s.status === 'completed').length;
     const watchedPicks = picks.filter(p => isPickWatched(p));
@@ -594,212 +586,251 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       </div>
     );
 
-    const tabBtn = (id: 'overview' | 'picks' | 'guessing' | 'taste', label: string) => (
+    const tabBtn = (id: 'overview' | 'picks' | 'guessing', label: string) => (
       <button
         key={id}
         type="button"
         onClick={() => setProfileTab(id)}
-        className={`px-2.5 py-2 text-xs font-medium border-b-2 -mb-px transition-colors shrink-0 ${
-          profileTab === id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+        className={`relative flex-1 sm:flex-none px-3 py-2.5 text-xs font-semibold tracking-wide transition-colors shrink-0 ${
+          profileTab === id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/90'
         }`}
       >
         {label}
+        {profileTab === id && (
+          <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-gradient-to-r from-primary to-amber-400" />
+        )}
       </button>
     );
 
-    const stickyHeader = (
-      <div className="sticky top-0 z-20 -mx-4 px-4 pt-1 pb-2 bg-background/95 backdrop-blur-md border-b border-border/50 space-y-2">
-        <div className="flex items-center gap-3">
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              className={`w-10 h-10 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center text-sm font-bold text-primary ring-2 ring-primary/25 ${!isOwnProfile && profile?.avatar_url ? 'cursor-zoom-in' : ''} ${isOwnProfile ? 'cursor-default' : ''}`}
-              onClick={() => {
-                if (!isOwnProfile && profile?.avatar_url) setPreviewAvatarUrl(profile.avatar_url);
-              }}
-            >
-              {profile?.avatar_url
-                ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                : (profile?.display_name?.charAt(0).toUpperCase() || '?')}
-            </button>
-            {isOwnProfile && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 rounded-full bg-black/50 opacity-0 hover:opacity-100 active:opacity-100 transition-opacity flex items-center justify-center"
-                  aria-label="Change profile photo"
-                >
-                  <Camera className="w-4 h-4 text-white" />
-                </button>
-                {profile?.avatar_url && (
+    const profileHero = (
+      <div className="relative -mx-4">
+        <div className="relative h-32 sm:h-36 overflow-hidden bg-muted/30">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/10 to-background" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_50%_-30%,hsl(38_90%_55%/0.35),transparent_55%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background via-background/80 to-transparent" />
+        </div>
+        <div className="relative z-10 px-4 -mt-16 sm:-mt-[4.5rem] pb-1">
+          <div className="flex flex-col items-center sm:flex-row sm:items-end sm:gap-5">
+            <div className="relative shrink-0">
+              <div
+                className={`relative w-[5.5rem] h-[5.5rem] sm:w-28 sm:h-28 rounded-[1.35rem] overflow-hidden bg-card ring-[3px] ring-background shadow-[0_12px_40px_-12px_rgba(0,0,0,0.65)] ${!isOwnProfile && profile?.avatar_url ? 'cursor-zoom-in' : ''}`}
+              >
+                {isOwnProfile ? (
+                  <div className="relative w-full h-full group/avatar">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl font-bold bg-gradient-to-br from-primary/25 to-muted text-primary">
+                        {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                      </div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 group-hover/avatar:opacity-100 active:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-2 rounded-full bg-background/90 text-foreground shadow-md"
+                        aria-label="Change profile photo"
+                      >
+                        <Camera className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="relative block w-full h-full text-left"
+                    onClick={() => { if (profile?.avatar_url) setPreviewAvatarUrl(profile.avatar_url); }}
+                  >
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl font-bold bg-gradient-to-br from-primary/25 to-muted text-primary">
+                        {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                      </div>
+                    )}
+                  </button>
+                )}
+                {isOwnProfile && profile?.avatar_url && (
                   <button
                     type="button"
                     onClick={() => openCropWithUrl(profile.avatar_url!)}
-                    className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow"
+                    className="absolute -bottom-1 -right-1 z-10 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-2 border-background hover:bg-primary/90 transition-colors"
                     title="Crop photo"
                   >
-                    <Crop className="w-2.5 h-2.5 text-primary-foreground" />
+                    <Crop className="w-3.5 h-3.5" />
                   </button>
                 )}
-              </>
-            )}
+              </div>
+            </div>
+            <div className="mt-3 sm:mt-0 sm:pb-1 flex-1 min-w-0 text-center sm:text-left space-y-2 w-full sm:w-auto">
+              <div>
+                <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{profileDisplayName}</h2>
+                <div className="mt-1.5 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                  {selectedUserId === group.admin_user_id && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-medium text-primary border border-primary/25">
+                      <Crown className="w-3 h-3" /> Admin
+                    </span>
+                  )}
+                  {profile?.is_placeholder && (
+                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] text-muted-foreground border border-border/60">Unregistered</span>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 max-w-md mx-auto sm:mx-0 sm:max-w-sm rounded-xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden divide-x divide-border/40 shadow-sm">
+                <div className="py-2.5 px-1 text-center">
+                  <p className="font-display text-lg sm:text-xl font-bold text-foreground tabular-nums">{memberPicks.length}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{isBookClub ? 'Books' : 'Picks'}</p>
+                </div>
+                <div className="py-2.5 px-1 text-center">
+                  <p className="font-display text-lg sm:text-xl font-bold text-foreground tabular-nums">{earned.length}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Badges</p>
+                </div>
+                <div className="py-2.5 px-1 text-center">
+                  <p className={`font-display text-lg sm:text-xl font-bold tabular-nums ${total > 0 ? (pct >= 50 ? 'text-gradient-gold' : 'text-foreground') : 'text-muted-foreground'}`}>
+                    {total > 0 ? `${pct}%` : '—'}
+                  </p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Guess hit</p>
+                </div>
+              </div>
+              {total > 0 && (
+                <p className="text-[11px] text-muted-foreground text-center sm:text-left">
+                  <span className="text-green-400 font-medium">{correct}</span> correct · <span className="text-foreground/80 font-medium">{total}</span> guessed · this club
+                </p>
+              )}
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-sm font-bold truncate">{profileDisplayName}</p>
-            {selectedUserId === group.admin_user_id ? (
-              <span className="inline-flex items-center gap-1 text-[10px] text-primary"><Crown className="w-3 h-3" /> Admin</span>
-            ) : profile?.is_placeholder ? (
-              <span className="text-[10px] text-muted-foreground">Unregistered</span>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex gap-0 border-b border-border/40 -mb-px overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          {tabBtn('overview', 'Overview')}
-          {tabBtn('picks', 'Picks')}
-          {tabBtn('guessing', 'Guessing')}
-          {tabBtn('taste', 'Taste')}
         </div>
       </div>
     );
 
-    const overviewTab = (
-      <div className="space-y-4 pt-2">
-        {sectionLabel('Badges')}
-        {earned.length > 0 ? (
-          <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 space-y-2">
-            <div className="flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-primary" />
-              <h4 className="font-display text-sm font-bold">Badges</h4>
-              <span className="text-xs text-muted-foreground">· {earned.length}</span>
-            </div>
-            {badgeIntroPlayed ? (
-              <div className="flex flex-wrap gap-1.5">
-                {earned.map(({ badge, metricLabel }) => (
-                  <Popover key={badge.id}>
-                    <PopoverTrigger asChild>
-                      <button type="button" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background border border-primary/20 text-xs font-medium hover:border-primary/50 active:border-primary transition-colors">
-                        <span className="text-sm leading-none">{badge.emoji}</span>
-                        <span>{badge.label}</span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent side="top" className="max-w-[240px] p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-base leading-none">{badge.emoji}</span>
-                        <p className="font-display text-sm font-bold">{badge.label}</p>
-                      </div>
-                      <p className="text-xs">{badge.description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{metricLabel}</p>
-                    </PopoverContent>
-                  </Popover>
-                ))}
-              </div>
-            ) : (
-              <motion.div
-                className="flex flex-wrap gap-1.5"
-                initial="hidden"
-                animate="visible"
-                variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
-              >
-                {earned.map(({ badge, metricLabel }) => (
-                  <motion.div
-                    key={badge.id}
-                    variants={{ hidden: { opacity: 0, scale: 0.75 }, visible: { opacity: 1, scale: 1, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } } }}
-                  >
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button type="button" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background border border-primary/20 text-xs font-medium hover:border-primary/50 active:border-primary transition-colors">
-                          <span className="text-sm leading-none">{badge.emoji}</span>
-                          <span>{badge.label}</span>
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent side="top" className="max-w-[240px] p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-base leading-none">{badge.emoji}</span>
-                          <p className="font-display text-sm font-bold">{badge.label}</p>
-                        </div>
-                        <p className="text-xs">{badge.description}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{metricLabel}</p>
-                      </PopoverContent>
-                    </Popover>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-border/60 bg-muted/10 px-3 py-4 text-center">
-            <p className="text-sm text-muted-foreground">No badges yet — keep ranking picks and joining guessing rounds to earn your first ones.</p>
-          </div>
-        )}
+    const stickyTabs = (
+      <div className="sticky top-0 z-20 -mx-4 px-2 bg-background/90 backdrop-blur-xl border-b border-border/40">
+        <div className="flex justify-center sm:justify-start gap-0 sm:gap-1">
+          {tabBtn('overview', 'Overview')}
+          {tabBtn('picks', 'Picks')}
+          {tabBtn('guessing', 'Guessing')}
+        </div>
+      </div>
+    );
 
-        {sectionLabel('Guessing scores')}
-        <p className="text-[10px] text-muted-foreground -mt-2 mb-1">All time · this club</p>
-        <div className="flex gap-2.5">
-          <div className="flex-1 bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-center">
-            <p className="font-display text-2xl font-bold text-green-400">{correct}</p>
-            <p className="text-xs text-muted-foreground">Correct</p>
+    const badgeChip = (badgeIntro: boolean) => (
+      badgeIntro ? (
+        <div className="flex flex-wrap items-center gap-1">
+          {earned.map(({ badge, metricLabel }) => (
+            <Popover key={badge.id}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-0.5 rounded-md border border-border/60 bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-foreground/90 hover:border-primary/40 hover:bg-primary/5 transition-colors max-w-[140px] sm:max-w-[180px]"
+                >
+                  <span className="text-[11px] leading-none shrink-0">{badge.emoji}</span>
+                  <span className="truncate">{badge.label}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" className="max-w-[240px] p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-base leading-none">{badge.emoji}</span>
+                  <p className="font-display text-sm font-bold">{badge.label}</p>
+                </div>
+                <p className="text-xs">{badge.description}</p>
+                <p className="text-xs text-muted-foreground mt-1">{metricLabel}</p>
+              </PopoverContent>
+            </Popover>
+          ))}
+        </div>
+      ) : (
+        <motion.div className="flex flex-wrap items-center gap-1" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.04 } } }}>
+          {earned.map(({ badge, metricLabel }) => (
+            <motion.div key={badge.id} variants={{ hidden: { opacity: 0, scale: 0.9 }, visible: { opacity: 1, scale: 1, transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] } } }}>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-0.5 rounded-md border border-border/60 bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-foreground/90 hover:border-primary/40 hover:bg-primary/5 transition-colors max-w-[140px] sm:max-w-[180px]"
+                  >
+                    <span className="text-[11px] leading-none shrink-0">{badge.emoji}</span>
+                    <span className="truncate">{badge.label}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" className="max-w-[240px] p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-base leading-none">{badge.emoji}</span>
+                    <p className="font-display text-sm font-bold">{badge.label}</p>
+                  </div>
+                  <p className="text-xs">{badge.description}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{metricLabel}</p>
+                </PopoverContent>
+              </Popover>
+            </motion.div>
+          ))}
+        </motion.div>
+      )
+    );
+
+    const overviewTab = (
+      <div className="space-y-5 pt-1">
+        <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 sm:p-4 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <Award className="w-4 h-4 text-primary shrink-0" aria-hidden />
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Badges</span>
           </div>
-          <div className="flex-1 bg-muted/20 rounded-xl p-3 text-center">
-            <p className="font-display text-2xl font-bold text-foreground">{total}</p>
-            <p className="text-xs text-muted-foreground">Total</p>
-          </div>
-          <div className={`flex-1 rounded-xl p-3 text-center ${pct >= 50 ? 'bg-primary/10 border border-primary/20' : 'bg-muted/20'}`}>
-            <p className={`font-display text-2xl font-bold ${pct >= 50 ? 'text-gradient-gold' : 'text-foreground'}`}>{pct}%</p>
-            <p className="text-xs text-muted-foreground">Accuracy</p>
-          </div>
+          {earned.length > 0 ? (
+            badgeChip(badgeIntroPlayed)
+          ) : (
+            <p className="text-xs text-muted-foreground leading-relaxed">No badges yet — rank picks and join guessing rounds to unlock achievements.</p>
+          )}
         </div>
 
         {overallAvg !== null && (
-          <>
-            {sectionLabel('Pick reception')}
-            <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 flex items-center gap-3">
-              <Star className="w-5 h-5 text-primary fill-primary shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold">Avg pick ranking</p>
-                <p className="text-xs text-muted-foreground">{perPickAvgs.length} pick{perPickAvgs.length !== 1 ? 's' : ''} ranked by the group</p>
-              </div>
-              <p className="font-display text-2xl font-bold text-primary">{overallAvg.toFixed(1)}</p>
+          <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-primary/8 to-transparent p-4 flex items-center gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/20">
+              <Star className="w-5 h-5 text-primary fill-primary/80" />
             </div>
-          </>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">How the group ranks their picks</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{perPickAvgs.length} pick{perPickAvgs.length !== 1 ? 's' : ''} with rankings · lower avg is better</p>
+            </div>
+            <p className="font-display text-2xl font-bold text-gradient-gold tabular-nums shrink-0">{overallAvg.toFixed(1)}</p>
+          </div>
         )}
 
         {isOwnProfile && hasUnrankedSeasons && (
-          <Button variant="outline" size="sm" className="w-full" onClick={() => setPastRankingsOpen(true)}>
+          <Button variant="outline" size="sm" className="w-full rounded-xl border-dashed" onClick={() => setPastRankingsOpen(true)}>
             <ListOrdered className="w-4 h-4 mr-2" />
             Add past rankings
           </Button>
         )}
 
-        {sectionLabel('Taste preview')}
-        <RankingInsights userId={selectedUserId} groupId={group.id} profiles={profiles} variant="teaser" />
-        <Button variant="ghost" size="sm" className="w-full h-8 text-xs text-muted-foreground" onClick={() => setProfileTab('taste')}>
-          Open full taste insights
-          <ChevronRight className="w-3.5 h-3.5 ml-1" />
-        </Button>
+        <div className="rounded-2xl border border-border/40 bg-muted/15 p-3 sm:p-4 space-y-3">
+          {sectionLabel('Club taste')}
+          <RankingInsights userId={selectedUserId} groupId={group.id} profiles={profiles} variant="default" dense hideTitle />
+        </div>
       </div>
     );
 
     const picksTab = (
-      <div className="space-y-3 pt-2">
-        {sectionLabel('Their picks')}
+      <div className="space-y-4 pt-2">
+        <p className="text-xs text-muted-foreground text-center sm:text-left">Posters from every season they chose a title.</p>
         {memberPicks.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/60 bg-muted/10 px-3 py-6 text-center space-y-2">
-            <Film className="w-8 h-8 mx-auto text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">No picks assigned yet.</p>
-            <p className="text-xs text-muted-foreground/80">When seasons start, their choices will show up here.</p>
+          <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 px-4 py-10 text-center space-y-2">
+            <Film className="w-10 h-10 mx-auto text-muted-foreground/35" />
+            <p className="text-sm font-medium text-foreground/90">No picks yet</p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">When a season starts, their choices appear here like a gallery.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
             {memberPicks.map(pick => {
               const revealed = isPickRevealed(pick);
               return (
-                <div key={pick.id} className="aspect-[2/3] rounded-lg overflow-hidden bg-muted ring-1 ring-border/20">
+                <div
+                  key={pick.id}
+                  className="group aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/30 shadow-sm transition-all duration-300 hover:ring-primary/35 hover:shadow-[0_8px_28px_-8px_hsl(38_90%_55%/0.25)] hover:-translate-y-0.5"
+                >
                   {revealed
                     ? pick.poster_url
-                      ? <img src={pick.poster_url} alt={pick.title} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center p-1"><span className="text-[9px] text-muted-foreground text-center leading-tight line-clamp-3">{pick.title}</span></div>
-                    : <div className="w-full h-full flex items-center justify-center bg-muted/60"><span className="text-lg text-muted-foreground font-bold">?</span></div>}
+                      ? <img src={pick.poster_url} alt={pick.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+                      : <div className="w-full h-full flex items-center justify-center p-1.5 bg-muted/80"><span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-4 font-medium">{pick.title}</span></div>
+                    : <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-muted to-muted/60"><span className="text-xl text-muted-foreground/70 font-bold">?</span></div>}
                 </div>
               );
             })}
@@ -809,52 +840,67 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     const guessingTab = (
-      <div className="space-y-3 pt-2">
-        {sectionLabel('Guess history')}
+      <div className="space-y-4 pt-2">
+        <p className="text-xs text-muted-foreground text-center sm:text-left">Who they thought picked each watched title.</p>
         {uniqueWatched.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/60 bg-muted/10 px-3 py-6 text-center space-y-2">
-            <Trophy className="w-8 h-8 mx-auto text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">Nothing to show yet.</p>
-            <p className="text-xs text-muted-foreground/80">Guess history appears after the club has watched picks with guessing enabled.</p>
+          <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 px-4 py-10 text-center space-y-2">
+            <Trophy className="w-10 h-10 mx-auto text-muted-foreground/35" />
+            <p className="text-sm font-medium text-foreground/90">No guess history yet</p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">Shows up once your club has finished watches with guessing turned on.</p>
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap justify-center sm:justify-start gap-1 p-1 rounded-xl bg-muted/30 border border-border/40">
               {(['all', 'correct', 'miss', 'none'] as const).map(f => (
                 <Button
                   key={f}
                   type="button"
                   variant={guessFilter === f ? 'secondary' : 'ghost'}
                   size="sm"
-                  className="h-7 text-[10px] px-2 capitalize"
+                  className={`h-8 text-[11px] px-3 rounded-lg capitalize ${guessFilter === f ? 'shadow-sm' : ''}`}
                   onClick={() => setGuessFilter(f)}
                 >
                   {f === 'all' ? 'All' : f === 'correct' ? 'Correct' : f === 'miss' ? 'Misses' : 'No guess'}
                 </Button>
               ))}
             </div>
-            <div className="space-y-4">
+            <div className="space-y-5">
               {guessGroupsVisible.map(group => (
-                <div key={group.sn} className="space-y-1.5">
-                  <p className="text-[11px] font-semibold text-primary/90 tracking-wide">{group.label}</p>
-                  <div className="space-y-1">
+                <div key={group.sn} className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-primary/80 pl-0.5">{group.label}</p>
+                  <div className="space-y-2">
                     {group.rows.map(m => (
                       <div
                         key={m.pick.id}
-                        className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] ${m.guess ? (m.isCorrect ? 'bg-green-500/10' : 'bg-destructive/5') : 'bg-muted/20'}`}
+                        className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+                          m.guess
+                            ? m.isCorrect
+                              ? 'border-green-500/25 bg-green-500/[0.07]'
+                              : 'border-destructive/20 bg-destructive/[0.06]'
+                            : 'border-border/40 bg-card/30'
+                        }`}
                       >
-                        {m.pick.poster_url
-                          ? <img src={m.pick.poster_url} alt={m.pick.title} className="w-5 h-7 rounded object-cover shrink-0" />
-                          : <div className="w-5 h-7 rounded bg-muted flex items-center justify-center shrink-0"><Film className="w-2.5 h-2.5 text-muted-foreground" /></div>}
-                        <span className="font-medium truncate flex-1">{m.pick.title}</span>
-                        {m.guess
-                          ? <div className="flex items-center gap-1 shrink-0">
-                              <span className={`font-medium ${m.isCorrect ? 'text-green-400' : 'text-destructive'}`}>{m.guessedName}</span>
-                              {m.isCorrect ? <Check className="w-2.5 h-2.5 text-green-400" /> : <X className="w-2.5 h-2.5 text-destructive" />}
-                            </div>
-                          : m.isOwnPick
-                            ? <span className="text-primary/70 italic shrink-0">Their pick</span>
-                            : <span className="text-muted-foreground italic shrink-0">No guess</span>}
+                        <div className="w-10 aspect-[2/3] rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-border/30 shadow-sm">
+                          {m.pick.poster_url
+                            ? <img src={m.pick.poster_url} alt="" className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center"><Film className="w-3.5 h-3.5 text-muted-foreground" /></div>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate leading-snug">{m.pick.title}</p>
+                          <div className="mt-0.5 flex items-center gap-1.5 text-xs">
+                            {m.guess ? (
+                              <>
+                                <span className="text-muted-foreground">Guessed</span>
+                                <span className={`font-semibold ${m.isCorrect ? 'text-green-400' : 'text-destructive'}`}>{m.guessedName}</span>
+                                {m.isCorrect ? <Check className="w-3.5 h-3.5 text-green-400 shrink-0" /> : <X className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                              </>
+                            ) : m.isOwnPick ? (
+                              <span className="text-primary/75 italic">Their pick</span>
+                            ) : (
+                              <span className="text-muted-foreground italic">No guess</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -862,7 +908,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
               ))}
             </div>
             {guessGroups.length > 2 && (
-              <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => setGuessOlderExpanded(e => !e)}>
+              <Button variant="outline" size="sm" className="w-full h-9 text-xs rounded-xl" onClick={() => setGuessOlderExpanded(e => !e)}>
                 {guessOlderExpanded ? 'Show fewer seasons' : `Show ${guessGroups.length - 2} older season${guessGroups.length - 2 === 1 ? '' : 's'}`}
               </Button>
             )}
@@ -871,21 +917,14 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       </div>
     );
 
-    const tasteTab = (
-      <div className="space-y-3 pt-2">
-        {sectionLabel('Ranking insights')}
-        <RankingInsights userId={selectedUserId} groupId={group.id} profiles={profiles} variant="default" />
-      </div>
-    );
-
     return (
-      <div className="space-y-0 -mx-4 px-4">
-        {stickyHeader}
-        <div className="pt-3 pb-2">
+      <div className="space-y-0 -mx-4">
+        {profileHero}
+        {stickyTabs}
+        <div className="px-4 pt-4 pb-3">
           {profileTab === 'overview' && overviewTab}
           {profileTab === 'picks' && picksTab}
           {profileTab === 'guessing' && guessingTab}
-          {profileTab === 'taste' && tasteTab}
         </div>
       </div>
     );
@@ -994,7 +1033,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             const isOwnCard = member.user_id === user?.id;
             const earned = allMemberBadgesMap.get(member.user_id) || [];
             const topBadges = earned.slice(0, 2);
-            const pickN = pickCountByUser.get(member.user_id) ?? 0;
             return (
               <motion.button
                 key={member.id}
@@ -1035,9 +1073,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
 
                 <div className="flex-1 min-w-0 sm:w-full">
                   <p className="text-sm font-medium truncate">{profile?.display_name || 'Unknown'}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {pickN} {pickN === 1 ? (isBookClub ? 'book' : 'movie') : isBookClub ? 'books' : 'movies'} picked
-                  </p>
                   {isGroupAdmin ? (
                     <span className="inline-flex items-center gap-1 text-xs text-primary mt-0.5"><Crown className="w-3 h-3" /> Admin</span>
                   ) : isPlaceholder ? (
