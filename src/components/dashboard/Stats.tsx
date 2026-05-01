@@ -83,10 +83,45 @@ interface TmdbDetails {
 
 const TMDB_CACHE_KEY = 'mc_tmdb_details_v6';
 
+/** Normalize cached TMDB payloads so partial / legacy sessionStorage entries cannot crash Stats. */
+const normalizeTmdbDetails = (raw: unknown): TmdbDetails | null => {
+  if (!raw || typeof raw !== 'object') return null;
+  const d = raw as Record<string, unknown>;
+  const genres = Array.isArray(d.genres) ? (d.genres as { id: number; name: string }[]) : [];
+  const production_countries = Array.isArray(d.production_countries)
+    ? (d.production_countries as { iso_3166_1: string; name: string }[])
+    : [];
+  const cast = Array.isArray(d.cast) ? (d.cast as CastMember[]) : undefined;
+  const directors = Array.isArray(d.directors) ? (d.directors as CrewMember[]) : undefined;
+  const production_companies = Array.isArray(d.production_companies)
+    ? (d.production_companies as ProductionCompany[])
+    : undefined;
+  return {
+    runtime: typeof d.runtime === 'number' ? d.runtime : null,
+    vote_average: typeof d.vote_average === 'number' ? d.vote_average : null,
+    release_date: typeof d.release_date === 'string' ? d.release_date : null,
+    popularity: typeof d.popularity === 'number' ? d.popularity : null,
+    genres,
+    original_language: typeof d.original_language === 'string' ? d.original_language : null,
+    production_countries,
+    cast,
+    directors,
+    production_companies,
+  };
+};
+
 const loadTmdbCache = (): Record<string, TmdbDetails> => {
   try {
     const raw = sessionStorage.getItem(TMDB_CACHE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: Record<string, TmdbDetails> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      const n = normalizeTmdbDetails(v);
+      if (n) out[k] = n;
+    }
+    return out;
   } catch {
     return {};
   }
@@ -396,7 +431,7 @@ const Stats = ({ group, profiles, members }: Props) => {
     for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
       if (!det) continue;
-      for (const g of det.genres) {
+      for (const g of det.genres ?? []) {
         if (!genreMap.has(g.name)) genreMap.set(g.name, []);
         genreMap.get(g.name)!.push(p.id);
       }
@@ -422,7 +457,7 @@ const Stats = ({ group, profiles, members }: Props) => {
     for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
       if (!det) continue;
-      for (const c of det.production_countries) {
+      for (const c of det.production_countries ?? []) {
         if (!countryMap.has(c.name)) countryMap.set(c.name, []);
         countryMap.get(c.name)!.push(p.id);
       }
@@ -435,9 +470,9 @@ const Stats = ({ group, profiles, members }: Props) => {
     const actorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[]; popularity: number }>();
     for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
-      if (!det?.cast) continue;
+      if (!det) continue;
       const seen = new Set<number>();
-      for (const c of det.cast) {
+      for (const c of det.cast ?? []) {
         if (seen.has(c.id)) continue;
         seen.add(c.id);
         const pop = typeof c.popularity === 'number' ? c.popularity : 0;
@@ -459,9 +494,9 @@ const Stats = ({ group, profiles, members }: Props) => {
     const directorMap = new Map<number, { name: string; profile_path: string | null; pickIds: string[]; popularity: number }>();
     for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
-      if (!det?.directors) continue;
+      if (!det) continue;
       const seen = new Set<number>();
-      for (const c of det.directors) {
+      for (const c of det.directors ?? []) {
         if (seen.has(c.id)) continue;
         seen.add(c.id);
         const pop = typeof c.popularity === 'number' ? c.popularity : 0;
@@ -482,9 +517,9 @@ const Stats = ({ group, profiles, members }: Props) => {
     const companyMap = new Map<number, { name: string; logo_path: string | null; pickIds: string[] }>();
     for (const p of canonicalPicks) {
       const det = tmdbDetails[p.id];
-      if (!det?.production_companies) continue;
+      if (!det) continue;
       const seen = new Set<number>();
-      for (const c of det.production_companies) {
+      for (const c of det.production_companies ?? []) {
         if (seen.has(c.id)) continue;
         seen.add(c.id);
         const existing = companyMap.get(c.id);
@@ -573,6 +608,7 @@ const Stats = ({ group, profiles, members }: Props) => {
         byUser.get(r.user_id)!.push(r.rank);
       }
       for (const [uid, ranks] of byUser) {
+        if (ranks.length === 0) continue;
         seasonUserMax.set(`${seasonId}:${uid}`, Math.max(...ranks));
       }
     }
@@ -767,7 +803,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       </div>
 
       {/* Decades */}
-      <Section title="By decade" icon={<Calendar className="w-4 h-4" />}>
+      <Section index={1} title="By decade" icon={<Calendar className="w-4 h-4" />}>
         {stats.decadeRows.length === 0 ? (
           <Empty />
         ) : (
@@ -782,7 +818,7 @@ const Stats = ({ group, profiles, members }: Props) => {
 
       {/* Taste by decade */}
       {stats.tasteDecadeRows.length > 0 && (
-        <Section title="Taste by decade" icon={<Star className="w-4 h-4" />} sub="Avg star rating per decade">
+        <Section index={2} title="Taste by decade" icon={<Star className="w-4 h-4" />} sub="Avg star rating per decade">
           <TasteByDecade
             overall={stats.tasteDecadeRows}
             members={stats.tasteMembers}
@@ -795,7 +831,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       {/* Movie-only sections */}
       {!isBookClub && (
         <>
-          <Section title="By genre" icon={<Tag className="w-4 h-4" />} sub={enrichLoading ? 'Loading TMDB data…' : undefined}>
+          <Section index={3} title="By genre" icon={<Tag className="w-4 h-4" />} sub={enrichLoading ? 'Loading TMDB data…' : undefined}>
             {stats.genreRows.length === 0 ? (
               <Empty hint="Pulled from TMDB" />
             ) : (
@@ -809,7 +845,7 @@ const Stats = ({ group, profiles, members }: Props) => {
           </Section>
 
           <div className="grid md:grid-cols-2 gap-4">
-            <Section title="Languages" icon={<Languages className="w-4 h-4" />}>
+            <Section index={4} title="Languages" icon={<Languages className="w-4 h-4" />}>
               {stats.langRows.length === 0 ? <Empty /> : (
                 <div className="space-y-1.5">
                   {stats.langRows.slice(0, 8).map((r, i) => (
@@ -819,7 +855,7 @@ const Stats = ({ group, profiles, members }: Props) => {
                 </div>
               )}
             </Section>
-            <Section title="Countries" icon={<Globe className="w-4 h-4" />}>
+            <Section index={4} title="Countries" icon={<Globe className="w-4 h-4" />}>
               {stats.countryRows.length === 0 ? <Empty /> : (
                 <div className="space-y-1.5">
                   {stats.countryRows.slice(0, 8).map((r, i) => (
@@ -833,6 +869,7 @@ const Stats = ({ group, profiles, members }: Props) => {
 
           {/* Actors */}
           <Section
+            index={5}
             title="Actors"
             icon={<Users className="w-4 h-4" />}
             sub={enrichLoading ? 'Loading TMDB data…' : (stats.actorRows.length > 0 ? `${stats.actorRows.length} unique` : undefined)}
@@ -849,6 +886,7 @@ const Stats = ({ group, profiles, members }: Props) => {
 
           {/* Directors */}
           <Section
+            index={6}
             title="Directors"
             icon={<Clapperboard className="w-4 h-4" />}
             sub={enrichLoading ? 'Loading TMDB data…' : (stats.directorRows.length > 0 ? `${stats.directorRows.length} unique` : undefined)}
@@ -867,6 +905,7 @@ const Stats = ({ group, profiles, members }: Props) => {
 
           {/* Production companies */}
           <Section
+            index={7}
             title="Production companies"
             icon={<Building2 className="w-4 h-4" />}
             sub={enrichLoading ? 'Loading TMDB data…' : (stats.companyRows.length > 0 ? `${stats.companyRows.length} unique` : undefined)}
@@ -885,7 +924,7 @@ const Stats = ({ group, profiles, members }: Props) => {
           </Section>
 
           <div className="grid md:grid-cols-2 gap-4">
-            <Section title="Records" icon={<Trophy className="w-4 h-4" />}>
+            <Section index={8} title="Records" icon={<Trophy className="w-4 h-4" />}>
               <ul className="space-y-1">
                 <RecordRow label="Longest"
                   value={stats.longest ? `${pickIdToEntry.get(stats.longest.pickId)?.canonical.title} · ${formatRuntime(stats.longest.runtime)}` : '—'}
@@ -913,7 +952,7 @@ const Stats = ({ group, profiles, members }: Props) => {
                   onClick={stats.newest ? () => openDrill('Newest', [stats.newest!.p.id]) : undefined} />
               </ul>
             </Section>
-            <Section title="Coverage" icon={<BookOpen className="w-4 h-4" />}>
+            <Section index={8} title="Coverage" icon={<BookOpen className="w-4 h-4" />}>
               <p className="text-sm text-muted-foreground">
                 TMDB details loaded for{' '}
                 <span className="text-foreground font-medium">
@@ -1481,9 +1520,8 @@ const ActorGrid = ({
             <motion.button
               key={a.id}
               initial={{ opacity: 0, scale: 0.92 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true, margin: '-20px' }}
-              transition={{ duration: 0.28, delay: i * 0.03, ease: [0.16, 1, 0.3, 1] }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.28, delay: Math.min(i * 0.03, 0.5), ease: [0.16, 1, 0.3, 1] }}
               onClick={() => onSelect(a)}
               className="text-left group"
             >
@@ -1583,14 +1621,13 @@ const StatCard = ({
 };
 
 const Section = ({
-  title, icon, children, sub,
-}: { title: string; icon: React.ReactNode; children: React.ReactNode; sub?: string }) => (
+  title, icon, children, sub, index = 0,
+}: { title: string; icon: React.ReactNode; children: React.ReactNode; sub?: string; index?: number }) => (
   <motion.div
     className="glass-card rounded-2xl p-4 sm:p-5"
     initial={{ opacity: 0, y: 12 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true, margin: '-40px' }}
-    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.4, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] as number[] }}
   >
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2 text-sm font-semibold">
@@ -1612,8 +1649,7 @@ const BarRow = ({
       <motion.div
         className="h-full bg-gradient-to-r from-primary/70 to-primary rounded-full"
         initial={{ width: '0%' }}
-        whileInView={{ width: `${pct}%` }}
-        viewport={{ once: true, margin: '-20px' }}
+        animate={{ width: `${pct}%` }}
         transition={{ duration: 0.65, delay: index * 0.045, ease: [0.16, 1, 0.3, 1] }}
       />
     </div>
