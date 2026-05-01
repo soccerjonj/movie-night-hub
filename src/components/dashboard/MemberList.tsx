@@ -1052,7 +1052,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     return (
-      <div className="min-w-0 max-w-full space-y-0 overflow-x-hidden -mx-4">
+      <div className="min-w-0 max-w-full space-y-0 overflow-x-hidden -mx-3 sm:-mx-4">
         {profileHero}
         {stickyTabs}
         <div className="min-w-0 w-full px-3 pt-4 pb-3 sm:px-4">
