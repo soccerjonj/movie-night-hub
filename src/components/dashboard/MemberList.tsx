@@ -1156,137 +1156,84 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         </div>
       </motion.div>
 
-      {/* Member preview wall — social-style tiles */}
+      {/* Member list */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-        className="glass-card relative mt-4 sm:mt-6 overflow-hidden rounded-3xl border border-border/50 p-4 sm:p-6"
+        className="glass-card mt-4 sm:mt-6 rounded-2xl border border-border/50 overflow-hidden"
       >
-        <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-primary/10 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -left-12 bottom-0 h-40 w-40 rounded-full bg-amber-500/8 blur-3xl" aria-hidden />
-        <div className="relative">
-          <div className="mb-5 sm:mb-6">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary shrink-0" />
-                  <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight">The crew</h2>
-                </div>
-                <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-                  Tap anyone for picks, badges, taste insights, and guess history — same energy as their full profile.
-                </p>
-              </div>
-              <span className="rounded-full bg-muted/50 border border-border/50 px-3 py-1 text-[11px] font-medium text-muted-foreground tabular-nums shrink-0">
-                {members.length} {members.length === 1 ? 'member' : 'members'}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {members.map((member, i) => {
-              const profile = getProfile(member.user_id);
-              const isGroupAdmin = member.user_id === group.admin_user_id;
-              const isPlaceholder = profile?.is_placeholder === true;
-              const isOwnCard = member.user_id === user?.id;
-              const earned = allMemberBadgesMap.get(member.user_id) || [];
-              const bannerAccent = isGroupAdmin
-                ? 'from-amber-500/50 via-primary/35 to-background'
-                : MEMBER_BANNER_ACCENTS[i % MEMBER_BANNER_ACCENTS.length];
-              const emojiStrip = earned.slice(0, 6);
-              const moreBadges = earned.length - emojiStrip.length;
-              return (
-                <motion.button
-                  key={member.id}
-                  type="button"
-                  custom={i}
-                  variants={cardVariants}
-                  initial="hidden"
-                  animate="visible"
-                  onClick={() => setSelectedUserId(member.user_id)}
-                  className={`group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                    isPlaceholder
-                      ? 'border-dashed border-border/60 bg-muted/15 hover:border-border hover:bg-muted/25'
-                      : 'border-border/45 bg-card/55 hover:border-primary/35 hover:bg-card/80 hover:shadow-[0_16px_48px_-16px_hsl(38_90%_55%/0.22)]'
-                  }`}
-                >
-                  <div className={`relative h-16 shrink-0 bg-gradient-to-br sm:h-[4.25rem] ${bannerAccent}`}>
-                    <div className="absolute inset-0 bg-gradient-to-t from-card/90 to-transparent" />
-                    {isGroupAdmin && (
-                      <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-background/85 px-2 py-0.5 text-[10px] font-semibold text-primary shadow-sm ring-1 ring-primary/25 backdrop-blur-sm">
-                        <Crown className="w-3 h-3" /> Host
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
+          <h2 className="font-display text-base font-bold flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" /> Members
+          </h2>
+          <span className="text-[11px] text-muted-foreground tabular-nums">{members.length}</span>
+        </div>
+        <div className="divide-y divide-border/30">
+          {members.map((member, i) => {
+            const profile = getProfile(member.user_id);
+            const isGroupAdmin = member.user_id === group.admin_user_id;
+            const isPlaceholder = profile?.is_placeholder === true;
+            const isOwnCard = member.user_id === user?.id;
+            const earned = allMemberBadgesMap.get(member.user_id) || [];
+            return (
+              <motion.button
+                key={member.id}
+                type="button"
+                custom={i}
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                onClick={() => setSelectedUserId(member.user_id)}
+                className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+              >
+                {/* Avatar */}
+                <div className="relative shrink-0">
+                  <div className={`h-10 w-10 overflow-hidden rounded-full ${isPlaceholder ? 'bg-muted ring-1 ring-border/50' : 'bg-card ring-2 ring-border/40'} ${isGroupAdmin ? 'ring-primary/40' : ''}`}>
+                    {isPlaceholder ? (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Ghost className="h-5 w-5 text-muted-foreground/60" />
+                      </div>
+                    ) : profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/30 to-muted text-sm font-bold text-primary">
+                        {profile?.display_name?.charAt(0).toUpperCase() || '?'}
                       </div>
                     )}
                   </div>
-                  <div className="relative -mt-9 flex flex-col items-center px-3 pb-3 pt-0">
-                    <div className="relative">
-                      <div
-                        className={`relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-2xl shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)] ring-[3px] ${
-                          isPlaceholder ? 'bg-muted ring-border/50' : 'bg-card ring-background'
-                        } ${isGroupAdmin ? 'ring-primary/35' : ''}`}
-                      >
-                        {isPlaceholder ? (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <Ghost className="h-8 w-8 text-muted-foreground/60" />
-                          </div>
-                        ) : profile?.avatar_url ? (
-                          <img src={profile.avatar_url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/30 to-muted text-xl font-bold text-primary">
-                            {profile?.display_name?.charAt(0).toUpperCase() || '?'}
-                          </div>
-                        )}
-                      </div>
-                      {isOwnCard && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                          className="absolute -bottom-1 -right-1 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition-transform hover:scale-105 active:scale-95"
-                          title="Change photo"
-                        >
-                          <Camera className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    <p className="mt-2.5 w-full truncate text-center font-display text-base font-bold tracking-tight text-foreground sm:text-lg">
-                      {profile?.display_name || 'Unknown'}
-                    </p>
-                    {isPlaceholder ? (
-                      <span className="mt-1 text-[11px] text-muted-foreground">Invite pending</span>
-                    ) : (
-                      <span className="mt-0.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80 opacity-80 group-hover:text-primary group-hover:opacity-100 transition-colors">
-                        View profile
+                  {isOwnCard && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                      className="absolute -bottom-0.5 -right-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-background bg-primary text-primary-foreground shadow-sm"
+                      title="Change photo"
+                    >
+                      <Camera className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </div>
+                {/* Name + meta */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{profile?.display_name || 'Unknown'}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {isGroupAdmin && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-primary">
+                        <Crown className="w-2.5 h-2.5" /> Admin
                       </span>
                     )}
-                    {!isPlaceholder && emojiStrip.length > 0 && (
-                      <div className="mt-2.5 flex max-w-full flex-wrap items-center justify-center gap-1.5 px-1" aria-hidden>
-                        {emojiStrip.map(({ badge }) => (
-                          <span
-                            key={badge.id}
-                            className="flex h-8 w-8 items-center justify-center rounded-xl bg-background/90 text-lg shadow-sm ring-1 ring-border/40 transition-transform group-hover:scale-105"
-                            title={badge.label}
-                          >
-                            {badge.emoji}
-                          </span>
-                        ))}
-                        {moreBadges > 0 && (
-                          <span className="flex h-8 min-w-8 items-center justify-center rounded-xl bg-primary/15 px-1.5 text-[11px] font-bold text-primary ring-1 ring-primary/25">
-                            +{moreBadges}
-                          </span>
-                        )}
-                      </div>
+                    {isPlaceholder && (
+                      <span className="text-[10px] text-muted-foreground">Invite pending</span>
                     )}
-                    {!isPlaceholder && (
-                      <div className="mt-3 flex w-full items-center justify-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors group-hover:text-primary">
-                        <span>Explore</span>
-                        <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                      </div>
+                    {!isPlaceholder && earned.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{earned.length} badge{earned.length !== 1 ? 's' : ''}</span>
                     )}
                   </div>
-                </motion.button>
-              );
-            })}
-          </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground/70" />
+              </motion.button>
+            );
+          })}
         </div>
       </motion.div>
 
