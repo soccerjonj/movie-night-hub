@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, Settings, ArrowLeft, DoorOpen, Eye, EyeOff } from 'lucide-react';
+import { LogOut, Settings, ArrowLeft, DoorOpen, Eye, EyeOff, Film, Users, Clock, BarChart2 } from 'lucide-react';
 import AdminWalkthrough from '@/components/dashboard/AdminWalkthrough';
 import logo from '@/assets/logo.png';
 
@@ -190,54 +190,48 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="container max-w-5xl mx-auto px-3 sm:px-4">
+        {/* Tabs — desktop only (mobile uses bottom nav) */}
+        <div className="hidden sm:block container max-w-5xl mx-auto px-4">
           <div className="flex gap-1 -mb-px">
-            <button
-              onClick={() => setTab('current')}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                tab === 'current'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Current {labels.seasonNoun}
-            </button>
-            <button
-              onClick={() => setTab('club')}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                tab === 'club'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Club
-            </button>
-            <button
-              onClick={() => setTab('history')}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                tab === 'history'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              History
-            </button>
-            <button
-              onClick={() => setTab('stats')}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                tab === 'stats'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Stats
-            </button>
+            {(['current', 'club', 'history', 'stats'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                  tab === t ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t === 'current' ? `Current ${labels.seasonNoun}` : t === 'club' ? 'Club' : t === 'history' ? 'History' : 'Stats'}
+              </button>
+            ))}
           </div>
         </div>
       </header>
 
-      <main className="container max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8">
+      {/* Bottom nav — mobile only */}
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-50 bg-card/90 backdrop-blur-xl border-t border-border/50">
+        <div className="flex">
+          {([
+            { id: 'current', label: labels.seasonNoun, icon: Film },
+            { id: 'club', label: 'Club', icon: Users },
+            { id: 'history', label: 'History', icon: Clock },
+            { id: 'stats', label: 'Stats', icon: BarChart2 },
+          ] as const).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
+                tab === id ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              <Icon className={`w-5 h-5 ${tab === id ? 'text-primary' : 'text-muted-foreground/70'}`} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <main className="container max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8 pb-24 sm:pb-8">
         <motion.div
           key={tab}
           initial={{ opacity: 0, y: 10 }}
