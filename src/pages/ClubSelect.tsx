@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Users, Film, BookOpen, LogOut, MoreHorizontal } from 'lucide-react';
+import { Plus, Users, Film, BookOpen, LogOut, MoreHorizontal, ChevronRight } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { motion } from 'framer-motion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -15,6 +15,7 @@ interface GroupInfo {
   name: string;
   member_count: number;
   season_status: string | null;
+  season_number: number | null;
   club_type: 'movie' | 'book';
 }
 
@@ -25,6 +26,13 @@ const STATUS_STYLES: Record<string, string> = {
   picking:   'bg-violet-500/15 text-violet-400 border-violet-500/20',
 };
 
+const STATUS_STRIP: Record<string, string> = {
+  watching:  'bg-amber-400',
+  reviewing: 'bg-sky-400',
+  completed: 'bg-green-400',
+  picking:   'bg-violet-400',
+};
+
 const ClubSelect = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -32,6 +40,7 @@ const ClubSelect = () => {
   const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmLeave, setConfirmLeave] = useState<GroupInfo | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   const handleLeave = async () => {
     if (!user || !confirmLeave) return;
@@ -50,8 +59,14 @@ const ClubSelect = () => {
     const fetchGroups = async () => {
       if (!user) return;
       setLoading(true);
-      const { data: memberships } = await supabase
-        .from('group_members').select('group_id').eq('user_id', user.id);
+
+      const [{ data: memberships }, { data: profile }] = await Promise.all([
+        supabase.from('group_members').select('group_id').eq('user_id', user.id),
+        supabase.from('profiles').select('display_name').eq('id', user.id).single(),
+      ]);
+
+      if (profile?.display_name) setDisplayName(profile.display_name);
+
       if (!memberships || memberships.length === 0) { navigate('/setup', { replace: true }); return; }
       const groupIds = memberships.map(m => m.group_id);
       const { data: groupsData } = await supabase
@@ -61,9 +76,16 @@ const ClubSelect = () => {
       for (const g of groupsData) {
         const [{ count }, { data: latestSeason }] = await Promise.all([
           supabase.from('group_members').select('*', { count: 'exact', head: true }).eq('group_id', g.id),
-          supabase.from('seasons').select('status').eq('group_id', g.id).order('season_number', { ascending: false }).limit(1),
+          supabase.from('seasons').select('status, season_number').eq('group_id', g.id).order('season_number', { ascending: false }).limit(1),
         ]);
-        groupInfos.push({ id: g.id, name: g.name, member_count: count ?? 0, season_status: latestSeason?.[0]?.status ?? null, club_type: (g as any).club_type || 'movie' });
+        groupInfos.push({
+          id: g.id,
+          name: g.name,
+          member_count: count ?? 0,
+          season_status: latestSeason?.[0]?.status ?? null,
+          season_number: latestSeason?.[0]?.season_number ?? null,
+          club_type: (g as any).club_type || 'movie',
+        });
       }
       setGroups(groupInfos);
       setLoading(false);
@@ -79,63 +101,90 @@ const ClubSelect = () => {
     );
   }
 
+  const greeting = displayName ? `Hey, ${displayName.split(' ')[0]} 👋` : 'Your Clubs';
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-10 bg-card/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <img src={logo} alt="Movie Club Hub" className="h-8 object-contain" />
-          <h1 className="font-display text-lg font-bold text-gradient-gold">Your Clubs</h1>
+          <div>
+            <h1 className="font-display text-base font-bold text-gradient-gold leading-tight">{greeting}</h1>
+            {groups.length > 0 && (
+              <p className="text-[11px] text-muted-foreground leading-tight">
+                {groups.length} {groups.length === 1 ? 'club' : 'clubs'}
+              </p>
+            )}
+          </div>
         </div>
         <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onClick={() => { signOut(); navigate('/'); }}>
           <LogOut className="w-4 h-4" />
         </Button>
       </header>
 
-      <main className="flex-1 px-4 pt-4 pb-28 space-y-3">
+      <main className="flex-1 px-4 pt-5 pb-28 space-y-3">
         {groups.map((g, i) => (
           <motion.div
             key={g.id}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: i * 0.07, ease: [0.16, 1, 0.3, 1] }}
             className="relative"
           >
-            <button
-              onClick={() => navigate(`/dashboard/${g.id}`)}
-              className="w-full flex items-center gap-4 rounded-xl p-4 border border-border/50 bg-card/60 hover:border-primary/40 hover:bg-primary/5 transition-all text-left group"
-            >
-              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
-                {g.club_type === 'book' ? <BookOpen className="w-4.5 h-4.5 text-primary" /> : <Film className="w-4.5 h-4.5 text-primary" />}
-              </div>
-              <div className="flex-1 min-w-0 pr-6">
-                <p className="font-semibold truncate">{g.name}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Users className="w-3 h-3" /> {g.member_count}
-                  </span>
-                  {g.season_status && (
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border capitalize ${STATUS_STYLES[g.season_status] ?? 'bg-muted/30 text-muted-foreground border-border/40'}`}>
-                      {g.season_status}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </button>
+            <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/70 shadow-sm hover:border-primary/30 hover:shadow-md hover:bg-card/90 transition-all duration-200">
+              {/* Left status accent strip */}
+              <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${g.season_status ? (STATUS_STRIP[g.season_status] ?? 'bg-border') : 'bg-border/30'}`} />
 
-            {/* ··· menu — absolutely positioned inside card top-right */}
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/30">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setConfirmLeave(g)} className="text-destructive focus:text-destructive">
-                    Leave club
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <button
+                onClick={() => navigate(`/dashboard/${g.id}`)}
+                className="w-full flex items-center gap-3.5 pl-4 pr-10 py-3.5 text-left"
+              >
+                {/* Club type icon */}
+                <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
+                  {g.club_type === 'book'
+                    ? <BookOpen className="w-4.5 h-4.5 text-primary" />
+                    : <Film className="w-4.5 h-4.5 text-primary" />}
+                </div>
+
+                {/* Text */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{g.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Users className="w-3 h-3" /> {g.member_count}
+                    </span>
+                    {g.season_number && (
+                      <span className="text-xs text-muted-foreground">
+                        {g.club_type === 'book' ? 'Season' : 'Season'} {g.season_number}
+                      </span>
+                    )}
+                    {g.season_status && (
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border capitalize ${STATUS_STYLES[g.season_status] ?? 'bg-muted/30 text-muted-foreground border-border/40'}`}>
+                        {g.season_status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Chevron */}
+                <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+              </button>
+
+              {/* ··· menu */}
+              <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/30">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setConfirmLeave(g)} className="text-destructive focus:text-destructive">
+                      Leave club
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </motion.div>
         ))}
