@@ -618,8 +618,9 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_50%_-30%,hsl(38_90%_55%/0.35),transparent_55%)]" />
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background via-background/80 to-transparent" />
         </div>
-        <div className="relative z-10 px-4 -mt-16 sm:-mt-[4.5rem] pb-1">
-          <div className="flex flex-col items-center sm:flex-row sm:items-end sm:gap-5">
+        <div className="relative z-10 px-3 sm:px-4 -mt-16 sm:-mt-[4.5rem] pb-1">
+          {/* Mobile: side-by-side so stats use full width; sm+: original row with avatar */}
+          <div className="flex w-full min-w-0 flex-row items-start gap-3 sm:items-end sm:gap-5">
             <div className="relative shrink-0">
               <div
                 className={`relative w-[5.5rem] h-[5.5rem] sm:w-28 sm:h-28 rounded-[1.35rem] overflow-hidden bg-card ring-[3px] ring-background shadow-[0_12px_40px_-12px_rgba(0,0,0,0.65)] ${!isOwnProfile && profile?.avatar_url ? 'cursor-zoom-in' : ''}`}
@@ -671,10 +672,10 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                 )}
               </div>
             </div>
-            <div className="mt-3 sm:mt-0 sm:pb-1 flex-1 min-w-0 text-center sm:text-left space-y-2 w-full sm:w-auto">
+            <div className="min-w-0 flex-1 space-y-2 text-left sm:pb-1">
               <div>
-                <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{profileDisplayName}</h2>
-                <div className="mt-1.5 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <h2 className="font-display text-xl leading-tight sm:text-3xl font-bold tracking-tight text-foreground break-words">{profileDisplayName}</h2>
+                <div className="mt-1.5 flex flex-wrap items-center justify-start gap-2">
                   {selectedUserId === group.admin_user_id && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-medium text-primary border border-primary/25">
                       <Crown className="w-3 h-3" /> Admin
@@ -685,24 +686,24 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-3 max-w-md mx-auto sm:mx-0 sm:max-w-sm rounded-xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden divide-x divide-border/40 shadow-sm">
-                <div className="py-2.5 px-1 text-center">
-                  <p className="font-display text-lg sm:text-xl font-bold text-foreground tabular-nums">{memberPicks.length}</p>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{isBookClub ? 'Books' : 'Picks'}</p>
+              <div className="grid w-full min-w-0 grid-cols-3 rounded-xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden divide-x divide-border/40 shadow-sm sm:max-w-sm">
+                <div className="py-2.5 px-1 sm:px-1.5 text-center min-w-0">
+                  <p className="font-display text-base sm:text-xl font-bold text-foreground tabular-nums">{memberPicks.length}</p>
+                  <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">{isBookClub ? 'Books' : 'Picks'}</p>
                 </div>
-                <div className="py-2.5 px-1 text-center">
-                  <p className="font-display text-lg sm:text-xl font-bold text-foreground tabular-nums">{earned.length}</p>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Badges</p>
+                <div className="py-2.5 px-1 sm:px-1.5 text-center min-w-0">
+                  <p className="font-display text-base sm:text-xl font-bold text-foreground tabular-nums">{earned.length}</p>
+                  <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Badges</p>
                 </div>
-                <div className="py-2.5 px-1 text-center">
-                  <p className={`font-display text-lg sm:text-xl font-bold tabular-nums ${total > 0 ? (pct >= 50 ? 'text-gradient-gold' : 'text-foreground') : 'text-muted-foreground'}`}>
+                <div className="py-2.5 px-1 sm:px-1.5 text-center min-w-0">
+                  <p className={`font-display text-base sm:text-xl font-bold tabular-nums ${total > 0 ? (pct >= 50 ? 'text-gradient-gold' : 'text-foreground') : 'text-muted-foreground'}`}>
                     {total > 0 ? `${pct}%` : '—'}
                   </p>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Guess hit</p>
+                  <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">Guess hit</p>
                 </div>
               </div>
               {total > 0 && (
-                <p className="text-[11px] text-muted-foreground text-center sm:text-left">
+                <p className="text-[11px] text-muted-foreground text-left">
                   <span className="text-green-400 font-medium">{correct}</span> correct · <span className="text-foreground/80 font-medium">{total}</span> guessed · this club
                 </p>
               )}
@@ -713,8 +714,8 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     );
 
     const stickyTabs = (
-      <div className="sticky top-0 z-20 w-full min-w-0 bg-background/90 backdrop-blur-xl border-b border-border/40 px-1 sm:px-2">
-        <div className="flex min-w-0 justify-center sm:justify-start gap-0 sm:gap-1">
+      <div className="sticky top-0 z-20 w-full min-w-0 bg-background/90 backdrop-blur-xl border-b border-border/40 px-0 sm:px-2">
+        <div className="flex w-full min-w-0 justify-stretch sm:justify-start gap-0 sm:gap-1">
           {tabBtn('overview', 'Overview')}
           {tabBtn('picks', 'Picks')}
           {tabBtn('guessing', 'Guessing')}
@@ -819,15 +820,15 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
 
     const picksTab = (
       <div className="min-w-0 space-y-4 pt-2">
-        <p className="text-xs text-muted-foreground text-center sm:text-left">Posters from every season they chose a title.</p>
+        <p className="text-xs text-muted-foreground text-left">Posters from every season they chose a title.</p>
         {memberPicks.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 px-4 py-10 text-center space-y-2">
             <Film className="w-10 h-10 mx-auto text-muted-foreground/35" />
             <p className="text-sm font-medium text-foreground/90">No picks yet</p>
-            <p className="text-xs text-muted-foreground max-w-xs mx-auto">When a season starts, their choices appear here like a gallery.</p>
+            <p className="text-xs text-muted-foreground w-full text-left">When a season starts, their choices appear here like a gallery.</p>
           </div>
         ) : (
-          <div className="grid min-w-0 grid-cols-3 sm:grid-cols-4 gap-2.5">
+          <div className="grid min-w-0 grid-cols-4 gap-2 sm:grid-cols-4 sm:gap-2.5">
             {memberPicks.map(pick => {
               const revealed = isPickRevealed(pick);
               return (
@@ -850,23 +851,23 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
 
     const guessingTab = (
       <div className="min-w-0 space-y-4 pt-2">
-        <p className="text-xs text-muted-foreground text-center sm:text-left">Who they thought picked each watched title.</p>
+        <p className="text-xs text-muted-foreground text-left">Who they thought picked each watched title.</p>
         {uniqueWatched.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 px-4 py-10 text-center space-y-2">
             <Trophy className="w-10 h-10 mx-auto text-muted-foreground/35" />
             <p className="text-sm font-medium text-foreground/90">No guess history yet</p>
-            <p className="text-xs text-muted-foreground max-w-xs mx-auto">Shows up once your club has finished watches with guessing turned on.</p>
+            <p className="text-xs text-muted-foreground w-full text-left">Shows up once your club has finished watches with guessing turned on.</p>
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap justify-center sm:justify-start gap-1 p-1 rounded-xl bg-muted/30 border border-border/40">
+            <div className="flex w-full min-w-0 flex-wrap justify-stretch gap-1 p-1 rounded-xl bg-muted/30 border border-border/40 sm:justify-start">
               {(['all', 'correct', 'miss', 'none'] as const).map(f => (
                 <Button
                   key={f}
                   type="button"
                   variant={guessFilter === f ? 'secondary' : 'ghost'}
                   size="sm"
-                  className={`h-8 text-[11px] px-3 rounded-lg capitalize ${guessFilter === f ? 'shadow-sm' : ''}`}
+                  className={`h-8 min-w-0 flex-1 text-[10px] sm:text-[11px] px-2 sm:px-3 rounded-lg capitalize sm:flex-none ${guessFilter === f ? 'shadow-sm' : ''}`}
                   onClick={() => setGuessFilter(f)}
                 >
                   {f === 'all' ? 'All' : f === 'correct' ? 'Correct' : f === 'miss' ? 'Misses' : 'No guess'}
@@ -930,7 +931,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       <div className="min-w-0 max-w-full space-y-0 overflow-x-hidden -mx-4">
         {profileHero}
         {stickyTabs}
-        <div className="min-w-0 px-4 pt-4 pb-3">
+        <div className="min-w-0 w-full px-3 pt-4 pb-3 sm:px-4">
           {profileTab === 'overview' && overviewTab}
           {profileTab === 'picks' && picksTab}
           {profileTab === 'guessing' && guessingTab}
@@ -1165,7 +1166,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                 Member profile, stats, picks, and guessing history for this club.
               </DialogDescription>
             </DialogHeader>
-            <div className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-4 pb-6 pt-1">
+            <div className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-3 pb-6 pt-1 sm:px-4">
               {loading
                 ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
                 : renderMemberProfile()}
@@ -1179,7 +1180,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             <DrawerDescription className="sr-only">
               Member profile for this club. Swipe down to close.
             </DrawerDescription>
-            <div className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-4 pb-8 pt-1">
+            <div className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 px-3 pb-8 pt-1 sm:px-4">
               {loading
                 ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
                 : renderMemberProfile()}
