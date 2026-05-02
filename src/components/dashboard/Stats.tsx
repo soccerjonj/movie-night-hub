@@ -1600,7 +1600,7 @@ const StatCard = ({
   const motionProps = {
     initial: { opacity: 0, y: 8 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.35, delay: index * 0.07, ease: [0.16, 1, 0.3, 1] as number[] },
+    transition: { duration: 0.35, delay: index * 0.07, ease: [0.16, 1, 0.3, 1] as const },
   };
 
   if (onClick) {
