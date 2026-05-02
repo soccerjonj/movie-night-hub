@@ -8,6 +8,7 @@ import { ArrowLeft, Film, Crown, Camera, Crop, Award, Star, ListOrdered, Check, 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import ReactCrop, { type Crop as CropType, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import PastRankingsDialog from '@/components/dashboard/PastRankingsDialog';
@@ -601,13 +602,25 @@ const MemberProfile = () => {
         {earned.length > 0 ? (
           <div className="grid grid-cols-2 gap-2">
             {earned.map(({ badge, metricLabel }) => (
-              <div key={badge.id} className="rounded-xl border border-border/40 bg-muted/20 p-3 flex items-center gap-2.5">
-                <span className="text-2xl leading-none shrink-0">{badge.emoji}</span>
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold truncate">{badge.label}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{metricLabel}</p>
-                </div>
-              </div>
+              <Popover key={badge.id}>
+                <PopoverTrigger asChild>
+                  <button type="button" className="rounded-xl border border-border/40 bg-muted/20 p-3 flex items-center gap-2.5 text-left hover:border-primary/30 hover:bg-primary/5 transition-colors w-full">
+                    <span className="text-2xl leading-none shrink-0">{badge.emoji}</span>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold truncate">{badge.label}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{metricLabel}</p>
+                    </div>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" className="max-w-[240px] p-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-xl leading-none">{badge.emoji}</span>
+                    <p className="font-display text-sm font-bold">{badge.label}</p>
+                  </div>
+                  <p className="text-xs text-foreground/90">{badge.description}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{metricLabel}</p>
+                </PopoverContent>
+              </Popover>
             ))}
           </div>
         ) : (
