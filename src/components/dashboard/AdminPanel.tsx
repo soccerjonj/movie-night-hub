@@ -15,6 +15,7 @@ import EditGuessesDialog from './EditGuessesDialog';
 import EditPicksDialog from './EditPicksDialog';
 import AddPlaceholderDialog from './AddPlaceholderDialog';
 import EditMovieInfoDialog from './EditMovieInfoDialog';
+import ChangePickedMovieDialog from './ChangePickedMovieDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPreview from './MapPreview';
