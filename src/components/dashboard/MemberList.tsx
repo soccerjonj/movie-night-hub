@@ -80,9 +80,9 @@ const cardVariants = {
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.32, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] as number[] },
+    transition: { duration: 0.32, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] as const },
   }),
-};
+} as const;
 
 /** Rotating banner accents so member tiles feel unique (admin gets gold). */
 const MEMBER_BANNER_ACCENTS = [
