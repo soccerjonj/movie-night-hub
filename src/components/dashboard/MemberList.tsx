@@ -1,24 +1,14 @@
-import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, BookOpen, Check, X, Trophy, Camera, Crop, ListOrdered, Star, Award, Clock, Sparkles, ChevronRight } from 'lucide-react';
+import { Users, Crown, Ghost, Film, BookOpen, Trophy, Star, Clock, Sparkles, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
-import { Separator } from '@/components/ui/separator';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
-import ReactCrop, { type Crop as CropType, centerCrop, makeAspectCrop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
-import PastRankingsDialog from './PastRankingsDialog';
-import RankingInsights from './RankingInsights';
-import { validateImageFile, getSafeErrorMessage, safeFilename } from '@/lib/security';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { computeMemberBadges, computeCasualViewerBadges, type BadgePickInput, type EarnedBadge } from '@/lib/memberBadges';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { motion } from 'framer-motion';
 import ClubStatNumber from '@/components/dashboard/ClubStatNumber';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
   members: GroupMember[];
@@ -26,8 +16,6 @@ interface Props {
   group: Group;
   isAdmin: boolean;
   onUpdate: () => void;
-  externalSelectedUserId?: string | null;
-  onExternalSelectedClear?: () => void;
 }
 
 interface SeasonInfo {
@@ -67,14 +55,6 @@ interface GuessRow {
   season_id: string;
 }
 
-function centerAspectCrop(mediaWidth: number, mediaHeight: number) {
-  return centerCrop(
-    makeAspectCrop({ unit: '%', width: 90 }, 1, mediaWidth, mediaHeight),
-    mediaWidth,
-    mediaHeight
-  );
-}
-
 const cardVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: (i: number) => ({
@@ -93,30 +73,13 @@ const MEMBER_BANNER_ACCENTS = [
   'from-fuchsia-500/35 via-primary/15 to-background',
 ] as const;
 
-/** Profile cover accent — mirrors MEMBER_BANNER_ACCENTS index for continuity. Admin gets gold. */
-const PROFILE_COVER_ACCENTS = [
-  'from-violet-600/35 via-violet-500/10',
-  'from-sky-600/35 via-sky-500/10',
-  'from-rose-600/35 via-rose-500/10',
-  'from-emerald-600/35 via-emerald-500/10',
-  'from-fuchsia-600/30 via-fuchsia-500/10',
-] as const;
+// suppress unused warning
+void MEMBER_BANNER_ACCENTS;
 
-const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelectedUserId, onExternalSelectedClear }: Props) => {
+const MemberList = ({ members, profiles, group, isAdmin: _isAdmin, onUpdate: _onUpdate }: Props) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
-
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (externalSelectedUserId) setSelectedUserId(externalSelectedUserId);
-  }, [externalSelectedUserId]);
-
-  const handleClose = () => {
-    setSelectedUserId(null);
-    onExternalSelectedClear?.();
-  };
 
   const [seasons, setSeasons] = useState<SeasonInfo[]>([]);
   const [picks, setPicks] = useState<PickRow[]>([]);
@@ -125,111 +88,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
   const [seasonParticipants, setSeasonParticipants] = useState<{ user_id: string; season_id: string }[]>([]);
   const [tmdbDetails, setTmdbDetails] = useState<Record<string, TmdbDetails>>({});
   const [loading, setLoading] = useState(false);
-
-  const [cropDialogOpen, setCropDialogOpen] = useState(false);
-  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
-  const [crop, setCrop] = useState<CropType>();
-  const [uploading, setUploading] = useState(false);
-  const cropImgRef = useRef<HTMLImageElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pastRankingsOpen, setPastRankingsOpen] = useState(false);
-  const [hasUnrankedSeasons, setHasUnrankedSeasons] = useState(false);
-  const isDesktopProfile = useMediaQuery('(min-width: 1024px)');
-  const [profileTab, setProfileTab] = useState<'overview' | 'picks' | 'guessing'>('overview');
-  const [badgeIntroPlayed, setBadgeIntroPlayed] = useState(
-    () => typeof window !== 'undefined' && sessionStorage.getItem('mnh_badge_intro') === '1'
-  );
-
-  const [guessFilter, setGuessFilter] = useState<'all' | 'correct' | 'miss' | 'none'>('all');
-  const [guessOlderExpanded, setGuessOlderExpanded] = useState(false);
-  const profileScrollRef = useRef<HTMLDivElement>(null);
-  const [heroScrolledPast, setHeroScrolledPast] = useState(false);
-  const handleProfileScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    setHeroScrolledPast(e.currentTarget.scrollTop > 110);
-  }, []);
-
-  useEffect(() => {
-    setProfileTab('overview');
-    setGuessFilter('all');
-    setGuessOlderExpanded(false);
-    setHeroScrolledPast(false);
-    if (profileScrollRef.current) profileScrollRef.current.scrollTop = 0;
-  }, [selectedUserId]);
-
-  useEffect(() => {
-    if (!user) return;
-    const checkUnranked = async () => {
-      const { data: completedSeasons } = await supabase
-        .from('seasons').select('id').eq('group_id', group.id).in('status', ['completed', 'reviewing']);
-      if (!completedSeasons || completedSeasons.length === 0) { setHasUnrankedSeasons(false); return; }
-      const { data: existingRankings } = await supabase
-        .from('movie_rankings').select('season_id').eq('user_id', user.id)
-        .in('season_id', completedSeasons.map(s => s.id));
-      const rankedIds = new Set((existingRankings || []).map(r => r.season_id));
-      setHasUnrankedSeasons(completedSeasons.some(s => !rankedIds.has(s.id)));
-    };
-    checkUnranked();
-  }, [user, group.id, pastRankingsOpen]);
-
-  const onCropImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { naturalWidth, naturalHeight } = e.currentTarget;
-    setCrop(centerAspectCrop(naturalWidth, naturalHeight));
-  }, []);
-
-  const openCropWithFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => { setCropImageSrc(reader.result as string); setCropDialogOpen(true); };
-    reader.readAsDataURL(file);
-  };
-
-  const openCropWithUrl = (url: string) => { setCropImageSrc(url); setCropDialogOpen(true); };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const validation = validateImageFile(file);
-    if (!validation.valid) { toast.error(validation.error); return; }
-    openCropWithFile(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const getCroppedBlob = (): Promise<Blob | null> => new Promise((resolve) => {
-    const image = cropImgRef.current;
-    if (!image || !crop) { resolve(null); return; }
-    const canvas = document.createElement('canvas');
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-    const pixelCrop = {
-      x: (crop.unit === '%' ? (crop.x / 100) * image.width : crop.x) * scaleX,
-      y: (crop.unit === '%' ? (crop.y / 100) * image.height : crop.y) * scaleY,
-      width: (crop.unit === '%' ? (crop.width / 100) * image.width : crop.width) * scaleX,
-      height: (crop.unit === '%' ? (crop.height / 100) * image.height : crop.height) * scaleY,
-    };
-    const size = Math.min(pixelCrop.width, pixelCrop.height, 512);
-    canvas.width = size; canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) { resolve(null); return; }
-    ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, size, size);
-    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.9);
-  });
-
-  const handleSaveCrop = async () => {
-    if (!user) return;
-    setUploading(true);
-    try {
-      const blob = await getCroppedBlob();
-      if (!blob) throw new Error('Failed to crop image');
-      const filePath = safeFilename(user.id, 'jpg');
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true, contentType: 'image/jpeg' });
-      if (uploadError) throw uploadError;
-      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: filePath }).eq('user_id', user.id);
-      if (updateError) throw updateError;
-      toast.success('Profile picture updated!');
-      onUpdate(); setCropDialogOpen(false); setCropImageSrc(null);
-    } catch (err: unknown) {
-      toast.error(getSafeErrorMessage(err, 'Failed to upload'));
-    } finally { setUploading(false); }
-  };
 
   // Fetch all group data on mount
   useEffect(() => {
@@ -264,8 +122,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     if (s.status === 'watching' && pick.watch_order != null) return pick.watch_order < s.current_movie_index;
     return false;
   };
-
-  const isPickRevealed = (pick: PickRow) => isPickWatched(pick);
 
   // TMDB enrichment
   useEffect(() => {
@@ -426,16 +282,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     return merged;
   }, [memberBadgesMap, casualViewerMap]);
 
-  const selectedBadgeCount = selectedUserId ? (allMemberBadgesMap.get(selectedUserId)?.length ?? 0) : 0;
-  useEffect(() => {
-    if (!selectedUserId || selectedBadgeCount === 0 || badgeIntroPlayed) return;
-    const t = window.setTimeout(() => {
-      sessionStorage.setItem('mnh_badge_intro', '1');
-      setBadgeIntroPlayed(true);
-    }, 1000);
-    return () => window.clearTimeout(t);
-  }, [selectedUserId, selectedBadgeCount, badgeIntroPlayed]);
-
   const clubStats = useMemo(() => {
     const completedSeasons = seasons.filter(s => s.status === 'completed').length;
     const watchedPicks = picks.filter(p => isPickWatched(p));
@@ -500,561 +346,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     return null;
   }, [seasons, picks]);
 
-  const renderMemberProfile = () => {
-    if (!selectedUserId) return null;
-    const profile = getProfile(selectedUserId);
-    const isOwnProfile = user?.id === selectedUserId;
-
-    const memberPicks = picks
-      .filter(p => p.user_id === selectedUserId)
-      .sort((a, b) => {
-        const sA = seasons.find(s => s.id === a.season_id)?.season_number ?? 0;
-        const sB = seasons.find(s => s.id === b.season_id)?.season_number ?? 0;
-        if (sA !== sB) return sB - sA;
-        return (b.watch_order ?? 0) - (a.watch_order ?? 0);
-      });
-
-    const userGuesses = guesses.filter(g => g.guesser_id === selectedUserId);
-    let correct = 0, total = 0;
-    const coPickGroups = new Map<string, string[]>();
-    picks.forEach(p => {
-      if (isPickWatched(p) && p.watch_order != null) {
-        const key = `${p.season_id}:${p.watch_order}`;
-        if (!coPickGroups.has(key)) coPickGroups.set(key, []);
-        coPickGroups.get(key)!.push(p.user_id);
-      }
-    });
-    const pickValidUsers: Record<string, Set<string>> = {};
-    picks.forEach(p => {
-      if (isPickWatched(p) && p.watch_order != null)
-        pickValidUsers[p.id] = new Set(coPickGroups.get(`${p.season_id}:${p.watch_order}`) || [p.user_id]);
-    });
-    userGuesses.forEach(g => {
-      if (pickValidUsers[g.movie_pick_id]) {
-        total += 1;
-        if (pickValidUsers[g.movie_pick_id].has(g.guessed_user_id)) correct += 1;
-      }
-    });
-    const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-    const accuracyTier = total === 0 ? 'none' : pct >= 70 ? 'gold' : pct >= 50 ? 'good' : 'low';
-    const accuracyTextClass = accuracyTier === 'gold' ? 'text-gradient-gold' : accuracyTier === 'good' ? 'text-green-400' : accuracyTier === 'low' ? 'text-foreground/60' : 'text-muted-foreground';
-    const accuracyCellClass = accuracyTier === 'gold' ? 'bg-primary/10' : accuracyTier === 'good' ? 'bg-green-500/10' : '';
-
-    const watchedPicks = picks.filter(p => isPickWatched(p)).sort((a, b) => {
-      const sA = seasons.find(s => s.id === a.season_id)?.season_number ?? 0;
-      const sB = seasons.find(s => s.id === b.season_id)?.season_number ?? 0;
-      if (sA !== sB) return sB - sA;
-      return (b.watch_order ?? 0) - (a.watch_order ?? 0);
-    });
-    const seen = new Set<string>();
-    const uniqueWatched = watchedPicks.filter(p => {
-      const key = `${p.season_id}:${p.watch_order}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    const earned = allMemberBadgesMap.get(selectedUserId) || [];
-
-    // Avg pick ranking
-    const mPicks = picks.filter(p => p.user_id === selectedUserId);
-    const pickById = new Map(picks.map(p => [p.id, p]));
-    const getSlotKey = (pick: PickRow) => `${pick.season_id}:${pick.watch_order ?? pick.id}`;
-    const memberSlotKeys = new Set(mPicks.map(p => getSlotKey(p)));
-    const slotRankings = new Map<string, { total: number; count: number }>();
-    rankings.forEach(r => {
-      const pick = pickById.get(r.movie_pick_id);
-      if (!pick) return;
-      const slotKey = getSlotKey(pick);
-      if (!memberSlotKeys.has(slotKey)) return;
-      if (!slotRankings.has(slotKey)) slotRankings.set(slotKey, { total: 0, count: 0 });
-      const entry = slotRankings.get(slotKey)!;
-      entry.total += r.rank; entry.count += 1;
-    });
-    const perPickAvgs = Array.from(slotRankings.values()).map(v => v.total / v.count);
-    const overallAvg = perPickAvgs.length > 0 ? perPickAvgs.reduce((s, v) => s + v, 0) / perPickAvgs.length : null;
-
-    const profileDisplayName = profile?.display_name || 'Unknown';
-
-    // Cover accent — mirrors wall tile accent for visual continuity
-    const memberIndex = members.findIndex(m => m.user_id === selectedUserId);
-    const isGroupAdmin = selectedUserId === group.admin_user_id;
-    const coverAccentClass = isGroupAdmin
-      ? 'from-amber-500/45 via-primary/25'
-      : PROFILE_COVER_ACCENTS[(memberIndex >= 0 ? memberIndex : 0) % PROFILE_COVER_ACCENTS.length];
-
-    // Up to 4 revealed posters for the blurred mosaic strip behind the cover
-    const coverPosters = memberPicks.filter(p => isPickRevealed(p) && p.poster_url).slice(0, 4);
-
-    // Featured pick — the member's most loved pick (lowest avg rank with at least 2 rankings)
-    let featuredPick: PickRow | null = null;
-    let featuredAvgRank: number | null = null;
-    let featuredRankCount = 0;
-    {
-      let bestAvg = Infinity;
-      for (const [slotKey, stats] of slotRankings) {
-        if (stats.count < 2) continue;
-        const avg = stats.total / stats.count;
-        if (avg < bestAvg) {
-          bestAvg = avg;
-          const matchPick = memberPicks.find(p => getSlotKey(p) === slotKey);
-          if (matchPick && isPickRevealed(matchPick)) {
-            featuredPick = matchPick;
-            featuredAvgRank = avg;
-            featuredRankCount = stats.count;
-          }
-        }
-      }
-    }
-
-    const seasonNumForPick = (pick: PickRow) => seasons.find(s => s.id === pick.season_id)?.season_number ?? 0;
-    const seasonHeading = (sn: number) => {
-      const s = seasons.find(ss => ss.season_number === sn);
-      return s?.title ? `Season ${sn} — ${s.title}` : `Season ${sn}`;
-    };
-
-    // Picks grouped by season (descending) for the Picks tab
-    const pickSeasonNums = [...new Set(memberPicks.map(p => seasonNumForPick(p)))].sort((a, b) => b - a);
-    const picksSeasonGroups = pickSeasonNums.map(sn => ({
-      sn,
-      label: seasonHeading(sn),
-      picks: memberPicks.filter(p => seasonNumForPick(p) === sn),
-    }));
-
-    type GuessMeta = { pick: PickRow; guess?: GuessRow; guessedName: string | null; isCorrect: boolean; isOwnPick: boolean };
-    const guessMetasRaw: GuessMeta[] = uniqueWatched.map(pick => {
-      const siblingPicks = picks.filter(p => p.season_id === pick.season_id && p.watch_order === pick.watch_order);
-      const validUserIds = new Set(siblingPicks.map(sp => sp.user_id));
-      const isOwnPick = validUserIds.has(selectedUserId);
-      const guess = userGuesses.find(g => g.movie_pick_id === pick.id) || userGuesses.find(g => siblingPicks.some(sp => sp.id === g.movie_pick_id));
-      const guessedName = guess ? getProfile(guess.guessed_user_id)?.display_name || '?' : null;
-      const isCorrect = guess ? validUserIds.has(guess.guessed_user_id) : false;
-      return { pick, guess, guessedName, isCorrect, isOwnPick };
-    });
-    const guessMetas = guessMetasRaw.filter(m => {
-      if (guessFilter === 'all') return true;
-      if (guessFilter === 'correct') return !!m.guess && m.isCorrect;
-      if (guessFilter === 'miss') return !!m.guess && !m.isCorrect;
-      if (guessFilter === 'none') return !m.guess && !m.isOwnPick;
-      return true;
-    });
-    const seasonNums = [...new Set(guessMetas.map(m => seasonNumForPick(m.pick)))].sort((a, b) => b - a);
-    const guessGroups = seasonNums.map(sn => ({
-      sn,
-      label: seasonHeading(sn),
-      rows: guessMetas.filter(m => seasonNumForPick(m.pick) === sn),
-    }));
-    const guessGroupsVisible = guessOlderExpanded ? guessGroups : guessGroups.slice(0, 2);
-
-    const sectionLabel = (title: string) => (
-      <div className="flex items-center gap-3 py-1.5">
-        <Separator className="flex-1" />
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{title}</span>
-        <Separator className="flex-1" />
-      </div>
-    );
-
-    const picksCount = memberPicks.length;
-    const guessCount = uniqueWatched.length;
-
-    const tabBtn = (id: 'overview' | 'picks' | 'guessing', label: string, count?: number) => (
-      <button
-        key={id}
-        type="button"
-        onClick={() => setProfileTab(id)}
-        className={`relative min-w-0 flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2.5 text-xs font-semibold tracking-wide transition-colors ${
-          profileTab === id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/90'
-        }`}
-      >
-        {label}
-        {count !== undefined && count > 0 && (
-          <span className={`rounded-full px-1.5 leading-4 text-[9px] font-bold tabular-nums ${profileTab === id ? 'bg-primary/20 text-primary' : 'bg-muted/60 text-muted-foreground'}`}>
-            {count}
-          </span>
-        )}
-        {profileTab === id && (
-          <span className="absolute bottom-0 left-2 right-2 sm:left-3 sm:right-3 h-0.5 rounded-full bg-gradient-to-r from-primary to-amber-400" />
-        )}
-      </button>
-    );
-
-    const profileHero = (
-      <div className="relative w-full min-w-0">
-        <div className="relative h-32 sm:h-36 overflow-hidden bg-muted/30">
-          {/* Blurred poster mosaic behind the cover */}
-          {coverPosters.length > 0 && (
-            <div className="absolute inset-0 flex opacity-25">
-              {coverPosters.map(p => (
-                <div key={p.id} className="flex-1 h-full overflow-hidden">
-                  <img src={p.poster_url!} alt="" className="h-full w-full object-cover blur-sm scale-110" />
-                </div>
-              ))}
-            </div>
-          )}
-          <div className={`absolute inset-0 bg-gradient-to-br ${coverAccentClass} to-background`} />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_50%_-30%,hsl(38_90%_55%/0.3),transparent_55%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background via-background/80 to-transparent" />
-        </div>
-        <div className="relative z-10 px-3 sm:px-4 -mt-16 sm:-mt-[4.5rem] pb-1">
-          {/* Mobile: side-by-side so stats use full width; sm+: original row with avatar */}
-          <div className="flex w-full min-w-0 flex-row items-start gap-3 sm:items-end sm:gap-5">
-            <div className="relative shrink-0">
-              <div
-                className={`relative w-[5.5rem] h-[5.5rem] sm:w-28 sm:h-28 rounded-[1.35rem] overflow-hidden bg-card ring-[3px] ring-background shadow-[0_12px_40px_-12px_rgba(0,0,0,0.65)] ${!isOwnProfile && profile?.avatar_url ? 'cursor-zoom-in' : ''}`}
-              >
-                {isOwnProfile ? (
-                  <div className="relative w-full h-full group/avatar">
-                    {profile?.avatar_url ? (
-                      <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl font-bold bg-gradient-to-br from-primary/25 to-muted text-primary">
-                        {profile?.display_name?.charAt(0).toUpperCase() || '?'}
-                      </div>
-                    )}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 group-hover/avatar:opacity-100 active:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="p-2 rounded-full bg-background/90 text-foreground shadow-md"
-                        aria-label="Change profile photo"
-                      >
-                        <Camera className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="relative block w-full h-full text-left"
-                    onClick={() => { if (profile?.avatar_url) setPreviewAvatarUrl(profile.avatar_url); }}
-                  >
-                    {profile?.avatar_url ? (
-                      <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl font-bold bg-gradient-to-br from-primary/25 to-muted text-primary">
-                        {profile?.display_name?.charAt(0).toUpperCase() || '?'}
-                      </div>
-                    )}
-                  </button>
-                )}
-                {isOwnProfile && profile?.avatar_url && (
-                  <button
-                    type="button"
-                    onClick={() => openCropWithUrl(profile.avatar_url!)}
-                    className="absolute -bottom-1 -right-1 z-10 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-2 border-background hover:bg-primary/90 transition-colors"
-                    title="Crop photo"
-                  >
-                    <Crop className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="min-w-0 flex-1 space-y-2 text-left sm:pb-1">
-              <div>
-                <h2 className="font-display text-xl leading-tight sm:text-3xl font-bold tracking-tight text-foreground break-words">{profileDisplayName}</h2>
-                <div className="mt-1.5 flex flex-wrap items-center justify-start gap-2">
-                  {selectedUserId === group.admin_user_id && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-medium text-primary border border-primary/25">
-                      <Crown className="w-3 h-3" /> Admin
-                    </span>
-                  )}
-                  {profile?.is_placeholder && (
-                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] text-muted-foreground border border-border/60">Unregistered</span>
-                  )}
-                </div>
-              </div>
-              <div className="grid w-full min-w-0 grid-cols-3 rounded-xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden divide-x divide-border/40 shadow-sm sm:max-w-sm">
-                <div className="py-2.5 px-1 sm:px-1.5 text-center min-w-0">
-                  <p className="font-display text-base sm:text-xl font-bold text-foreground tabular-nums">{memberPicks.length}</p>
-                  <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">{isBookClub ? 'Books' : 'Picks'}</p>
-                </div>
-                <div className="py-2.5 px-1 sm:px-1.5 text-center min-w-0">
-                  <p className="font-display text-base sm:text-xl font-bold text-foreground tabular-nums">{earned.length}</p>
-                  <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Badges</p>
-                </div>
-                <div className={`py-2.5 px-1 sm:px-1.5 text-center min-w-0 transition-colors rounded-r-xl ${accuracyCellClass}`}>
-                  <p className={`font-display text-base sm:text-xl font-bold tabular-nums ${accuracyTextClass}`}>
-                    {total > 0 ? `${pct}%` : '—'}
-                  </p>
-                  <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">Guess hit</p>
-                </div>
-              </div>
-              {total > 0 && (
-                <p className="text-[11px] text-muted-foreground text-left">
-                  <span className="text-green-400 font-medium">{correct}</span> correct · <span className="text-foreground/80 font-medium">{total}</span> guessed · this club
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-
-    const stickyTabs = (
-      <div className="sticky top-0 z-20 w-full min-w-0 bg-background/90 backdrop-blur-xl border-b border-border/40">
-<div className="flex w-full min-w-0 justify-stretch sm:justify-start gap-0 px-0 sm:px-2">
-          {tabBtn('overview', 'Overview')}
-          {tabBtn('picks', isBookClub ? 'Books' : 'Picks', picksCount)}
-          {tabBtn('guessing', 'Guessing', guessCount)}
-        </div>
-      </div>
-    );
-
-    const badgeChip = (badgeIntro: boolean) => (
-      badgeIntro ? (
-        <div className="flex flex-wrap items-center gap-1">
-          {earned.map(({ badge, metricLabel }) => (
-            <Popover key={badge.id}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-0.5 rounded-md border border-border/60 bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-foreground/90 hover:border-primary/40 hover:bg-primary/5 transition-colors max-w-[140px] sm:max-w-[180px]"
-                >
-                  <span className="text-[11px] leading-none shrink-0">{badge.emoji}</span>
-                  <span className="truncate">{badge.label}</span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="top" className="max-w-[240px] p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-base leading-none">{badge.emoji}</span>
-                  <p className="font-display text-sm font-bold">{badge.label}</p>
-                </div>
-                <p className="text-xs">{badge.description}</p>
-                <p className="text-xs text-muted-foreground mt-1">{metricLabel}</p>
-              </PopoverContent>
-            </Popover>
-          ))}
-        </div>
-      ) : (
-        <motion.div className="flex flex-wrap items-center gap-1" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.04 } } }}>
-          {earned.map(({ badge, metricLabel }) => (
-            <motion.div key={badge.id} variants={{ hidden: { opacity: 0, scale: 0.9 }, visible: { opacity: 1, scale: 1, transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] } } }}>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-0.5 rounded-md border border-border/60 bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-foreground/90 hover:border-primary/40 hover:bg-primary/5 transition-colors max-w-[140px] sm:max-w-[180px]"
-                  >
-                    <span className="text-[11px] leading-none shrink-0">{badge.emoji}</span>
-                    <span className="truncate">{badge.label}</span>
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent side="top" className="max-w-[240px] p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-base leading-none">{badge.emoji}</span>
-                    <p className="font-display text-sm font-bold">{badge.label}</p>
-                  </div>
-                  <p className="text-xs">{badge.description}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{metricLabel}</p>
-                </PopoverContent>
-              </Popover>
-            </motion.div>
-          ))}
-        </motion.div>
-      )
-    );
-
-    const overviewTab = (
-      <div className="min-w-0 space-y-5 pt-1">
-        {featuredPick && featuredAvgRank !== null && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-3 flex items-center gap-3"
-          >
-            <div className="w-12 aspect-[2/3] rounded-xl overflow-hidden bg-muted shrink-0 ring-1 ring-primary/30 shadow-md">
-              {featuredPick.poster_url
-                ? <img src={featuredPick.poster_url} alt={featuredPick.title} className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center"><Film className="w-4 h-4 text-muted-foreground" /></div>
-              }
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1">
-                <Star className="w-3 h-3 fill-primary/80" /> Most loved pick
-              </p>
-              <p className="text-sm font-bold truncate">{featuredPick.title}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                avg rank {featuredAvgRank.toFixed(1)} · {featuredRankCount} ranking{featuredRankCount !== 1 ? 's' : ''}
-              </p>
-            </div>
-          </motion.div>
-        )}
-        <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 sm:p-4 space-y-2.5">
-          <div className="flex items-center gap-2">
-            <Award className="w-4 h-4 text-primary shrink-0" aria-hidden />
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Badges</span>
-          </div>
-          {earned.length > 0 ? (
-            badgeChip(badgeIntroPlayed)
-          ) : (
-            <p className="text-xs text-muted-foreground leading-relaxed">No badges yet — rank picks and join guessing rounds to unlock achievements.</p>
-          )}
-        </div>
-
-        {overallAvg !== null && (
-          <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-primary/8 to-transparent p-4 flex items-center gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/20">
-              <Star className="w-5 h-5 text-primary fill-primary/80" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">How the group ranks their picks</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{perPickAvgs.length} pick{perPickAvgs.length !== 1 ? 's' : ''} with rankings · lower avg is better</p>
-            </div>
-            <p className="font-display text-2xl font-bold text-gradient-gold tabular-nums shrink-0">{overallAvg.toFixed(1)}</p>
-          </div>
-        )}
-
-        {isOwnProfile && hasUnrankedSeasons && (
-          <Button variant="outline" size="sm" className="w-full rounded-xl border-dashed" onClick={() => setPastRankingsOpen(true)}>
-            <ListOrdered className="w-4 h-4 mr-2" />
-            Add past rankings
-          </Button>
-        )}
-
-        <div className="rounded-2xl border border-border/40 bg-muted/15 p-3 sm:p-4 space-y-3">
-          {sectionLabel('Club taste')}
-          <RankingInsights userId={selectedUserId} groupId={group.id} profiles={profiles} variant="default" dense hideTitle />
-        </div>
-      </div>
-    );
-
-    const picksTab = (
-      <div className="min-w-0 space-y-5 pt-2">
-        {memberPicks.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 px-4 py-10 text-center space-y-2">
-            <Film className="w-10 h-10 mx-auto text-muted-foreground/35" />
-            <p className="text-sm font-medium text-foreground/90">No picks yet</p>
-            <p className="text-xs text-muted-foreground w-full text-left">When a season starts, their choices appear here.</p>
-          </div>
-        ) : (
-          picksSeasonGroups.map(sg => (
-            <div key={sg.sn} className="space-y-2">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-primary/80 pl-0.5">{sg.label}</p>
-              <div className="grid min-w-0 grid-cols-4 gap-2 sm:gap-2.5">
-                {sg.picks.map(pick => {
-                  const revealed = isPickRevealed(pick);
-                  return (
-                    <div
-                      key={pick.id}
-                      className="group aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/30 shadow-sm transition-all duration-300 hover:ring-primary/35 hover:shadow-[0_8px_28px_-8px_hsl(38_90%_55%/0.25)]"
-                    >
-                      {revealed
-                        ? pick.poster_url
-                          ? <img src={pick.poster_url} alt={pick.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
-                          : <div className="w-full h-full flex items-center justify-center p-1.5 bg-muted/80"><span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-4 font-medium">{pick.title}</span></div>
-                        : <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-muted to-muted/60"><span className="text-xl text-muted-foreground/70 font-bold">?</span></div>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    );
-
-    const guessingTab = (
-      <div className="min-w-0 space-y-4 pt-2">
-        <p className="text-xs text-muted-foreground text-left">Who they thought picked each watched title.</p>
-        {uniqueWatched.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 px-4 py-10 text-center space-y-2">
-            <Trophy className="w-10 h-10 mx-auto text-muted-foreground/35" />
-            <p className="text-sm font-medium text-foreground/90">No guess history yet</p>
-            <p className="text-xs text-muted-foreground w-full text-left">Shows up once your club has finished watches with guessing turned on.</p>
-          </div>
-        ) : (
-          <>
-            <div className="flex w-full min-w-0 flex-wrap justify-stretch gap-1 p-1 rounded-xl bg-muted/30 border border-border/40 sm:justify-start">
-              {(['all', 'correct', 'miss', 'none'] as const).map(f => (
-                <Button
-                  key={f}
-                  type="button"
-                  variant={guessFilter === f ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className={`h-8 min-w-0 flex-1 text-[10px] sm:text-[11px] px-2 sm:px-3 rounded-lg capitalize sm:flex-none ${guessFilter === f ? 'shadow-sm' : ''}`}
-                  onClick={() => setGuessFilter(f)}
-                >
-                  {f === 'all' ? 'All' : f === 'correct' ? 'Correct' : f === 'miss' ? 'Misses' : 'No guess'}
-                </Button>
-              ))}
-            </div>
-            <div className="space-y-5">
-              {guessGroupsVisible.map(group => (
-                <div key={group.sn} className="space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-primary/80 pl-0.5">{group.label}</p>
-                  <div className="space-y-2">
-                    {group.rows.map(m => (
-                      <div
-                        key={m.pick.id}
-                        className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
-                          m.guess
-                            ? m.isCorrect
-                              ? 'border-green-500/25 bg-green-500/[0.07]'
-                              : 'border-destructive/20 bg-destructive/[0.06]'
-                            : 'border-border/40 bg-card/30'
-                        }`}
-                      >
-                        <div className="w-10 aspect-[2/3] rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-border/30 shadow-sm">
-                          {m.pick.poster_url
-                            ? <img src={m.pick.poster_url} alt="" className="w-full h-full object-cover" />
-                            : <div className="w-full h-full flex items-center justify-center"><Film className="w-3.5 h-3.5 text-muted-foreground" /></div>}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate leading-snug">{m.pick.title}</p>
-                          <div className="mt-0.5 flex items-center gap-1.5 text-xs">
-                            {m.guess ? (
-                              <>
-                                <span className="text-muted-foreground">Guessed</span>
-                                <span className={`font-semibold ${m.isCorrect ? 'text-green-400' : 'text-destructive'}`}>{m.guessedName}</span>
-                                {m.isCorrect ? <Check className="w-3.5 h-3.5 text-green-400 shrink-0" /> : <X className="w-3.5 h-3.5 text-destructive shrink-0" />}
-                              </>
-                            ) : m.isOwnPick ? (
-                              <span className="text-primary/75 italic">Their pick</span>
-                            ) : (
-                              <span className="text-muted-foreground italic">No guess</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {guessGroups.length > 2 && (
-              <Button variant="outline" size="sm" className="w-full h-9 text-xs rounded-xl" onClick={() => setGuessOlderExpanded(e => !e)}>
-                {guessOlderExpanded ? 'Show fewer seasons' : `Show ${guessGroups.length - 2} older season${guessGroups.length - 2 === 1 ? '' : 's'}`}
-              </Button>
-            )}
-          </>
-        )}
-      </div>
-    );
-
-    return (
-      <div className="min-w-0 max-w-full space-y-0 overflow-x-hidden">
-        {profileHero}
-        {stickyTabs}
-        <div className="min-w-0 w-full px-3 pt-4 pb-3 sm:px-4">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={profileTab}
-              initial={{ opacity: 0, y: 7 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            >
-              {profileTab === 'overview' && overviewTab}
-              {profileTab === 'picks' && picksTab}
-              {profileTab === 'guessing' && guessingTab}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </div>
-    );
-  };
-
   const isBookClub = group.club_type === 'book';
   const watchedNoun = isBookClub ? 'books read' : 'movies watched';
   const runtimeNoun = isBookClub ? null : 'watched together';
@@ -1082,7 +373,8 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       : { value: seasons.length, label: 'total seasons', icon: <Star  className="w-3.5 h-3.5 text-emerald-400" />, numeric: true,  tileClass: 'bg-emerald-500/10 border-emerald-500/20', valueClass: 'text-emerald-400' },
   ];
 
-  const profileSheetTitle = selectedUserId ? (getProfile(selectedUserId)?.display_name || 'Member profile') : 'Member profile';
+  // suppress unused loading warning for now (used for future loading state)
+  void loading;
 
   return (
     <>
@@ -1162,7 +454,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
             const profile = getProfile(member.user_id);
             const isGroupAdmin = member.user_id === group.admin_user_id;
             const isPlaceholder = profile?.is_placeholder === true;
-            const isOwnCard = member.user_id === user?.id;
             const earned = allMemberBadgesMap.get(member.user_id) || [];
             return (
               <motion.button
@@ -1172,7 +463,7 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                 variants={cardVariants}
                 initial="hidden"
                 animate="visible"
-                onClick={() => setSelectedUserId(member.user_id)}
+                onClick={() => navigate(`/dashboard/${group.id}/member/${member.user_id}`)}
                 className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               >
                 {/* Avatar */}
@@ -1190,16 +481,6 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                       </div>
                     )}
                   </div>
-                  {isOwnCard && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                      className="absolute -bottom-0.5 -right-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-background bg-primary text-primary-foreground shadow-sm"
-                      title="Change photo"
-                    >
-                      <Camera className="h-2.5 w-2.5" />
-                    </button>
-                  )}
                 </div>
                 {/* Name + meta */}
                 <div className="flex-1 min-w-0">
@@ -1230,70 +511,19 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
         </div>
       </motion.div>
 
-      {/* Profile — dialog on large screens, bottom sheet on small */}
-      {isDesktopProfile ? (
-        <Dialog open={!!selectedUserId} onOpenChange={(open) => !open && handleClose()}>
-          <DialogContent className="max-w-lg w-[calc(100%-1.5rem)] max-h-[min(88vh,720px)] p-0 gap-0 flex flex-col overflow-hidden rounded-2xl">
-            <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40 shrink-0 text-left space-y-1 min-w-0">
-              <DialogTitle className="font-display text-lg pr-8">{profileSheetTitle}</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Member profile, stats, picks, and guessing history for this club.
-              </DialogDescription>
-            </DialogHeader>
-            <div ref={profileScrollRef} onScroll={handleProfileScroll} className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 min-h-0 pb-4">
-              {loading
-                ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
-                : renderMemberProfile()}
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : (
-        <Drawer open={!!selectedUserId} onOpenChange={(open) => !open && handleClose()} shouldScaleBackground={false}>
-          <DrawerContent className="max-h-[88vh] outline-none flex flex-col overflow-hidden">
-            <DrawerTitle className="sr-only">{profileSheetTitle}</DrawerTitle>
-            <DrawerDescription className="sr-only">
-              Member profile for this club. Swipe down to close.
-            </DrawerDescription>
-            <div ref={profileScrollRef} onScroll={handleProfileScroll} data-vaul-no-drag className="min-w-0 overflow-x-hidden overflow-y-auto flex-1 min-h-0 pb-4">
-              {loading
-                ? <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
-                : renderMemberProfile()}
-            </div>
-          </DrawerContent>
-        </Drawer>
+      {/* Own profile link for quick access */}
+      {user && (
+        <div className="mt-3 px-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs text-muted-foreground"
+            onClick={() => navigate(`/dashboard/${group.id}/member/${user.id}`)}
+          >
+            View your profile
+          </Button>
+        </div>
       )}
-
-      {/* Hidden file input */}
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-
-      {/* Crop dialog */}
-      <Dialog open={cropDialogOpen} onOpenChange={(open) => { if (!uploading) { setCropDialogOpen(open); if (!open) setCropImageSrc(null); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Crop Profile Photo</DialogTitle></DialogHeader>
-          <div className="flex items-center justify-center max-h-[60vh] overflow-auto">
-            {cropImageSrc && (
-              <ReactCrop crop={crop} onChange={(c) => setCrop(c)} aspect={1} circularCrop>
-                <img ref={cropImgRef} src={cropImageSrc} alt="Crop preview" onLoad={onCropImageLoad} crossOrigin="anonymous" className="max-h-[55vh] object-contain" />
-              </ReactCrop>
-            )}
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setCropDialogOpen(false); setCropImageSrc(null); }} disabled={uploading}>Cancel</Button>
-            <Button onClick={handleSaveCrop} disabled={uploading}>{uploading ? 'Saving…' : 'Save'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Photo preview lightbox */}
-      <Dialog open={!!previewAvatarUrl} onOpenChange={(open) => !open && setPreviewAvatarUrl(null)}>
-        <DialogContent className="sm:max-w-sm p-2 bg-transparent border-none shadow-none">
-          <DialogHeader><DialogTitle className="sr-only">Profile Photo</DialogTitle></DialogHeader>
-          {previewAvatarUrl && <img src={previewAvatarUrl} alt="Profile photo" className="w-full rounded-2xl object-cover" />}
-        </DialogContent>
-      </Dialog>
-
-      {/* Past Rankings Dialog */}
-      <PastRankingsDialog open={pastRankingsOpen} onOpenChange={setPastRankingsOpen} groupId={group.id} profiles={profiles} onUpdate={onUpdate} />
     </>
   );
 };
