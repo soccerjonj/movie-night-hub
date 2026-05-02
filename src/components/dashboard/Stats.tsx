@@ -1600,7 +1600,7 @@ const StatCard = ({
   const motionProps = {
     initial: { opacity: 0, y: 8 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.35, delay: index * 0.07, ease: [0.16, 1, 0.3, 1] as number[] },
+    transition: { duration: 0.35, delay: index * 0.07, ease: [0.16, 1, 0.3, 1] as const },
   };
 
   if (onClick) {
@@ -1628,7 +1628,7 @@ const Section = ({
     className="glass-card rounded-2xl p-4 sm:p-5"
     initial={{ opacity: 0, y: 12 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.4, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] as number[] }}
+    transition={{ duration: 0.4, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] as const }}
   >
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2 text-sm font-semibold">
