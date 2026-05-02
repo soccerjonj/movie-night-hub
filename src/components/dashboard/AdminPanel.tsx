@@ -851,12 +851,13 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
               </div>
             </DropdownPanel>
 
-            {/* Edit Current Season */}
+            {/* Edit Picks & Movies (current or past seasons) */}
             {season && (
-              <DropdownPanel label={`Edit Current ${labels.seasonNoun}`} icon={<PencilLine className="w-4 h-4 mr-1" />}>
+              <DropdownPanel label={`Edit ${labels.Items} & Pickers`} icon={<PencilLine className="w-4 h-4 mr-1" />}>
                 <div className="flex flex-wrap gap-2">
                   {!isBookClub && <EditGuessesDialog group={group} profiles={profiles} onUpdated={onUpdate} />}
                   {!isBookClub && <EditPicksDialog group={group} profiles={profiles} onUpdated={onUpdate} />}
+                  {!isBookClub && <ChangePickedMovieDialog group={group} profiles={profiles} onUpdated={onUpdate} />}
                   <EditMovieInfoDialog moviePicks={moviePicks} onUpdated={onUpdate} clubType={labels.type} />
                 </div>
               </DropdownPanel>
