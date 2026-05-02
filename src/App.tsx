@@ -8,6 +8,7 @@ import AuthPage from "./pages/AuthPage";
 import GroupSetup from "./pages/GroupSetup";
 import ClubSelect from "./pages/ClubSelect";
 import Dashboard from "./pages/Dashboard";
+import MemberProfile from "./pages/MemberProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/clubs" element={<ProtectedRoute><ClubSelect /></ProtectedRoute>} />
             <Route path="/setup" element={<ProtectedRoute><GroupSetup /></ProtectedRoute>} />
             <Route path="/dashboard/:groupId" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/:groupId/member/:userId" element={<ProtectedRoute><MemberProfile /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Navigate to="/clubs" replace /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

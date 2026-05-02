@@ -37,7 +37,6 @@ const Dashboard = () => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminViewAsMember, setAdminViewAsMember] = useState(false);
   const [hasEverGuessed, setHasEverGuessed] = useState(false);
-  const [openProfileUserId, setOpenProfileUserId] = useState<string | null>(null);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [guessesDismissed, setGuessesDismissed] = useState(false);
 
@@ -148,7 +147,7 @@ const Dashboard = () => {
             )}
             {user && (
               <button
-                onClick={() => setOpenProfileUserId(user.id)}
+                onClick={() => navigate(`/dashboard/${groupId}/member/${user.id}`)}
                 className="relative group shrink-0"
               >
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
@@ -303,20 +302,13 @@ const Dashboard = () => {
               )}
             </>
           ) : tab === 'club' ? (
-            <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} externalSelectedUserId={openProfileUserId} onExternalSelectedClear={() => setOpenProfileUserId(null)} />
+            <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} />
           ) : tab === 'history' ? (
             <History group={group} profiles={profiles} members={members} />
           ) : (
             <Stats group={group} profiles={profiles} members={members} />
           )}
 
-          {/* Always mount MemberList (hidden) on non-Club tabs so the profile dialog
-              can still open when avatars are tapped from anywhere. */}
-          {tab !== 'club' && (
-            <div className="hidden">
-              <MemberList members={members} profiles={profiles} group={group} isAdmin={isAdmin} onUpdate={refetch} externalSelectedUserId={openProfileUserId} onExternalSelectedClear={() => setOpenProfileUserId(null)} />
-            </div>
-          )}
         </motion.div>
       </main>
     </div>
