@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, Check, X, Trophy, Camera, Crop, ListOrdered, Star, Award, Clock, Sparkles, ChevronRight } from 'lucide-react';
+import { Users, Crown, Ghost, Film, BookOpen, Check, X, Trophy, Camera, Crop, ListOrdered, Star, Award, Clock, Sparkles, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
@@ -1073,13 +1073,13 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
     ? new Date(clubStats.foundedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
     : null;
 
-  const statItems: { value: number | string; label: string; icon: ReactNode; numeric: boolean }[] = [
-    { value: clubStats.memberCount, label: 'members', icon: <Users className="w-3.5 h-3.5 text-primary" />, numeric: true },
-    { value: clubStats.completedSeasons, label: 'seasons done', icon: <Trophy className="w-3.5 h-3.5 text-primary" />, numeric: true },
-    { value: clubStats.totalWatched, label: watchedNoun, icon: <Film className="w-3.5 h-3.5 text-primary" />, numeric: true },
+  const statItems: { value: number | string; label: string; icon: ReactNode; numeric: boolean; tileClass: string; valueClass: string; subLabel?: string }[] = [
+    { value: clubStats.memberCount,      label: 'members',      icon: <Users  className="w-3.5 h-3.5 text-sky-400"     />, numeric: true,  tileClass: 'bg-sky-500/10 border-sky-500/20',          valueClass: 'text-sky-400' },
+    { value: clubStats.completedSeasons, label: 'seasons done', icon: <Trophy className="w-3.5 h-3.5 text-amber-400"   />, numeric: true,  tileClass: 'bg-amber-500/10 border-amber-500/20',      valueClass: 'text-amber-400', subLabel: milestoneHint ?? undefined },
+    { value: clubStats.totalWatched,     label: watchedNoun,    icon: <Film   className="w-3.5 h-3.5 text-violet-400"  />, numeric: true,  tileClass: 'bg-violet-500/10 border-violet-500/20',    valueClass: 'text-violet-400' },
     runtimeStr && runtimeNoun
-      ? { value: runtimeStr, label: runtimeNoun, icon: <Clock className="w-3.5 h-3.5 text-primary" />, numeric: false }
-      : { value: seasons.length, label: 'total seasons', icon: <Star className="w-3.5 h-3.5 text-primary" />, numeric: true },
+      ? { value: runtimeStr,     label: runtimeNoun,     icon: <Clock className="w-3.5 h-3.5 text-emerald-400" />, numeric: false, tileClass: 'bg-emerald-500/10 border-emerald-500/20', valueClass: 'text-emerald-400' }
+      : { value: seasons.length, label: 'total seasons', icon: <Star  className="w-3.5 h-3.5 text-emerald-400" />, numeric: true,  tileClass: 'bg-emerald-500/10 border-emerald-500/20', valueClass: 'text-emerald-400' },
   ];
 
   const profileSheetTitle = selectedUserId ? (getProfile(selectedUserId)?.display_name || 'Member profile') : 'Member profile';
@@ -1095,24 +1095,33 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
       >
         <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-amber-500/10 pointer-events-none" aria-hidden />
         <div className="relative">
-          <div className="mb-3 sm:mb-4">
-            <h2 className="font-display text-xl sm:text-2xl font-bold truncate">{group.name}</h2>
-            {foundedDate && <p className="text-xs text-muted-foreground mt-0.5">Founded {foundedDate}</p>}
-          </div>
+          {/* Activity blurb — top of card */}
           {activityBlurb && (
             <motion.div
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-              className="flex items-start gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2.5 mb-3"
+              className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 mb-3 ${activityBlurb.kind === 'next' ? 'border-amber-500/25 bg-amber-500/8' : 'border-primary/15 bg-primary/5'}`}
             >
-              <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <Sparkles className={`w-4 h-4 shrink-0 mt-0.5 ${activityBlurb.kind === 'next' ? 'text-amber-400' : 'text-primary'}`} />
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{activityBlurb.line}</p>
                 <p className="text-sm font-medium text-foreground truncate">{activityBlurb.sub}</p>
               </div>
             </motion.div>
           )}
+          {/* Identity row */}
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
+            {isBookClub ? <BookOpen className="w-3.5 h-3.5 text-primary/50" /> : <Film className="w-3.5 h-3.5 text-primary/50" />}
+            <span className="text-xs font-medium text-muted-foreground">{isBookClub ? 'Book Club' : 'Movie Club'}</span>
+            {foundedDate && (
+              <>
+                <span className="text-muted-foreground/30">·</span>
+                <span className="text-xs text-muted-foreground">Est. {foundedDate}</span>
+              </>
+            )}
+          </div>
+          {/* Color-coded stats grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {statItems.map((stat, i) => (
               <motion.div
@@ -1120,20 +1129,18 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.05 + i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-                className="rounded-xl bg-muted/20 border border-border/30 p-3"
+                className={`rounded-xl border p-3 ${stat.tileClass}`}
               >
                 <div className="flex items-center gap-1.5 mb-1.5">{stat.icon}<span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">{stat.label}</span></div>
                 {stat.numeric && typeof stat.value === 'number' ? (
-                  <ClubStatNumber value={stat.value} className="font-display text-lg sm:text-xl font-bold text-primary" />
+                  <ClubStatNumber value={stat.value} className={`font-display text-lg sm:text-xl font-bold ${stat.valueClass}`} />
                 ) : (
-                  <p className="font-display text-lg sm:text-xl font-bold text-primary">{stat.value}</p>
+                  <p className={`font-display text-lg sm:text-xl font-bold ${stat.valueClass}`}>{stat.value}</p>
                 )}
+                {stat.subLabel && <p className="text-[10px] text-muted-foreground/60 mt-1 leading-tight">{stat.subLabel}</p>}
               </motion.div>
             ))}
           </div>
-          {milestoneHint && (
-            <p className="text-[11px] text-muted-foreground mt-3 text-center sm:text-left">{milestoneHint}</p>
-          )}
         </div>
       </motion.div>
 
@@ -1207,7 +1214,12 @@ const MemberList = ({ members, profiles, group, isAdmin, onUpdate, externalSelec
                       <span className="text-[10px] text-muted-foreground">Invite pending</span>
                     )}
                     {!isPlaceholder && earned.length > 0 && (
-                      <span className="text-[10px] text-muted-foreground">{earned.length} badge{earned.length !== 1 ? 's' : ''}</span>
+                      <span className="flex items-center gap-0.5">
+                        {earned.slice(0, 5).map(e => (
+                          <span key={e.badge.id} className="text-[12px] leading-none" title={e.badge.label}>{e.badge.emoji}</span>
+                        ))}
+                        {earned.length > 5 && <span className="text-[10px] text-muted-foreground ml-0.5">+{earned.length - 5}</span>}
+                      </span>
                     )}
                   </div>
                 </div>
