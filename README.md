@@ -1,4 +1,4 @@
-# Club Hub
+# Movie Club Hub
 
 A social club app for groups of friends who watch movies or read books together. Members take turns picking titles each season, guess who picked what, rank everything they've watched, and earn badges based on their taste — all tracked in one place.
 
