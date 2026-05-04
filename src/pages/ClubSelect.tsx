@@ -178,7 +178,7 @@ const ClubSelect = () => {
 
                       {/* Season title or status hint */}
                       {g.season_status && (
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                           {STATUS_HINT[g.season_status] ?? g.season_status}
                           {g.season_title ? ` · ${g.season_title}` : g.season_number ? ` · Season ${g.season_number}` : ''}
                         </p>
