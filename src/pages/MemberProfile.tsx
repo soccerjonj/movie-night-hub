@@ -626,6 +626,8 @@ const MemberProfile = () => {
   const selectCover = async (path: string | null) => {
     if (!user) return;
     const url = path ? `https://image.tmdb.org/t/p/w1280${path}` : null;
+    // Preload before saving so the hero never flashes bare
+    if (url) await new Promise<void>(resolve => { const img = new Image(); img.onload = img.onerror = () => resolve(); img.src = url; });
     const { error } = await supabase.from('profiles').update({ cover_url: url }).eq('user_id', user.id);
     if (error) { toast.error('Failed to update cover'); return; }
     setCoverUrl(url);
@@ -865,9 +867,8 @@ const MemberProfile = () => {
 
       {/* Hero */}
       <div className="relative h-52 overflow-hidden bg-muted/30">
-        {coverUrl ? (
-          <img src={coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
-        ) : coverPosters.length > 0 ? (
+        {/* Poster mosaic always present as base layer */}
+        {coverPosters.length > 0 && (
           <div className="absolute inset-0 flex opacity-45">
             {coverPosters.map(p => (
               <div key={p.id} className="flex-1 h-full overflow-hidden">
@@ -875,7 +876,11 @@ const MemberProfile = () => {
               </div>
             ))}
           </div>
-        ) : null}
+        )}
+        {/* Cover image fades in on top once loaded */}
+        {coverUrl && (
+          <img src={coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60 transition-opacity duration-500" />
+        )}
         <div className={`absolute inset-0 bg-gradient-to-br ${coverUrl ? 'from-black/40 via-black/10' : coverAccentClass} to-background`} />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_50%_-30%,hsl(38_90%_55%/0.25),transparent_60%)]" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent" />
