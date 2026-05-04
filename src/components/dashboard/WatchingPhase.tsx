@@ -268,7 +268,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
           )}
 
           <div className="flex-1 min-w-0">
-            <p className={`font-medium truncate ${isCurrent ? 'text-base font-semibold text-foreground' : 'text-sm'}`}>
+            <p className={`font-medium leading-snug break-words ${isCurrent ? 'text-base font-semibold text-foreground' : 'text-sm'}`}>
               {pick.title}
             </p>
             {isCurrent && (
@@ -392,7 +392,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
                   <span>{olderWatched.length} earlier {labels.watched}</span>
                   <div className="flex items-center gap-2">
                     {olderAccuracy !== null && !showWatched && (
-                      <span className="text-[10px] font-medium text-primary/70">{olderAccuracy}% accuracy</span>
+                      <span className="text-[10px] font-medium text-primary/70">{olderAccuracy}% group accuracy</span>
                     )}
                     {showWatched ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </div>
