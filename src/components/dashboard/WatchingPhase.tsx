@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Film, BookOpen, ChevronDown, ChevronUp, Check, X, Users } from 'lucide-react';
+import { Film, BookOpen, ChevronDown, ChevronUp, Check, X, Users, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +13,7 @@ import ReadingAssignments from './ReadingAssignments';
 import MeetingScheduleManager from './MeetingScheduleManager';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
+const TMDB_IMAGE_LG = 'https://image.tmdb.org/t/p/w342';
 
 interface Props {
   season: Season;
@@ -52,6 +54,9 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
   const [allGuesses, setAllGuesses] = useState<GuessRow[]>([]);
   const [expandedPick, setExpandedPick] = useState<string | null>(null);
   const [readingAssignments, setReadingAssignments] = useState<ReadingAssignment[]>([]);
+  const [posterPickTarget, setPosterPickTarget] = useState<MoviePick | null>(null);
+  const [altPosters, setAltPosters] = useState<string[]>([]);
+  const [loadingAltPosters, setLoadingAltPosters] = useState(false);
   const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
 
   // Fetch current user's guesses
@@ -233,6 +238,38 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
     );
   };
 
+  const openPosterPicker = async (e: React.MouseEvent, pick: MoviePick) => {
+    e.stopPropagation();
+    setPosterPickTarget(pick);
+    setAltPosters([]);
+    if (!pick.tmdb_id) return;
+    setLoadingAltPosters(true);
+    try {
+      const res = await fetch(
+        `https://api.themoviedb.org/3/movie/${pick.tmdb_id}/images`,
+        { headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' } }
+      );
+      const data = await res.json();
+      const paths: string[] = (data.posters || [])
+        .sort((a: { vote_average: number }, b: { vote_average: number }) => b.vote_average - a.vote_average)
+        .slice(0, 20)
+        .map((p: { file_path: string }) => p.file_path);
+      setAltPosters(paths);
+    } catch { /* skip */ }
+    setLoadingAltPosters(false);
+  };
+
+  const selectPoster = async (path: string) => {
+    if (!posterPickTarget) return;
+    const url = `${TMDB_IMAGE_LG}${path}`;
+    const { error } = await supabase.from('movie_picks').update({ poster_url: url }).eq('id', posterPickTarget.id);
+    if (error) { toast.error('Failed to update poster'); return; }
+    setPosterOverrides(prev => ({ ...prev, [posterPickTarget.id]: url }));
+    setPosterPickTarget(null);
+    toast.success('Poster updated');
+    onUpdate();
+  };
+
   const renderPick = (pick: MoviePick, i: number) => {
     const isCurrent = i === season.current_movie_index;
     const isWatched = i < season.current_movie_index;
@@ -259,13 +296,31 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
             {isWatched ? <Check className="w-3 h-3 sm:w-4 sm:h-4" /> : i + 1}
           </div>
 
-          {(pick.poster_url || posterOverrides[pick.id]) ? (
-            <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className={`rounded-lg object-cover shrink-0 ${isCurrent ? 'w-10 sm:w-12 ring-1 ring-primary/30 shadow-md' : 'w-8 sm:w-10'}`} />
-          ) : (
-            <div className={`rounded-lg bg-muted flex items-center justify-center shrink-0 ${isCurrent ? 'w-10 sm:w-12 h-14 sm:h-16' : 'w-8 sm:w-10 h-11 sm:h-14'}`}>
-              <ItemIcon className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
-            </div>
-          )}
+          {(() => {
+            const canEditPoster = clubType !== 'book' && (isAdmin || pick.user_id === user?.id);
+            const posterSrc = posterOverrides[pick.id] || pick.poster_url;
+            const sizeClass = isCurrent ? 'w-10 sm:w-12' : 'w-8 sm:w-10';
+            const thumbH = isCurrent ? 'h-14 sm:h-16' : 'h-11 sm:h-14';
+            return (
+              <div className={`relative shrink-0 group/poster ${sizeClass} ${thumbH}`}>
+                {posterSrc ? (
+                  <img src={posterSrc} alt={pick.title} className={`w-full h-full rounded-lg object-cover ${isCurrent ? 'ring-1 ring-primary/30 shadow-md' : ''}`} />
+                ) : (
+                  <div className="w-full h-full rounded-lg bg-muted flex items-center justify-center">
+                    <ItemIcon className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+                  </div>
+                )}
+                {canEditPoster && (
+                  <button
+                    onClick={(e) => openPosterPicker(e, pick)}
+                    className="absolute inset-0 rounded-lg flex items-center justify-center bg-black/50 opacity-0 group-hover/poster:opacity-100 transition-opacity"
+                  >
+                    <Camera className="w-3 h-3 text-white" />
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           <div className="flex-1 min-w-0">
             <p className={`font-medium leading-snug break-words ${isCurrent ? 'text-base font-semibold text-foreground' : 'text-sm'}`}>
@@ -429,6 +484,34 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
           </div>
         </div>
       )}
+      <Dialog open={!!posterPickTarget} onOpenChange={open => !open && setPosterPickTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Choose a poster — {posterPickTarget?.title}</DialogTitle>
+          </DialogHeader>
+          {loadingAltPosters ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">Loading posters…</div>
+          ) : altPosters.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">No alternate posters found.</div>
+          ) : (
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto py-1">
+              {altPosters.map(path => (
+                <button
+                  key={path}
+                  onClick={() => selectPoster(path)}
+                  className="rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <img
+                    src={`${TMDB_IMAGE_LG}${path}`}
+                    alt="Alternate poster"
+                    className="w-full aspect-[2/3] object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
