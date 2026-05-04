@@ -110,6 +110,12 @@ const MemberProfile = () => {
   const [uploading, setUploading] = useState(false);
   const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string | null>(null);
 
+  // Cover picker state
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const [coverBackdrops, setCoverBackdrops] = useState<{ pickTitle: string; path: string }[]>([]);
+  const [loadingBackdrops, setLoadingBackdrops] = useState(false);
+  const [coverUrl, setCoverUrl] = useState<string | null>(profile?.cover_url ?? null);
+
   // Rankings
   const [pastRankingsOpen, setPastRankingsOpen] = useState(false);
   const [hasUnrankedSeasons, setHasUnrankedSeasons] = useState(false);
@@ -410,6 +416,9 @@ const MemberProfile = () => {
     return { featuredPick, featuredAvgRank, featuredRankCount };
   }, [slotRankings, memberPicks, isPickRevealed]);
 
+  // Sync cover from profile
+  useEffect(() => { setCoverUrl(profile?.cover_url ?? null); }, [profile?.cover_url]);
+
   // Cover
   const memberIndex = members.findIndex(m => m.user_id === userId);
   const coverAccentClass = isGroupAdmin
@@ -533,6 +542,45 @@ const MemberProfile = () => {
     } catch (err: unknown) {
       toast.error(getSafeErrorMessage(err, 'Failed to upload'));
     } finally { setUploading(false); }
+  };
+
+  const openCoverPicker = async () => {
+    setCoverPickerOpen(true);
+    setCoverBackdrops([]);
+    setLoadingBackdrops(true);
+    const revealedPicks = memberPicks.filter(p => isPickRevealed(p) && p.tmdb_id);
+    const results: { pickTitle: string; path: string }[] = [];
+    const seen = new Set<string>();
+    for (const pick of revealedPicks.slice(0, 12)) {
+      try {
+        const res = await fetch(
+          `https://api.themoviedb.org/3/movie/${pick.tmdb_id}/images`,
+          { headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' } }
+        );
+        const data = await res.json();
+        const top = (data.backdrops || [])
+          .sort((a: { vote_average: number }, b: { vote_average: number }) => b.vote_average - a.vote_average)
+          .slice(0, 3);
+        for (const b of top) {
+          if (!seen.has(b.file_path)) {
+            seen.add(b.file_path);
+            results.push({ pickTitle: pick.title, path: b.file_path });
+          }
+        }
+      } catch { /* skip */ }
+    }
+    setCoverBackdrops(results);
+    setLoadingBackdrops(false);
+  };
+
+  const selectCover = async (path: string | null) => {
+    if (!user) return;
+    const url = path ? `https://image.tmdb.org/t/p/w1280${path}` : null;
+    const { error } = await supabase.from('profiles').update({ cover_url: url }).eq('user_id', user.id);
+    if (error) { toast.error('Failed to update cover'); return; }
+    setCoverUrl(url);
+    setCoverPickerOpen(false);
+    toast.success(url ? 'Cover updated' : 'Cover removed');
   };
 
   const sectionLabel = (title: string) => (
@@ -765,9 +813,11 @@ const MemberProfile = () => {
         </div>
       </header>
 
-      {/* Hero — taller, stronger poster mosaic */}
+      {/* Hero */}
       <div className="relative h-52 overflow-hidden bg-muted/30">
-        {coverPosters.length > 0 && (
+        {coverUrl ? (
+          <img src={coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+        ) : coverPosters.length > 0 ? (
           <div className="absolute inset-0 flex opacity-45">
             {coverPosters.map(p => (
               <div key={p.id} className="flex-1 h-full overflow-hidden">
@@ -775,10 +825,20 @@ const MemberProfile = () => {
               </div>
             ))}
           </div>
-        )}
-        <div className={`absolute inset-0 bg-gradient-to-br ${coverAccentClass} to-background`} />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_50%_-30%,hsl(38_90%_55%/0.35),transparent_60%)]" />
+        ) : null}
+        <div className={`absolute inset-0 bg-gradient-to-br ${coverUrl ? 'from-black/40 via-black/10' : coverAccentClass} to-background`} />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_50%_-30%,hsl(38_90%_55%/0.25),transparent_60%)]" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent" />
+        {isOwnProfile && (
+          <button
+            type="button"
+            onClick={openCoverPicker}
+            className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/50 backdrop-blur-sm px-3 py-1.5 text-[11px] font-medium text-white hover:bg-black/70 transition-colors"
+          >
+            <Camera className="w-3 h-3" />
+            {coverUrl ? 'Change cover' : 'Add cover'}
+          </button>
+        )}
       </div>
 
       {/* Profile info — overlaps hero */}
@@ -903,6 +963,49 @@ const MemberProfile = () => {
 
       {/* Past rankings */}
       {isOwnProfile && <PastRankingsDialog open={pastRankingsOpen} onOpenChange={setPastRankingsOpen} groupId={group.id} profiles={profiles} onUpdate={() => {}} />}
+
+      {/* Cover picker */}
+      <Dialog open={coverPickerOpen} onOpenChange={open => !open && setCoverPickerOpen(false)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Choose a cover photo</DialogTitle>
+          </DialogHeader>
+          {loadingBackdrops ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">Loading backdrops…</div>
+          ) : coverBackdrops.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">No backdrops found. Watch more movies to unlock cover options!</div>
+          ) : (
+            <div className="space-y-3 max-h-[65vh] overflow-y-auto py-1">
+              {coverUrl && (
+                <button
+                  onClick={() => selectCover(null)}
+                  className="w-full text-xs text-destructive hover:text-destructive/80 py-1 transition-colors"
+                >
+                  Remove current cover
+                </button>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {coverBackdrops.map((b, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => selectCover(b.path)}
+                    className="group relative rounded-xl overflow-hidden aspect-video hover:ring-2 hover:ring-primary transition-all focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <img
+                      src={`https://image.tmdb.org/t/p/w780${b.path}`}
+                      alt={b.pickTitle}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                      <p className="text-[10px] text-white font-medium truncate">{b.pickTitle}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
