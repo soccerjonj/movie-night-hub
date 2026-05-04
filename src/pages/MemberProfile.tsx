@@ -4,8 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Film, Crown, Camera, Crop, Award, Star, ListOrdered, Check, X, Trophy } from 'lucide-react';
+import { ArrowLeft, Film, Crown, Camera, Crop, Award, Star, ListOrdered, Check, X, Trophy, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -115,6 +116,10 @@ const MemberProfile = () => {
   const [coverBackdrops, setCoverBackdrops] = useState<{ pickTitle: string; path: string }[]>([]);
   const [loadingBackdrops, setLoadingBackdrops] = useState(false);
   const [coverUrl, setCoverUrl] = useState<string | null>(profile?.cover_url ?? null);
+  const [coverSearch, setCoverSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<{ id: number; title: string; year: string }[]>([]);
+  const [searchingMovies, setSearchingMovies] = useState(false);
+  const coverSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Rankings
   const [pastRankingsOpen, setPastRankingsOpen] = useState(false);
@@ -544,9 +549,54 @@ const MemberProfile = () => {
     } finally { setUploading(false); }
   };
 
+  const fetchBackdropsForTmdbId = async (tmdbId: number, title: string) => {
+    setLoadingBackdrops(true);
+    setCoverBackdrops([]);
+    setSearchResults([]);
+    setCoverSearch('');
+    try {
+      const res = await fetch(
+        `https://api.themoviedb.org/3/movie/${tmdbId}/images`,
+        { headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' } }
+      );
+      const data = await res.json();
+      const paths: { pickTitle: string; path: string }[] = (data.backdrops || [])
+        .sort((a: { vote_average: number }, b: { vote_average: number }) => b.vote_average - a.vote_average)
+        .slice(0, 12)
+        .map((b: { file_path: string }) => ({ pickTitle: title, path: b.file_path }));
+      setCoverBackdrops(paths);
+    } catch { /* skip */ }
+    setLoadingBackdrops(false);
+  };
+
+  const handleCoverSearch = (query: string) => {
+    setCoverSearch(query);
+    if (coverSearchRef.current) clearTimeout(coverSearchRef.current);
+    if (!query.trim()) { setSearchResults([]); return; }
+    setSearchingMovies(true);
+    coverSearchRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=1`,
+          { headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' } }
+        );
+        const data = await res.json();
+        const results = (data.results || []).slice(0, 6).map((m: { id: number; title: string; release_date?: string }) => ({
+          id: m.id,
+          title: m.title,
+          year: m.release_date?.slice(0, 4) || '',
+        }));
+        setSearchResults(results);
+      } catch { /* skip */ }
+      setSearchingMovies(false);
+    }, 350);
+  };
+
   const openCoverPicker = async () => {
     setCoverPickerOpen(true);
     setCoverBackdrops([]);
+    setCoverSearch('');
+    setSearchResults([]);
     setLoadingBackdrops(true);
     const revealedPicks = memberPicks.filter(p => isPickRevealed(p) && p.tmdb_id);
     const results: { pickTitle: string; path: string }[] = [];
@@ -965,22 +1015,50 @@ const MemberProfile = () => {
       {isOwnProfile && <PastRankingsDialog open={pastRankingsOpen} onOpenChange={setPastRankingsOpen} groupId={group.id} profiles={profiles} onUpdate={() => {}} />}
 
       {/* Cover picker */}
-      <Dialog open={coverPickerOpen} onOpenChange={open => !open && setCoverPickerOpen(false)}>
+      <Dialog open={coverPickerOpen} onOpenChange={open => { if (!open) { setCoverPickerOpen(false); setCoverSearch(''); setSearchResults([]); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Choose a cover photo</DialogTitle>
           </DialogHeader>
-          {loadingBackdrops ? (
-            <div className="text-center text-muted-foreground py-10 text-sm">Loading backdrops…</div>
-          ) : coverBackdrops.length === 0 ? (
-            <div className="text-center text-muted-foreground py-10 text-sm">No backdrops found. Watch more movies to unlock cover options!</div>
-          ) : (
-            <div className="space-y-3 max-h-[65vh] overflow-y-auto py-1">
-              {coverUrl && (
+
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search any movie…"
+              value={coverSearch}
+              onChange={e => handleCoverSearch(e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+
+          {/* Search results dropdown */}
+          {searchResults.length > 0 && (
+            <div className="border border-border/50 rounded-xl overflow-hidden bg-card shadow-md -mt-1">
+              {searchResults.map(r => (
                 <button
-                  onClick={() => selectCover(null)}
-                  className="w-full text-xs text-destructive hover:text-destructive/80 py-1 transition-colors"
+                  key={r.id}
+                  onClick={() => fetchBackdropsForTmdbId(r.id, r.title)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/40 transition-colors text-left border-b border-border/30 last:border-0"
                 >
+                  <Film className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="flex-1 truncate font-medium">{r.title}</span>
+                  {r.year && <span className="text-xs text-muted-foreground shrink-0">{r.year}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          {searchingMovies && <p className="text-xs text-muted-foreground text-center -mt-1">Searching…</p>}
+
+          {/* Backdrops grid */}
+          {loadingBackdrops ? (
+            <div className="text-center text-muted-foreground py-8 text-sm">Loading backdrops…</div>
+          ) : coverBackdrops.length === 0 && !coverSearch ? (
+            <div className="text-center text-muted-foreground py-8 text-sm">No backdrops from your picks yet — search for any movie above.</div>
+          ) : coverBackdrops.length > 0 ? (
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {coverUrl && (
+                <button onClick={() => selectCover(null)} className="w-full text-xs text-destructive hover:text-destructive/80 py-0.5 transition-colors">
                   Remove current cover
                 </button>
               )}
@@ -989,13 +1067,9 @@ const MemberProfile = () => {
                   <button
                     key={idx}
                     onClick={() => selectCover(b.path)}
-                    className="group relative rounded-xl overflow-hidden aspect-video hover:ring-2 hover:ring-primary transition-all focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="group relative rounded-xl overflow-hidden aspect-video hover:ring-2 hover:ring-primary transition-all"
                   >
-                    <img
-                      src={`https://image.tmdb.org/t/p/w780${b.path}`}
-                      alt={b.pickTitle}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={`https://image.tmdb.org/t/p/w780${b.path}`} alt={b.pickTitle} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
                       <p className="text-[10px] text-white font-medium truncate">{b.pickTitle}</p>
                     </div>
@@ -1003,7 +1077,7 @@ const MemberProfile = () => {
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>
