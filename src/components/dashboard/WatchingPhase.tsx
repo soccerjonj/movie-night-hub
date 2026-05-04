@@ -140,6 +140,22 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
   const watchedPicks = sortedPicks.filter((_, i) => i < season.current_movie_index);
   const currentAndUpcoming = sortedPicks.filter((_, i) => i >= season.current_movie_index);
 
+  // Always show the most recently watched; collapse the rest
+  const lastWatched = watchedPicks.slice(-1);
+  const olderWatched = watchedPicks.slice(0, -1);
+
+  // Guess accuracy for the collapsed older picks
+  const olderAccuracy = (() => {
+    if (olderWatched.length === 0 || allGuesses.length === 0) return null;
+    let correct = 0, total = 0;
+    for (const pick of olderWatched) {
+      const gs = allGuesses.filter(g => g.movie_pick_id === pick.id);
+      total += gs.length;
+      correct += gs.filter(g => g.guessed_user_id === pick.user_id).length;
+    }
+    return total > 0 ? Math.round((correct / total) * 100) : null;
+  })();
+
   const sortedReadings = [...readingAssignments].sort((a, b) => a.order_index - b.order_index);
   const today = new Date();
   const currentReadingIndex = (() => {
@@ -227,30 +243,32 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
       <div key={pick.id}>
         <button
           onClick={() => setExpandedPick(isExpanded ? null : pick.id)}
-          className={`w-full flex items-center gap-2 sm:gap-4 rounded-xl p-2 sm:p-3 transition-all text-left ${
+          className={`w-full flex items-center gap-2 sm:gap-4 rounded-xl transition-all text-left ${
             isCurrent
-              ? 'bg-primary/10 ring-1 ring-primary/30 shadow-[0_0_15px_-5px_hsl(38_90%_55%_/_0.2)]'
+              ? 'bg-primary/10 ring-1 ring-primary/30 shadow-[0_0_15px_-5px_hsl(38_90%_55%_/_0.2)] p-3 sm:p-4'
               : isWatched
-              ? 'bg-muted/10 opacity-60 hover:opacity-80'
-              : 'bg-muted/20 hover:bg-muted/30'
+              ? 'bg-muted/10 hover:bg-muted/20 p-2 sm:p-3'
+              : 'bg-muted/20 hover:bg-muted/30 p-2 sm:p-3'
           }`}
         >
           <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${
-            isCurrent ? 'bg-primary text-primary-foreground shadow-[0_0_10px_-2px_hsl(38_90%_55%_/_0.5)]' : isWatched ? 'bg-muted text-muted-foreground' : 'bg-muted/50 text-muted-foreground'
+            isCurrent ? 'bg-primary text-primary-foreground shadow-[0_0_10px_-2px_hsl(38_90%_55%_/_0.5)]'
+            : isWatched ? 'bg-green-500/15 text-green-400'
+            : 'bg-muted/50 text-muted-foreground'
           }`}>
-            {i + 1}
+            {isWatched ? <Check className="w-3 h-3 sm:w-4 sm:h-4" /> : i + 1}
           </div>
 
           {(pick.poster_url || posterOverrides[pick.id]) ? (
-            <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className={`w-8 sm:w-10 rounded-lg object-cover shrink-0 ${isCurrent ? 'ring-1 ring-primary/30 shadow-md' : ''}`} />
+            <img src={pick.poster_url || posterOverrides[pick.id]} alt={pick.title} className={`rounded-lg object-cover shrink-0 ${isCurrent ? 'w-10 sm:w-12 ring-1 ring-primary/30 shadow-md' : 'w-8 sm:w-10'}`} />
           ) : (
-            <div className="w-8 sm:w-10 h-11 sm:h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <div className={`rounded-lg bg-muted flex items-center justify-center shrink-0 ${isCurrent ? 'w-10 sm:w-12 h-14 sm:h-16' : 'w-8 sm:w-10 h-11 sm:h-14'}`}>
               <ItemIcon className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
             </div>
           )}
 
           <div className="flex-1 min-w-0">
-            <p className={`font-medium text-sm truncate ${isCurrent ? 'text-foreground' : ''}`}>
+            <p className={`font-medium truncate ${isCurrent ? 'text-base font-semibold text-foreground' : 'text-sm'}`}>
               {pick.title}
             </p>
             {isCurrent && (
@@ -362,7 +380,8 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
             <h2 className="font-display text-lg sm:text-xl font-bold">{labels.scheduleLabel}</h2>
           </div>
           <div className="space-y-2 sm:space-y-3">
-            {watchedPicks.length > 0 && (
+            {/* Older watched — collapsible */}
+            {olderWatched.length > 0 && (
               <>
                 <Button
                   variant="ghost"
@@ -370,11 +389,40 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
                   onClick={() => setShowWatched(!showWatched)}
                   className="w-full justify-between text-muted-foreground hover:text-foreground"
                 >
-                  <span>{watchedPicks.length} already {labels.watched}</span>
-                  {showWatched ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  <span>{olderWatched.length} earlier {labels.watched}</span>
+                  <div className="flex items-center gap-2">
+                    {olderAccuracy !== null && !showWatched && (
+                      <span className="text-[10px] font-medium text-primary/70">{olderAccuracy}% accuracy</span>
+                    )}
+                    {showWatched ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
                 </Button>
-                {showWatched && watchedPicks.map((pick) => renderPick(pick, sortedPicks.indexOf(pick)))}
+                <AnimatePresence>
+                  {showWatched && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                      className="overflow-hidden space-y-2"
+                    >
+                      {olderWatched.map((pick) => renderPick(pick, sortedPicks.indexOf(pick)))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </>
+            )}
+
+            {/* Most recently watched — always visible */}
+            {lastWatched.map((pick) => renderPick(pick, sortedPicks.indexOf(pick)))}
+
+            {/* Divider between watched and upcoming */}
+            {watchedPicks.length > 0 && currentAndUpcoming.length > 0 && (
+              <div className="flex items-center gap-2 py-1">
+                <div className="flex-1 h-px bg-border/40" />
+                <span className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">Up next</span>
+                <div className="flex-1 h-px bg-border/40" />
+              </div>
             )}
 
             {currentAndUpcoming.map((pick) => renderPick(pick, sortedPicks.indexOf(pick)))}
