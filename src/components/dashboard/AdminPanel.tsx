@@ -4,7 +4,7 @@ import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup
 import { getClubLabels } from '@/lib/clubTypes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown, ListOrdered, MapPin, Tag } from 'lucide-react';
+import { Copy, Play, SkipForward, SkipBack, Eye, EyeOff, Shuffle, Trash2, Pencil, Check, X, CalendarClock, Star, Upload, PencilLine, Users, ChevronDown, ListOrdered, MapPin, Tag, Camera, Film } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { addDays, nextMonday, setHours, setMinutes } from 'date-fns';
@@ -17,6 +17,8 @@ import AddPlaceholderDialog from './AddPlaceholderDialog';
 import EditMovieInfoDialog from './EditMovieInfoDialog';
 import ChangePickedMovieDialog from './ChangePickedMovieDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPreview from './MapPreview';
 import StartWatchingDialog from './StartWatchingDialog';
@@ -55,6 +57,43 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
   const showCallDate = group.meeting_type === 'remote' && !isBookClub;
   const [loading, setLoading] = useState(false);
   const [showStartWatching, setShowStartWatching] = useState(false);
+
+  // Poster management
+  const [posterPickTarget, setPosterPickTarget] = useState<MoviePick | null>(null);
+  const [altPosters, setAltPosters] = useState<string[]>([]);
+  const [loadingAltPosters, setLoadingAltPosters] = useState(false);
+  const [posterOverrides, setPosterOverrides] = useState<Record<string, string>>({});
+
+  const openPosterPicker = async (pick: MoviePick) => {
+    setPosterPickTarget(pick);
+    setAltPosters([]);
+    if (!pick.tmdb_id) return;
+    setLoadingAltPosters(true);
+    try {
+      const res = await fetch(
+        `https://api.themoviedb.org/3/movie/${pick.tmdb_id}/images`,
+        { headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' } }
+      );
+      const data = await res.json();
+      const paths: string[] = (data.posters || [])
+        .sort((a: { vote_average: number }, b: { vote_average: number }) => b.vote_average - a.vote_average)
+        .slice(0, 20)
+        .map((p: { file_path: string }) => p.file_path);
+      setAltPosters(paths);
+    } catch { /* skip */ }
+    setLoadingAltPosters(false);
+  };
+
+  const selectPoster = async (path: string) => {
+    if (!posterPickTarget) return;
+    const url = `https://image.tmdb.org/t/p/w342${path}`;
+    const { error } = await supabase.from('movie_picks').update({ poster_url: url }).eq('id', posterPickTarget.id);
+    if (error) { toast.error('Failed to update poster'); return; }
+    setPosterOverrides(prev => ({ ...prev, [posterPickTarget.id]: url }));
+    setPosterPickTarget(null);
+    toast.success('Poster updated');
+    onUpdate();
+  };
   
   const [editingSeason, setEditingSeason] = useState(false);
   const [editSeasonNumber, setEditSeasonNumber] = useState('');
@@ -860,6 +899,37 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                   {!isBookClub && <ChangePickedMovieDialog group={group} profiles={profiles} onUpdated={onUpdate} />}
                   <EditMovieInfoDialog moviePicks={moviePicks} onUpdated={onUpdate} clubType={labels.type} />
                 </div>
+
+                {/* Poster management */}
+                {!isBookClub && moviePicks.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border/40">
+                    <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5" /> Swap Posters
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0)).map(pick => (
+                        <button
+                          key={pick.id}
+                          onClick={() => openPosterPicker(pick)}
+                          className="group relative aspect-[2/3] rounded-lg overflow-hidden bg-muted hover:ring-2 hover:ring-primary transition-all"
+                          title={pick.title}
+                        >
+                          {(posterOverrides[pick.id] || pick.poster_url) ? (
+                            <img src={posterOverrides[pick.id] || pick.poster_url!} alt={pick.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Film className="w-4 h-4 text-muted-foreground/50" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Camera className="w-4 h-4 text-white" />
+                          </div>
+                          <p className="absolute bottom-0 inset-x-0 text-[8px] text-white bg-black/60 px-1 py-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity">{pick.title}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </DropdownPanel>
             )}
 
@@ -998,6 +1068,33 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
           </div>
         </div>
       )}
+      <Dialog open={!!posterPickTarget} onOpenChange={open => !open && setPosterPickTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Choose a poster — {posterPickTarget?.title}</DialogTitle>
+          </DialogHeader>
+          {loadingAltPosters ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">Loading posters…</div>
+          ) : altPosters.length === 0 && !loadingAltPosters ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">
+              {posterPickTarget?.tmdb_id ? 'No alternate posters found.' : 'No TMDB ID — search for this movie first to enable poster swapping.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto py-1">
+              {altPosters.map(path => (
+                <button
+                  key={path}
+                  onClick={() => selectPoster(path)}
+                  className="rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <img src={`https://image.tmdb.org/t/p/w342${path}`} alt="Alternate poster" className="w-full aspect-[2/3] object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {season && (
         <StartWatchingDialog
           open={showStartWatching}

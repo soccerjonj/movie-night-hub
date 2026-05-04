@@ -297,7 +297,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
           </div>
 
           {(() => {
-            const canEditPoster = clubType !== 'book' && (isAdmin || pick.user_id === user?.id);
+            const canEditPoster = clubType !== 'book' && !isAdmin && pick.user_id === user?.id;
             const posterSrc = posterOverrides[pick.id] || pick.poster_url;
             const sizeClass = isCurrent ? 'w-10 sm:w-12' : 'w-8 sm:w-10';
             const thumbH = isCurrent ? 'h-14 sm:h-16' : 'h-11 sm:h-14';
