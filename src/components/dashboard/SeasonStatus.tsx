@@ -22,6 +22,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
   const labels = getClubLabels(clubType);
   const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
+  const [backdropUrl, setBackdropUrl] = useState<string | null>(null);
   const [director, setDirector] = useState<string | null>(null);
   const [rating, setRating] = useState<number | null>(null);
   const [readingStatus, setReadingStatus] = useState<string | null>(null);
@@ -63,14 +64,18 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
           }
         }
         if (tmdbId) {
-          const [detailsRes, creditsRes] = await Promise.all([
+          const [detailsRes, creditsRes, imagesRes] = await Promise.all([
             fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`, { headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' } }),
             fetch(`https://api.themoviedb.org/3/movie/${tmdbId}/credits?language=en-US`, { headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' } }),
+            fetch(`https://api.themoviedb.org/3/movie/${tmdbId}/images`, { headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' } }),
           ]);
-          const [details, credits] = await Promise.all([detailsRes.json(), creditsRes.json()]);
+          const [details, credits, images] = await Promise.all([detailsRes.json(), creditsRes.json(), imagesRes.json()]);
           if (typeof details.vote_average === 'number' && details.vote_average > 0) setRating(details.vote_average);
           const dirs = credits.crew?.filter((c: { job: string }) => c.job === 'Director');
           if (dirs?.length) setDirector(dirs.map((d: { name: string }) => d.name).join(', '));
+          const topBackdrop = (images.backdrops || [])
+            .sort((a: { vote_average: number }, b: { vote_average: number }) => b.vote_average - a.vote_average)[0];
+          if (topBackdrop?.file_path) setBackdropUrl(`https://image.tmdb.org/t/p/w1280${topBackdrop.file_path}`);
         }
       } catch { /* silently fail */ }
     };
@@ -125,14 +130,21 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
       {/* Movie club: cinematic Now Watching card */}
       {season.status === 'watching' && currentMovie && clubType !== 'book' && (
         <div className="relative overflow-hidden rounded-xl">
-          {posterUrl && (
+          {backdropUrl ? (
+            <>
+              <img src={backdropUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" style={{ filter: 'saturate(1.2)' }} />
+              <div className="absolute inset-0 bg-gradient-to-r from-card/95 via-card/60 to-card/30" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
+            </>
+          ) : posterUrl ? (
             <>
               <div className="absolute inset-0" style={{ backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center top', filter: 'blur(28px) saturate(1.4)', transform: 'scale(1.15)', opacity: 0.22 }} />
               <div className="absolute inset-0 cinematic-backdrop" />
               <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-transparent to-transparent" />
             </>
+          ) : (
+            <div className="absolute inset-0 bg-muted/10 rounded-xl" />
           )}
-          {!posterUrl && <div className="absolute inset-0 bg-muted/10 rounded-xl" />}
 
           <div className="relative flex items-start gap-4 sm:gap-5 p-4 sm:p-5">
             <div className="shrink-0">
