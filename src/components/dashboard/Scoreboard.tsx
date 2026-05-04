@@ -611,7 +611,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
                       : pct >= 35
                       ? 'bg-gradient-to-r from-amber-400 to-orange-400'
-                      : 'bg-gradient-to-r from-rose-500 to-pink-400';
+                      : 'bg-gradient-to-r from-red-500 to-rose-400';
 
                     return renderScoreRow(
                       entry.user_id,
