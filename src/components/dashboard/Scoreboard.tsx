@@ -34,6 +34,14 @@ interface RankingEntry {
   picks: { title: string; poster_url: string | null; avgRank: number; revealed: boolean; slotKey: string }[];
 }
 
+const RANK_BORDER = ['bg-amber-400', 'bg-slate-400', 'bg-amber-600'];
+const RANK_BG    = ['bg-amber-500/8 hover:bg-amber-500/12', 'bg-slate-400/5 hover:bg-slate-400/8', 'bg-amber-700/5 hover:bg-amber-700/8'];
+const RANK_BADGE = [
+  'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+  'bg-slate-400/15 text-slate-300 border border-slate-400/25',
+  'bg-amber-700/15 text-amber-600 border border-amber-700/25',
+];
+
 const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Props) => {
   const [view, setView] = useState<'season' | 'alltime'>('season');
   const [mode, setMode] = useState<'guesses' | 'rankings'>('guesses');
@@ -125,7 +133,6 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
         return false;
       };
 
-      // Guessing scores
       const coPickGroups = new Map<string, string[]>();
       fetchedPicks.forEach(p => {
         if (isPickWatched(p) && p.watch_order != null) {
@@ -144,14 +151,10 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
       });
 
       const scoreMap: Record<string, { correct: number; total: number }> = {};
-      members.forEach(m => {
-        scoreMap[m.user_id] = { correct: 0, total: 0 };
-      });
+      members.forEach(m => { scoreMap[m.user_id] = { correct: 0, total: 0 }; });
 
       fetchedGuesses.forEach(g => {
-        if (!scoreMap[g.guesser_id]) {
-          scoreMap[g.guesser_id] = { correct: 0, total: 0 };
-        }
+        if (!scoreMap[g.guesser_id]) scoreMap[g.guesser_id] = { correct: 0, total: 0 };
         if (pickValidUsers[g.movie_pick_id]) {
           scoreMap[g.guesser_id].total += 1;
           if (pickValidUsers[g.movie_pick_id].has(g.guessed_user_id)) {
@@ -166,25 +169,22 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
 
       setScores(entries);
 
-      // Rankings scores - fetch rankings for relevant seasons
       if (mode === 'rankings') {
         const rankableSeasonIds = seasonData
           .filter(s => s.status === 'reviewing' || s.status === 'completed')
           .map(s => s.id);
-        
+
         if (rankableSeasonIds.length > 0) {
           const { data: rankingsData } = await supabase
             .from('movie_rankings')
             .select('user_id, movie_pick_id, rank, season_id')
             .in('season_id', rankableSeasonIds);
-          
+
           const rankings = rankingsData || [];
-          
           const pickById = new Map(fetchedPicks.map(p => [p.id, p]));
           const getSlotKey = (pick: typeof fetchedPicks[0]) =>
             `${pick.season_id}:${pick.watch_order ?? pick.id}`;
 
-          // Group rankings by slot (co-picks share the same watch_order)
           const slotAvgRanks = new Map<string, { total: number; count: number; rankings: { user_id: string; rank: number }[] }>();
           rankings.forEach(r => {
             const pick = pickById.get(r.movie_pick_id);
@@ -197,7 +197,6 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
             entry.rankings.push({ user_id: r.user_id, rank: r.rank });
           });
 
-          // Group by picker
           const pickerMap = new Map<string, RankingEntry>();
           const pickerSlotSeen = new Map<string, Set<string>>();
           members.forEach(m => {
@@ -210,13 +209,11 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
             const slotKey = getSlotKey(pick);
             const avgData = slotAvgRanks.get(slotKey);
             if (!avgData || avgData.count === 0) return;
-            
             const pickerEntry = pickerMap.get(pick.user_id);
             if (!pickerEntry) return;
             const seenSlots = pickerSlotSeen.get(pick.user_id);
             if (seenSlots?.has(slotKey)) return;
             seenSlots?.add(slotKey);
-            
             const avg = avgData.total / avgData.count;
             pickerEntry.picks.push({
               title: pick.title,
@@ -227,7 +224,6 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
             });
           });
 
-          // Calculate overall avg for each picker
           const rankingEntries: RankingEntry[] = [];
           pickerMap.forEach(entry => {
             if (entry.picks.length === 0) return;
@@ -267,18 +263,19 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
     return false;
   };
 
-  const getMedal = (index: number) => {
-    if (index === 0) return '🥇';
-    if (index === 1) return '🥈';
-    if (index === 2) return '🥉';
-    return `${index + 1}`;
-  };
-
-  const getMedalStyle = (index: number, hasPoints: boolean) => {
-    if (index === 0 && hasPoints) return 'bg-amber-500/10 ring-1 ring-amber-500/35 glow-gold-sm';
-    if (index === 1 && hasPoints) return 'bg-slate-400/8 ring-1 ring-slate-400/25 glow-silver-sm';
-    if (index === 2 && hasPoints) return 'bg-amber-700/8 ring-1 ring-amber-700/25 glow-bronze-sm';
-    return 'bg-muted/20 hover:bg-muted/30';
+  const renderAvatar = (userId: string, size = 'w-8 h-8') => {
+    const profile = getProfile(userId);
+    return (
+      <div className={`${size} rounded-full overflow-hidden bg-primary/10 flex items-center justify-center shrink-0`}>
+        {profile?.avatar_url ? (
+          <img src={profile.avatar_url} alt={profile.display_name || ''} className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-xs font-bold text-primary">
+            {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+          </span>
+        )}
+      </div>
+    );
   };
 
   const renderUserGuesses = (userId: string) => {
@@ -309,7 +306,6 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
           const siblingPicks = picks.filter(p => p.season_id === pick.season_id && p.watch_order === pick.watch_order);
           const guessForSlot = guess || userGuesses.find(g => siblingPicks.some(sp => sp.id === g.movie_pick_id));
           const actualGuess = guess || (guessForSlot ? userGuesses.find(g => siblingPicks.some(sp => sp.id === g.movie_pick_id)) : undefined);
-          
           const validUserIds = new Set(siblingPicks.map(sp => sp.user_id));
           const guessedName = actualGuess ? getProfile(actualGuess.guessed_user_id)?.display_name || '?' : null;
           const isCorrect = actualGuess ? validUserIds.has(actualGuess.guessed_user_id) : false;
@@ -332,9 +328,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
               <span className="font-medium truncate flex-1">{pick.title}</span>
               {actualGuess ? (
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className={`font-medium ${isCorrect ? 'text-green-400' : 'text-destructive'}`}>
-                    {guessedName}
-                  </span>
+                  <span className={`font-medium ${isCorrect ? 'text-green-400' : 'text-destructive'}`}>{guessedName}</span>
                   {isCorrect ? <Check className="w-2.5 h-2.5 text-green-400" /> : <X className="w-2.5 h-2.5 text-destructive" />}
                 </div>
               ) : isOwnPick ? (
@@ -431,26 +425,26 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                             const name = getProfile(item.user_id)?.display_name || 'Unknown';
                             const hasRank = item.rank !== null;
                             const rowClass = hasRank && item.rank === 1 ? 'bg-green-500/10' : hasRank ? 'bg-muted/20' : 'bg-muted/10';
-                          return (
-                            <motion.div
-                              key={item.user_id}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.05 + idx * 0.03 }}
-                              className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs ${rowClass}`}
-                            >
-                              <span className="font-medium">{name}</span>
-                              <div className="flex items-center gap-1">
-                                <span className="text-muted-foreground">ranked</span>
-                                <span className={`font-medium ${hasRank ? (item.rank === 1 ? 'text-green-400' : 'text-foreground') : 'text-muted-foreground italic'}`}>
-                                  {hasRank ? `${item.rank}` : '—'}
-                                </span>
-                                {hasRank && item.rank === 1 && <Check className="w-3 h-3 text-green-400" />}
-                                {!hasRank && <X className="w-3 h-3 text-destructive/50" />}
-                              </div>
-                            </motion.div>
-                          );
-                        })}
+                            return (
+                              <motion.div
+                                key={item.user_id}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.05 + idx * 0.03 }}
+                                className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs ${rowClass}`}
+                              >
+                                <span className="font-medium">{name}</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-muted-foreground">ranked</span>
+                                  <span className={`font-medium ${hasRank ? (item.rank === 1 ? 'text-green-400' : 'text-foreground') : 'text-muted-foreground italic'}`}>
+                                    {hasRank ? `${item.rank}` : '—'}
+                                  </span>
+                                  {hasRank && item.rank === 1 && <Check className="w-3 h-3 text-green-400" />}
+                                  {!hasRank && <X className="w-3 h-3 text-destructive/50" />}
+                                </div>
+                              </motion.div>
+                            );
+                          })}
                       </div>
                     </div>
                   </motion.div>
@@ -460,6 +454,70 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
           );
         })}
       </div>
+    );
+  };
+
+  const renderScoreRow = (userId: string, i: number, scoreNode: React.ReactNode, detailNode: React.ReactNode, hasScore: boolean) => {
+    const profile = getProfile(userId);
+    const isExpanded = expandedUser === userId;
+    const borderColor = i < 3 && hasScore ? RANK_BORDER[i] : 'bg-border/20';
+    const rowBg = i < 3 && hasScore ? RANK_BG[i] : 'bg-muted/10 hover:bg-muted/20';
+    const badgeStyle = i < 3 && hasScore ? RANK_BADGE[i] : 'bg-muted/30 text-muted-foreground border border-border/40';
+    const nameStyle = i === 0 && hasScore ? 'text-amber-200' : '';
+
+    return (
+      <motion.div
+        key={userId}
+        variants={{
+          hidden: { opacity: 0, y: 8 },
+          visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } }
+        }}
+      >
+        <div className="relative overflow-hidden rounded-xl">
+          {/* Left border accent */}
+          <div className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl ${borderColor}`} />
+
+          <button
+            onClick={() => setExpandedUser(isExpanded ? null : userId)}
+            className={`w-full flex items-center gap-3 pl-4 pr-3 py-3 text-left transition-all ${rowBg}`}
+          >
+            {/* Rank badge */}
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${badgeStyle}`}>
+              {i + 1}
+            </div>
+
+            {/* Avatar */}
+            {renderAvatar(userId)}
+
+            {/* Name + bar */}
+            <div className="flex-1 min-w-0">
+              <p className={`font-semibold text-sm truncate ${nameStyle}`}>{profile?.display_name || 'Unknown'}</p>
+              {scoreNode}
+            </div>
+
+            {/* Right score */}
+            {detailNode}
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="ml-10 pl-3 border-l-2 border-border/30 mt-1 mb-2">
+                {mode === 'guesses'
+                  ? renderUserGuesses(userId)
+                  : renderUserPickRankings(rankingScores.find(e => e.user_id === userId)!)}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     );
   };
 
@@ -490,46 +548,26 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
-              {/* Mode toggle */}
+            {/* Controls — single row */}
+            <div className="flex items-center justify-between gap-2 mb-4">
               <div className="flex gap-1 bg-muted/30 rounded-lg p-1">
-                <Button
-                  variant={mode === 'guesses' ? 'gold' : 'ghost'}
-                  size="sm"
-                  className="text-xs h-7 px-3"
-                  onClick={() => setMode('guesses')}
-                >
+                <Button variant={mode === 'guesses' ? 'gold' : 'ghost'} size="sm" className="text-xs h-7 px-3" onClick={() => setMode('guesses')}>
                   Guesses
                 </Button>
-                <Button
-                  variant={mode === 'rankings' ? 'gold' : 'ghost'}
-                  size="sm"
-                  className="text-xs h-7 px-3"
-                  onClick={() => setMode('rankings')}
-                >
-                  Pick Rankings
+                <Button variant={mode === 'rankings' ? 'gold' : 'ghost'} size="sm" className="text-xs h-7 px-3" onClick={() => setMode('rankings')}>
+                  Rankings
                 </Button>
               </div>
-              {/* Season/All-time toggle */}
               <div className="flex gap-1 bg-muted/30 rounded-lg p-1">
-                <Button
-                  variant={view === 'season' ? 'gold' : 'ghost'}
-                  size="sm"
-                  className="text-xs h-7 px-3"
-                  onClick={() => setViewWithOverride('season')}
-                >
+                <Button variant={view === 'season' ? 'gold' : 'ghost'} size="sm" className="text-xs h-7 px-3" onClick={() => setViewWithOverride('season')}>
                   Season
                 </Button>
-                <Button
-                  variant={view === 'alltime' ? 'gold' : 'ghost'}
-                  size="sm"
-                  className="text-xs h-7 px-3"
-                  onClick={() => setViewWithOverride('alltime')}
-                >
+                <Button variant={view === 'alltime' ? 'gold' : 'ghost'} size="sm" className="text-xs h-7 px-3" onClick={() => setViewWithOverride('alltime')}>
                   All-Time
                 </Button>
               </div>
             </div>
+
             {view === 'season' && availableSeasons.length > 0 && (
               <div className="mb-4">
                 <Select value={selectedSeasonId} onValueChange={setSelectedSeasonId}>
@@ -551,7 +589,6 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
             {loading ? (
               <div className="text-center text-muted-foreground py-8">Loading scores...</div>
             ) : mode === 'guesses' ? (
-              // Guesses mode
               scores.every(s => s.total === 0) ? (
                 <div className="text-center text-muted-foreground py-10 space-y-2">
                   <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center mx-auto">
@@ -568,55 +605,33 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                   variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
                 >
                   {scores.map((entry, i) => {
-                    const profile = getProfile(entry.user_id);
                     const pct = entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
-                    const isExpanded = expandedUser === entry.user_id;
-                    return (
-                      <motion.div
-                        key={entry.user_id}
-                        variants={{
-                          hidden: { opacity: 0, y: 8 },
-                          visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } }
-                        }}
-                      >
-                        <button
-                          onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
-                          className={`w-full flex items-center gap-3 rounded-xl p-3 transition-all text-left ${getMedalStyle(i, entry.correct > 0)}`}
-                        >
-                          <span className={`text-lg w-8 text-center shrink-0 ${i === 0 && entry.correct > 0 ? 'drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' : ''}`}>{getMedal(i)}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className={`font-semibold text-sm truncate ${i === 0 && entry.correct > 0 ? 'text-amber-200' : ''}`}>{profile?.display_name || 'Unknown'}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {entry.correct}/{entry.total} correct ({pct}%)
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className={`font-display text-xl font-bold ${i === 0 && entry.correct > 0 ? 'text-gradient-gold' : 'text-primary'}`}>{entry.correct}</p>
-                            <p className="text-xs text-muted-foreground">pts</p>
-                          </div>
-                        </button>
-                        <AnimatePresence>
-                          {isExpanded && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="ml-10 pl-3 border-l-2 border-border/30 mt-1 mb-2">
-                                {renderUserGuesses(entry.user_id)}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
+                    const hasScore = entry.correct > 0;
+                    const barColor = pct >= 60 ? 'bg-green-500' : pct >= 35 ? 'bg-amber-500' : 'bg-red-500/70';
+
+                    return renderScoreRow(
+                      entry.user_id,
+                      i,
+                      /* name sub-row: accuracy bar */
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <div className="flex-1 h-1 rounded-full bg-muted/30 overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{entry.correct}/{entry.total}</span>
+                      </div>,
+                      /* right score */
+                      <div className="text-right shrink-0">
+                        <p className={`font-display font-bold ${i === 0 && hasScore ? 'text-xl text-gradient-gold' : 'text-lg text-primary'}`}>
+                          {entry.correct}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">{pct}%</p>
+                      </div>,
+                      hasScore
                     );
                   })}
                 </motion.div>
               )
             ) : (
-              // Rankings mode
               rankingScores.length === 0 ? (
                 <div className="text-center text-muted-foreground py-10 space-y-2">
                   <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center mx-auto">
@@ -633,71 +648,45 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                   variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
                 >
                   {rankingScores.map((entry, i) => {
-                    const profile = getProfile(entry.user_id);
-                    const isExpanded = expandedUser === entry.user_id;
                     const showInlinePick = view === 'season' && entry.picks.length <= 1;
                     const inlinePick = showInlinePick ? entry.picks[0] : undefined;
-                    return (
-                      <motion.div
-                        key={entry.user_id}
-                        variants={{
-                          hidden: { opacity: 0, y: 8 },
-                          visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } }
-                        }}
-                      >
-                        <button
-                          onClick={() => setExpandedUser(isExpanded ? null : entry.user_id)}
-                          className={`w-full flex items-center gap-3 rounded-xl p-3 transition-all text-left ${getMedalStyle(i, true)}`}
-                        >
-                          <span className={`text-lg w-8 text-center shrink-0 ${i === 0 ? 'drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' : ''}`}>{getMedal(i)}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className={`font-semibold text-sm truncate ${i === 0 ? 'text-amber-200' : ''}`}>{profile?.display_name || 'Unknown'}</p>
-                            {showInlinePick ? (
-                              inlinePick ? (
-                                inlinePick.revealed ? (
-                                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                                    {inlinePick.poster_url ? (
-                                      <img src={inlinePick.poster_url} alt={inlinePick.title} className="w-5 h-7 rounded object-cover shrink-0" />
-                                    ) : (
-                                      <div className="w-5 h-7 rounded bg-muted flex items-center justify-center shrink-0">
-                                        <Film className="w-2.5 h-2.5 text-muted-foreground" />
-                                      </div>
-                                    )}
-                                    <span className="truncate">{inlinePick.title}</span>
-                                  </div>
-                                ) : (
-                                  <p className="text-xs text-muted-foreground italic mt-1">Not yet revealed</p>
-                                )
+
+                    return renderScoreRow(
+                      entry.user_id,
+                      i,
+                      /* name sub-row: pick or count */
+                      showInlinePick ? (
+                        inlinePick ? (
+                          inlinePick.revealed ? (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              {inlinePick.poster_url ? (
+                                <img src={inlinePick.poster_url} alt={inlinePick.title} className="w-4 h-6 rounded object-cover shrink-0" />
                               ) : (
-                                <p className="text-xs text-muted-foreground italic mt-1">No pick yet</p>
-                              )
-                            ) : (
-                              <p className="text-xs text-muted-foreground">
-                                {entry.totalPicks} pick{entry.totalPicks !== 1 ? 's' : ''} ranked
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <p className="font-display text-lg font-bold text-primary">{entry.avgRank.toFixed(1)}</p>
-                            <p className="text-xs text-muted-foreground">avg rank</p>
-                          </div>
-                        </button>
-                        <AnimatePresence>
-                          {isExpanded && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="ml-10 pl-3 border-l-2 border-border/30 mt-1 mb-2">
-                                {renderUserPickRankings(entry)}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
+                                <div className="w-4 h-6 rounded bg-muted flex items-center justify-center shrink-0">
+                                  <Film className="w-2 h-2 text-muted-foreground" />
+                                </div>
+                              )}
+                              <span className="text-xs text-muted-foreground truncate">{inlinePick.title}</span>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic mt-0.5">Not yet revealed</p>
+                          )
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic mt-0.5">No pick yet</p>
+                        )
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {entry.totalPicks} pick{entry.totalPicks !== 1 ? 's' : ''} ranked
+                        </p>
+                      ),
+                      /* right score */
+                      <div className="text-right shrink-0">
+                        <p className={`font-display font-bold ${i === 0 ? 'text-xl text-gradient-gold' : 'text-lg text-primary'}`}>
+                          {entry.avgRank.toFixed(1)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">avg rank</p>
+                      </div>,
+                      true
                     );
                   })}
                 </motion.div>
