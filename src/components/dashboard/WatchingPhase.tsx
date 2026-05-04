@@ -311,12 +311,20 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
                   </div>
                 )}
                 {canEditPoster && (
-                  <button
-                    onClick={(e) => openPosterPicker(e, pick)}
-                    className="absolute inset-0 rounded-lg flex items-center justify-center bg-black/50 opacity-0 group-hover/poster:opacity-100 transition-opacity"
-                  >
-                    <Camera className="w-3 h-3 text-white" />
-                  </button>
+                  <>
+                    {/* Full overlay on hover/active */}
+                    <button
+                      onClick={(e) => openPosterPicker(e, pick)}
+                      className="absolute inset-0 rounded-lg flex items-center justify-center bg-black/50 opacity-0 group-hover/poster:opacity-100 active:opacity-100 transition-opacity"
+                      title="Change poster"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-white drop-shadow" />
+                    </button>
+                    {/* Always-visible badge so mobile users know it's tappable */}
+                    <div className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center pointer-events-none">
+                      <Camera className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  </>
                 )}
               </div>
             );
