@@ -91,7 +91,13 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
 
       let seasonData: typeof eligibleSeasons = [];
       if (view === 'season') {
-        const desiredId = selectedSeasonId || watchingSeason?.id || eligibleSeasons[0]?.id || '';
+        const rankableSeasons = eligibleSeasons.filter(s => s.status === 'reviewing' || s.status === 'completed');
+        const defaultForMode = mode === 'rankings'
+          ? (rankableSeasons[0]?.id || '')
+          : (watchingSeason?.id || eligibleSeasons[0]?.id || '');
+        const currentSelected = eligibleSeasons.find(s => s.id === selectedSeasonId);
+        const needsRedirect = mode === 'rankings' && currentSelected?.status === 'watching';
+        const desiredId = needsRedirect ? defaultForMode : (selectedSeasonId || defaultForMode);
         if (desiredId && desiredId !== selectedSeasonId) {
           setSelectedSeasonId(desiredId);
         }
