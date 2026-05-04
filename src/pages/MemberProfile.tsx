@@ -897,7 +897,7 @@ const MemberProfile = () => {
           {/* Avatar */}
           <div className="relative shrink-0">
             <div
-              className={`w-24 h-24 rounded-2xl overflow-hidden bg-card ring-[3px] ring-background shadow-[0_12px_40px_-12px_rgba(0,0,0,0.65)] ${!isOwnProfile && profile?.avatar_url ? 'cursor-zoom-in' : ''}`}
+              className={`w-24 h-24 rounded-full overflow-hidden bg-card ring-[3px] ring-background shadow-[0_8px_32px_-8px_rgba(0,0,0,0.7)] ${!isOwnProfile && profile?.avatar_url ? 'cursor-zoom-in' : ''}`}
               onClick={() => !isOwnProfile && profile?.avatar_url && setPreviewAvatarUrl(profile.avatar_url)}
             >
               {profile?.is_placeholder ? (
@@ -912,14 +912,14 @@ const MemberProfile = () => {
                 </div>
               )}
             </div>
-            {isOwnProfile && profile?.avatar_url && (
+            {isOwnProfile && (
               <button
                 type="button"
-                onClick={() => openCropWithUrl(profile.avatar_url!)}
+                onClick={() => profile?.avatar_url ? openCropWithUrl(profile.avatar_url) : fileInputRef.current?.click()}
                 className="absolute -bottom-1 -right-1 z-10 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-2 border-background hover:bg-primary/90 transition-colors"
-                title="Crop photo"
+                title={profile?.avatar_url ? 'Crop photo' : 'Add photo'}
               >
-                <Crop className="w-3 h-3" />
+                {profile?.avatar_url ? <Crop className="w-3 h-3" /> : <Camera className="w-3 h-3" />}
               </button>
             )}
           </div>
