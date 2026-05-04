@@ -607,14 +607,18 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                   {scores.map((entry, i) => {
                     const pct = entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
                     const hasScore = entry.correct > 0;
-                    const barColor = pct >= 60 ? 'bg-green-500' : pct >= 35 ? 'bg-amber-500' : 'bg-red-500/70';
+                    const barColor = pct >= 60
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                      : pct >= 35
+                      ? 'bg-gradient-to-r from-amber-400 to-orange-400'
+                      : 'bg-gradient-to-r from-rose-500 to-pink-400';
 
                     return renderScoreRow(
                       entry.user_id,
                       i,
                       /* name sub-row: accuracy bar */
                       <div className="flex items-center gap-2 mt-1.5">
-                        <div className="flex-1 h-1 rounded-full bg-muted/30 overflow-hidden">
+                        <div className="flex-1 h-1.5 rounded-full bg-muted/30 overflow-hidden">
                           <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                         </div>
                         <span className="text-[10px] text-muted-foreground shrink-0">{entry.correct}/{entry.total}</span>
