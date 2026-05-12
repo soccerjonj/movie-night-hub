@@ -270,8 +270,8 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </div>
       )}
 
-      {/* Call link only (no date set) */}
-      {!season.next_call_date && season.call_link && !isInPerson && (
+      {/* Call link / meeting location — always show when set, unless already shown in the future-call block above */}
+      {(!season.next_call_date || !callIsFuture) && season.call_link && !isInPerson && (
         <div className="mt-4">
           <a href={season.call_link} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 hover:bg-primary/15 px-3 py-1.5 rounded-full border border-primary/20">
@@ -279,7 +279,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
           </a>
         </div>
       )}
-      {!season.next_call_date && isInPerson && group?.meeting_location && (
+      {(!season.next_call_date || !callIsFuture) && isInPerson && group?.meeting_location && (
         <div className="mt-4">
           <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-full">
             <MapPin className="w-4 h-4 text-primary" /> {group.meeting_location}
