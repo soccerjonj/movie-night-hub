@@ -515,7 +515,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="ml-10 pl-3 border-l-2 border-border/30 mt-1 mb-2">
+              <div className="ml-7 pl-2 sm:ml-10 sm:pl-3 border-l-2 border-border/30 mt-1 mb-2">
                 {mode === 'guesses'
                   ? renderUserGuesses(userId)
                   : renderUserPickRankings(rankingScores.find(e => e.user_id === userId)!)}
@@ -554,8 +554,8 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            {/* Controls — single row */}
-            <div className="flex items-center justify-between gap-2 mb-4">
+            {/* Controls — wraps to two rows on narrow widths */}
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
               <div className="flex gap-1 bg-muted/30 rounded-lg p-1">
                 <Button variant={mode === 'guesses' ? 'gold' : 'ghost'} size="sm" className="text-xs h-7 px-3" onClick={() => setMode('guesses')}>
                   Guesses

@@ -414,22 +414,22 @@ const MemberList = ({ members, profiles, group, isAdmin: _isAdmin, onUpdate: _on
             )}
           </div>
           {/* Color-coded stats grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3">
             {statItems.map((stat, i) => (
               <motion.div
                 key={stat.label}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.05 + i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-                className={`rounded-xl border p-3 ${stat.tileClass}`}
+                className={`rounded-xl border p-2.5 sm:p-3 ${stat.tileClass}`}
               >
-                <div className="flex items-center gap-1.5 mb-1.5">{stat.icon}<span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">{stat.label}</span></div>
+                <div className="flex items-center gap-1.5 mb-1.5">{stat.icon}<span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide truncate">{stat.label}</span></div>
                 {stat.numeric && typeof stat.value === 'number' ? (
-                  <ClubStatNumber value={stat.value} className={`font-display text-lg sm:text-xl font-bold ${stat.valueClass}`} />
+                  <ClubStatNumber value={stat.value} className={`font-display text-lg sm:text-xl font-bold tabular-nums ${stat.valueClass}`} />
                 ) : (
-                  <p className={`font-display text-lg sm:text-xl font-bold ${stat.valueClass}`}>{stat.value}</p>
+                  <p className={`font-display text-lg sm:text-xl font-bold tabular-nums ${stat.valueClass}`}>{stat.value}</p>
                 )}
-                {stat.subLabel && <p className="text-[10px] text-muted-foreground/60 mt-1 leading-tight">{stat.subLabel}</p>}
+                {stat.subLabel && <p className="text-[9px] sm:text-[10px] text-muted-foreground/60 mt-1 leading-tight line-clamp-2">{stat.subLabel}</p>}
               </motion.div>
             ))}
           </div>
@@ -495,11 +495,11 @@ const MemberList = ({ members, profiles, group, isAdmin: _isAdmin, onUpdate: _on
                       <span className="text-[10px] text-muted-foreground">Invite pending</span>
                     )}
                     {!isPlaceholder && earned.length > 0 && (
-                      <span className="flex items-center gap-0.5">
-                        {earned.slice(0, 5).map(e => (
+                      <span className="flex items-center gap-0.5 flex-wrap min-w-0">
+                        {earned.slice(0, 4).map(e => (
                           <span key={e.badge.id} className="text-[12px] leading-none" title={e.badge.label}>{e.badge.emoji}</span>
                         ))}
-                        {earned.length > 5 && <span className="text-[10px] text-muted-foreground ml-0.5">+{earned.length - 5}</span>}
+                        {earned.length > 4 && <span className="text-[10px] text-muted-foreground ml-0.5">+{earned.length - 4}</span>}
                       </span>
                     )}
                   </div>

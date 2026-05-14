@@ -414,7 +414,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="ml-8 sm:ml-12 pl-2 sm:pl-4 border-l-2 border-border/30 mt-1 mb-2">
+              <div className="ml-6 sm:ml-12 pl-2 sm:pl-4 border-l-2 border-border/30 mt-1 mb-2">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                   <Users className="w-3 h-3" />
                   <span>Everyone's guesses</span>
@@ -450,7 +450,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowWatched(!showWatched)}
-                  className="w-full justify-between text-muted-foreground hover:text-foreground"
+                  className="w-full justify-between text-muted-foreground hover:text-foreground min-h-[40px]"
                 >
                   <span>{olderWatched.length} earlier {labels.watched}</span>
                   <div className="flex items-center gap-2">

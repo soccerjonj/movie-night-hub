@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Film, Crown, Camera, Crop, Award, Star, ListOrdered, Check, X, Trophy, Search } from 'lucide-react';
+import { ArrowLeft, Film, Crown, Camera, Crop, Award, Star, ListOrdered, Check, X, Trophy, Search, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -17,6 +17,7 @@ import RankingInsights from '@/components/dashboard/RankingInsights';
 import { validateImageFile, getSafeErrorMessage, safeFilename } from '@/lib/security';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { computeMemberBadges, computeCasualViewerBadges, type BadgePickInput, type EarnedBadge } from '@/lib/memberBadges';
+import { useShare } from '@/hooks/useShare';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 import { getClubLabels } from '@/lib/clubTypes';
@@ -124,6 +125,9 @@ const MemberProfile = () => {
   // Rankings
   const [pastRankingsOpen, setPastRankingsOpen] = useState(false);
   const [hasUnrankedSeasons, setHasUnrankedSeasons] = useState(false);
+
+  // Share
+  const { share, sharing } = useShare();
 
   // Redirect if no group
   useEffect(() => {
@@ -766,7 +770,7 @@ const MemberProfile = () => {
         picksSeasonGroups.map(sg => (
           <div key={sg.sn} className="space-y-2.5">
             <p className="text-[11px] font-bold uppercase tracking-widest text-primary/80 pl-0.5">{sg.label}</p>
-            <div className="grid grid-cols-3 gap-x-2 gap-y-4">
+            <div className="grid grid-cols-3 gap-1.5 gap-y-3 sm:gap-x-2 sm:gap-y-4">
               {sg.picks.map(pick => {
                 const revealed = isPickRevealed(pick);
                 return (
@@ -852,13 +856,36 @@ const MemberProfile = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Sticky header */}
       <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/40">
-        <div className="flex items-center gap-2 px-3 py-3 max-w-2xl mx-auto">
-          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => navigate(-1)}>
+        <div className="flex items-center gap-1 px-3 py-3 max-w-2xl mx-auto">
+          <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 -ml-1.5" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <h1 className="font-display font-bold text-base truncate flex-1">{profile?.display_name || 'Profile'}</h1>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 shrink-0 text-muted-foreground hover:text-primary"
+            disabled={sharing}
+            onClick={() => {
+              const name = profile?.display_name || 'A member';
+              const groupName = group?.name || 'their movie club';
+              const parts: string[] = [];
+              if (total > 0) parts.push(`${pct}% guess accuracy`);
+              if (earned.length > 0) parts.push(`${earned.length} badge${earned.length === 1 ? '' : 's'}`);
+              if (memberPicks.length > 0) parts.push(`${memberPicks.length} pick${memberPicks.length === 1 ? '' : 's'}`);
+              const statLine = parts.length ? ` — ${parts.join(' · ')}` : '';
+              share({
+                title: `${name} on Movie Club Hub`,
+                text: `${name} on ${groupName}${statLine}`,
+                url: typeof window !== 'undefined' ? window.location.href : undefined,
+              });
+            }}
+            title="Share profile"
+          >
+            <Share2 className="w-4 h-4" />
+          </Button>
           {isOwnProfile && (
-            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground" onClick={() => fileInputRef.current?.click()} title="Change photo">
+            <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground" onClick={() => fileInputRef.current?.click()} title="Change photo">
               <Camera className="w-4 h-4" />
             </Button>
           )}
@@ -866,7 +893,7 @@ const MemberProfile = () => {
       </header>
 
       {/* Hero */}
-      <div className="relative h-52 overflow-hidden bg-muted/30">
+      <div className="relative h-44 sm:h-52 overflow-hidden bg-muted/30">
         {/* Poster mosaic always present as base layer */}
         {coverPosters.length > 0 && (
           <div className="absolute inset-0 flex opacity-45">
@@ -947,24 +974,24 @@ const MemberProfile = () => {
         </div>
 
         {/* Color-coded stat tiles */}
-        <div className="grid grid-cols-3 gap-2 mb-2">
-          <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-3 text-center">
-            <p className="font-display text-xl font-bold text-violet-400 tabular-nums">{memberPicks.length}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">{isBookClub ? 'Books' : 'Picks'}</p>
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-2">
+          <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-2.5 sm:p-3 text-center">
+            <p className="font-display text-lg sm:text-xl font-bold text-violet-400 tabular-nums">{memberPicks.length}</p>
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">{isBookClub ? 'Books' : 'Picks'}</p>
           </div>
-          <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 text-center">
-            <p className="font-display text-xl font-bold text-amber-400 tabular-nums">{earned.length}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Badges</p>
+          <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-2.5 sm:p-3 text-center">
+            <p className="font-display text-lg sm:text-xl font-bold text-amber-400 tabular-nums">{earned.length}</p>
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Badges</p>
           </div>
-          <div className={`rounded-xl border p-3 text-center ${accuracyTileClass}`}>
-            <p className={`font-display text-xl font-bold tabular-nums ${accuracyTextClass}`}>{total > 0 ? `${pct}%` : '—'}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Accuracy</p>
+          <div className={`rounded-xl border p-2.5 sm:p-3 text-center ${accuracyTileClass}`}>
+            <p className={`font-display text-lg sm:text-xl font-bold tabular-nums ${accuracyTextClass}`}>{total > 0 ? `${pct}%` : '—'}</p>
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Accuracy</p>
           </div>
         </div>
       </div>
 
       {/* Sticky tabs */}
-      <div className="sticky top-[52px] z-40 bg-background/90 backdrop-blur-xl border-b border-border/40 mt-3">
+      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/40 mt-3">
         <div className="flex max-w-2xl mx-auto px-2">
           {tabBtn('overview', 'Overview')}
           {tabBtn('picks', isBookClub ? 'Books' : 'Picks', memberPicks.length)}
