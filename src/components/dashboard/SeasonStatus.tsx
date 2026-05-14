@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Season, MoviePick, Profile, Group } from '@/hooks/useGroup';
-import { Calendar, Film, BookOpen, Eye, Video, ExternalLink, MapPin, ChevronDown, ChevronUp, User } from 'lucide-react';
+import { Calendar, Film, BookOpen, Eye, Video, ExternalLink, MapPin, ChevronDown, ChevronUp, User, Share2 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { ClubType, getClubLabels } from '@/lib/clubTypes';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { useShare } from '@/hooks/useShare';
 
 interface Props {
   season: Season;
@@ -117,6 +119,8 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
           season.status === 'watching'
             ? 'bg-primary/10 border-primary/25 text-primary'
+            : season.status === 'completed'
+            ? 'bg-green-500/15 border-green-500/25 text-green-400'
             : 'bg-muted/30 border-border/50 text-muted-foreground'
         }`}>
           {season.status === 'watching'
@@ -125,6 +129,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
               : `${labels.Item} ${season.current_movie_index + 1} of ${uniquePicks.length}`
             : labels.statusLabels[season.status]}
         </span>
+        {season.status === 'completed' && <ShareSeasonButton season={season} group={group} labels={labels} />}
       </div>
 
       {/* Movie club: cinematic Now Watching card */}
@@ -149,9 +154,9 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
           <div className="relative flex items-start gap-4 sm:gap-5 p-4 sm:p-5">
             <div className="shrink-0">
               {posterUrl ? (
-                <img src={posterUrl} alt={currentMovie.title} className="w-24 sm:w-32 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] ring-1 ring-white/10" />
+                <img src={posterUrl} alt={currentMovie.title} className="w-20 sm:w-32 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] ring-1 ring-white/10" />
               ) : (
-                <div className="w-24 sm:w-32 aspect-[2/3] rounded-xl bg-muted/30 flex items-center justify-center">
+                <div className="w-20 sm:w-32 aspect-[2/3] rounded-xl bg-muted/30 flex items-center justify-center">
                   <ItemIcon className="w-8 h-8 text-muted-foreground/30" />
                 </div>
               )}
@@ -256,7 +261,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
               href={season.call_link}
               target="_blank"
               rel="noopener noreferrer"
-              className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full transition-all shrink-0 ${
+              className={`inline-flex items-center justify-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-full transition-all w-full sm:w-auto sm:shrink-0 ${
                 callSoon
                   ? 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_4px_16px_-4px_rgba(245,158,11,0.5)]'
                   : 'bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20'
@@ -312,6 +317,31 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
         </div>
       )}
     </motion.div>
+  );
+};
+
+// Small share button for completed seasons
+const ShareSeasonButton = ({ season, group, labels }: { season: Season; group?: Group; labels: ReturnType<typeof getClubLabels> }) => {
+  const { share, sharing } = useShare();
+  const onClick = () => {
+    const groupName = group?.name || 'My Movie Club';
+    const seasonLabel = `${labels.seasonNoun} ${season.season_number}${season.title ? ` — ${season.title}` : ''}`;
+    share({
+      title: `${groupName} · ${seasonLabel}`,
+      text: `${groupName} just wrapped ${seasonLabel}!`,
+      url: typeof window !== 'undefined' ? window.location.href : undefined,
+    });
+  };
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onClick}
+      disabled={sharing}
+      className="h-7 px-2.5 text-xs font-medium text-muted-foreground hover:text-primary"
+    >
+      <Share2 className="w-3.5 h-3.5 mr-1" /> Share
+    </Button>
   );
 };
 

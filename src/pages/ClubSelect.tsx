@@ -115,7 +115,7 @@ const ClubSelect = () => {
 
       {/* Sign-out */}
       <div className="absolute top-4 right-4 z-10">
-        <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground/50 hover:text-muted-foreground" onClick={() => { signOut(); navigate('/'); }}>
+        <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground/50 hover:text-muted-foreground" onClick={() => { signOut(); navigate('/'); }}>
           <LogOut className="w-4 h-4" />
         </Button>
       </div>
@@ -202,7 +202,7 @@ const ClubSelect = () => {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 mr-2 text-muted-foreground/25 hover:text-muted-foreground hover:bg-muted/30 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 mr-2 text-muted-foreground/25 hover:text-muted-foreground hover:bg-muted/30 shrink-0">
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>

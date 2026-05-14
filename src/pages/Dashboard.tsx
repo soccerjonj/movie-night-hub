@@ -108,12 +108,12 @@ const Dashboard = () => {
       )}
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate('/clubs')}>
+        <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 -ml-1.5" onClick={() => navigate('/clubs')}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <img src={logo} alt="Club" className="h-8 sm:h-10 object-contain shrink-0" />
+            <img src={logo} alt="Club" className="hidden sm:block h-10 object-contain shrink-0" />
             <div className="min-w-0">
               <h1 className="font-display text-base sm:text-lg font-bold truncate">{group.name}</h1>
               {season && tab === 'current' && (
@@ -129,7 +129,7 @@ const Dashboard = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setAdminViewAsMember(!adminViewAsMember)}
-                className={`h-8 w-8 ${adminViewAsMember ? 'text-primary' : 'text-muted-foreground/50 hover:text-muted-foreground'}`}
+                className={`hidden sm:flex h-9 w-9 ${adminViewAsMember ? 'text-primary' : 'text-muted-foreground/50 hover:text-muted-foreground'}`}
                 title={adminViewAsMember ? 'Viewing as member' : 'View as member'}
               >
                 {adminViewAsMember ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -140,9 +140,9 @@ const Dashboard = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowAdminPanel(!showAdminPanel)}
-                className="h-8 w-8 text-primary/70 hover:text-primary"
+                className="h-9 w-9 text-primary/70 hover:text-primary"
               >
-                <Settings className="w-3.5 h-3.5" />
+                <Settings className="w-4 h-4" />
               </Button>
             )}
             {user && (
@@ -150,7 +150,7 @@ const Dashboard = () => {
                 onClick={() => navigate(`/dashboard/${groupId}/member/${user.id}`)}
                 className="relative group shrink-0"
               >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center ring-1 ring-border/30">
                   {getProfile(user.id)?.avatar_url ? (
                     <img src={getProfile(user.id)?.avatar_url!} alt={getProfile(user.id)?.display_name || ''} className="w-full h-full object-cover" />
                   ) : (
@@ -167,7 +167,7 @@ const Dashboard = () => {
             {!isAdmin && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/70 hover:text-destructive">
+                  <Button variant="ghost" size="icon" className="hidden sm:flex h-9 w-9 text-destructive/70 hover:text-destructive">
                     <DoorOpen className="w-4 h-4" />
                   </Button>
                 </AlertDialogTrigger>
@@ -183,7 +183,7 @@ const Dashboard = () => {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => { signOut(); navigate('/'); }}>
+            <Button variant="ghost" size="icon" className="hidden sm:flex h-10 w-10" onClick={() => { signOut(); navigate('/'); }}>
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -208,29 +208,34 @@ const Dashboard = () => {
       </header>
 
       {/* Bottom nav — mobile only */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-50 bg-card/90 backdrop-blur-xl border-t border-border/50">
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border/50 pb-safe">
         <div className="flex">
           {([
             { id: 'current', label: labels.seasonNoun, icon: Film },
             { id: 'club', label: 'Club', icon: Users },
             { id: 'history', label: 'History', icon: Clock },
             { id: 'stats', label: 'Stats', icon: BarChart2 },
-          ] as const).map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={`flex flex-1 flex-col items-center gap-1 py-4 text-[10px] font-medium transition-colors ${
-                tab === id ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              <Icon className={`w-5 h-5 ${tab === id ? 'text-primary' : 'text-muted-foreground/70'}`} />
-              {label}
-            </button>
-          ))}
+          ] as const).map(({ id, label, icon: Icon }) => {
+            const active = tab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className="flex flex-1 flex-col items-center gap-1 pt-2 pb-2 min-h-[56px] transition-colors active:bg-muted/30"
+              >
+                <span className={`flex items-center justify-center w-9 h-7 rounded-full transition-colors ${active ? 'bg-primary/15' : ''}`}>
+                  <Icon className={`w-[18px] h-[18px] ${active ? 'text-primary' : 'text-muted-foreground/80'}`} />
+                </span>
+                <span className={`text-[10.5px] font-semibold tracking-tight ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 
-      <main className="container max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8 pb-24 sm:pb-8">
+      <main className="container max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:pb-8">
         <motion.div
           key={tab}
           initial={{ opacity: 0, y: 10 }}
