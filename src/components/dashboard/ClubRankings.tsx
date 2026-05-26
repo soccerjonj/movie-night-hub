@@ -46,7 +46,6 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
         supabase
           .from('movie_rankings')
           .select('movie_pick_id, rank, user_id')
-          .eq('did_not_watch', false)
           .in('season_id', seasonIds),
         supabase
           .from('movie_picks')

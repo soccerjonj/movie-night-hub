@@ -304,7 +304,6 @@ export type Database = {
       movie_rankings: {
         Row: {
           created_at: string
-          did_not_watch: boolean
           id: string
           movie_pick_id: string
           rank: number
@@ -313,7 +312,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          did_not_watch?: boolean
           id?: string
           movie_pick_id: string
           rank: number
@@ -322,7 +320,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          did_not_watch?: boolean
           id?: string
           movie_pick_id?: string
           rank?: number

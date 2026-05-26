@@ -32,7 +32,7 @@ const FavoritesBar = ({ seasonIds, profiles }: Props) => {
     if (seasonIds.length === 0) { setFavorite(null); setLeastFavorite(null); return; }
     const fetchData = async () => {
       const [rankingsRes, picksRes] = await Promise.all([
-        supabase.from('movie_rankings').select('movie_pick_id, rank, user_id').eq('did_not_watch', false).in('season_id', seasonIds),
+        supabase.from('movie_rankings').select('movie_pick_id, rank, user_id').in('season_id', seasonIds),
         supabase.from('movie_picks').select('id, title, poster_url').in('season_id', seasonIds),
       ]);
       const rankings = rankingsRes.data || [];
