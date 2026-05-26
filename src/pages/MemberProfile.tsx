@@ -188,7 +188,8 @@ const MemberProfile = () => {
   const isPickWatched = useCallback((pick: PickRow) => {
     const s = seasons.find(ss => ss.id === pick.season_id);
     if (!s) return false;
-    if (s.status === 'completed') return true;
+    // By the reviewing/completed stages, every pick has been watched & revealed.
+    if (s.status === 'completed' || s.status === 'reviewing') return true;
     if (s.status === 'watching' && pick.watch_order != null) return pick.watch_order < s.current_movie_index;
     return false;
   }, [seasons]);
