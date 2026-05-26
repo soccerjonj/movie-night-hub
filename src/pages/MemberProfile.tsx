@@ -18,6 +18,7 @@ import { validateImageFile, getSafeErrorMessage, safeFilename } from '@/lib/secu
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { computeMemberBadges, computeCasualViewerBadges, type BadgePickInput, type EarnedBadge } from '@/lib/memberBadges';
 import { useShare } from '@/hooks/useShare';
+import BadgeMedallion from '@/components/BadgeMedallion';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 import { getClubLabels } from '@/lib/clubTypes';
@@ -704,25 +705,25 @@ const MemberProfile = () => {
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Badges</span>
         </div>
         {earned.length > 0 ? (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {earned.map(({ badge, metricLabel }) => (
               <Popover key={badge.id}>
                 <PopoverTrigger asChild>
-                  <button type="button" className="rounded-xl border border-border/40 bg-muted/20 p-3 flex items-center gap-2.5 text-left hover:border-primary/30 hover:bg-primary/5 transition-colors w-full">
-                    <span className="text-2xl leading-none shrink-0">{badge.emoji}</span>
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-semibold truncate">{badge.label}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{metricLabel}</p>
-                    </div>
+                  <button
+                    type="button"
+                    className="group rounded-2xl border border-border/40 bg-gradient-to-b from-muted/25 to-transparent px-2 pt-3 pb-2.5 flex flex-col items-center text-center gap-1.5 hover:border-primary/40 hover:from-primary/10 hover:shadow-[0_6px_20px_-8px_hsl(38_90%_55%/0.35)] transition-all duration-200 w-full"
+                  >
+                    <BadgeMedallion badge={badge} size="md" className="transition-transform duration-200 group-hover:-translate-y-0.5" />
+                    <p className="text-[11px] font-bold leading-tight line-clamp-2">{badge.label}</p>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent side="top" className="max-w-[240px] p-3">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-xl leading-none">{badge.emoji}</span>
-                    <p className="font-display text-sm font-bold">{badge.label}</p>
+                <PopoverContent side="top" className="max-w-[260px] p-3">
+                  <div className="flex items-center gap-3 mb-2">
+                    <BadgeMedallion badge={badge} size="md" ribbon={false} />
+                    <p className="font-display text-sm font-bold leading-tight">{badge.label}</p>
                   </div>
                   <p className="text-xs text-foreground/90">{badge.description}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{metricLabel}</p>
+                  <p className="text-xs text-muted-foreground mt-1.5">{metricLabel}</p>
                 </PopoverContent>
               </Popover>
             ))}
