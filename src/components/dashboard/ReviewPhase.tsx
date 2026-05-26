@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile, GroupMember } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
-import { Film, BookOpen, GripVertical, Check, Trophy, Star, EyeOff, Undo2 } from 'lucide-react';
+import { Film, BookOpen, GripVertical, Check, Trophy, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTouchDragReorder } from '@/hooks/useTouchDragReorder';
@@ -21,15 +21,13 @@ interface Props {
 interface RankingEntry {
   movie_pick_id: string;
   rank: number;
-  did_not_watch?: boolean;
 }
 
 const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType }: Props) => {
   const labels = getClubLabels(clubType);
   const ItemIcon = clubType === 'book' ? BookOpen : Film;
   const { user } = useAuth();
-  const [rankings, setRankings] = useState<string[]>([]); // ordered watched movie pick IDs (index 0 = rank 1 = favorite)
-  const [notWatched, setNotWatched] = useState<string[]>([]); // movie pick IDs the user didn't watch
+  const [rankings, setRankings] = useState<string[]>([]); // ordered movie pick IDs (index 0 = rank 1 = favorite)
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [allRankings, setAllRankings] = useState<Record<string, RankingEntry[]>>({});
@@ -46,9 +44,9 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
     arr.findIndex(x => x.watch_order === p.watch_order) === i
   ).sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
 
-  // Initialize rankings order (only before any submission/selection exists)
+  // Initialize rankings order
   useEffect(() => {
-    if (!submitted && rankings.length === 0 && notWatched.length === 0 && uniqueMovies.length > 0) {
+    if (rankings.length === 0 && uniqueMovies.length > 0) {
       setRankings(uniqueMovies.map(m => m.id));
     }
   }, [uniqueMovies.length]);
@@ -61,28 +59,27 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
       // Fetch own rankings
       const { data: ownRankings } = await supabase
         .from('movie_rankings')
-        .select('movie_pick_id, rank, did_not_watch')
+        .select('movie_pick_id, rank')
         .eq('season_id', season.id)
         .eq('user_id', user.id)
         .order('rank', { ascending: true });
 
       if (ownRankings && ownRankings.length > 0) {
         setSubmitted(true);
-        setRankings(ownRankings.filter(r => !r.did_not_watch).map(r => r.movie_pick_id));
-        setNotWatched(ownRankings.filter(r => r.did_not_watch).map(r => r.movie_pick_id));
+        setRankings(ownRankings.map(r => r.movie_pick_id));
       }
 
       // Fetch all rankings to see who has submitted
       const { data: allData } = await supabase
         .from('movie_rankings')
-        .select('user_id, movie_pick_id, rank, did_not_watch')
+        .select('user_id, movie_pick_id, rank')
         .eq('season_id', season.id);
 
       if (allData) {
         const byUser: Record<string, RankingEntry[]> = {};
         allData.forEach(r => {
           if (!byUser[r.user_id]) byUser[r.user_id] = [];
-          byUser[r.user_id].push({ movie_pick_id: r.movie_pick_id, rank: r.rank, did_not_watch: r.did_not_watch });
+          byUser[r.user_id].push({ movie_pick_id: r.movie_pick_id, rank: r.rank });
         });
         setAllRankings(byUser);
         setSubmittedCount(Object.keys(byUser).length);
@@ -123,36 +120,18 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
     setRankings(newRankings);
   };
 
-  const markNotWatched = (movieId: string) => {
-    setRankings(prev => prev.filter(id => id !== movieId));
-    setNotWatched(prev => prev.includes(movieId) ? prev : [...prev, movieId]);
-  };
-
-  const markWatched = (movieId: string) => {
-    setNotWatched(prev => prev.filter(id => id !== movieId));
-    setRankings(prev => prev.includes(movieId) ? prev : [...prev, movieId]);
-  };
-
   const submitRankings = async () => {
     if (!user) return;
     setSubmitting(true);
     try {
-      const watchedRows = rankings.map((moviePickId, index) => ({
+      const rows = rankings.map((moviePickId, index) => ({
         season_id: season.id,
         user_id: user.id,
         movie_pick_id: moviePickId,
         rank: index + 1,
-        did_not_watch: false,
-      }));
-      const skippedRows = notWatched.map(moviePickId => ({
-        season_id: season.id,
-        user_id: user.id,
-        movie_pick_id: moviePickId,
-        rank: 0,
-        did_not_watch: true,
       }));
 
-      const { error } = await supabase.from('movie_rankings').insert([...watchedRows, ...skippedRows]);
+      const { error } = await supabase.from('movie_rankings').insert(rows);
       if (error) throw error;
       toast.success('Rankings submitted! 🎬');
       setSubmitted(true);
@@ -174,7 +153,6 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
     const scores: Record<string, { total: number; count: number; title: string }> = {};
     Object.values(allRankings).forEach(userRankings => {
       userRankings.forEach(r => {
-        if (r.did_not_watch) return; // exclude non-watchers from the average
         if (!scores[r.movie_pick_id]) {
           const movie = getMovieById(r.movie_pick_id);
           scores[r.movie_pick_id] = { total: 0, count: 0, title: movie?.title || '?' };
@@ -308,65 +286,9 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
                 </div>
 
                 {index === 0 && <Star className="w-4 h-4 text-primary fill-primary shrink-0" />}
-
-                {!submitted && (
-                  <button
-                    onClick={() => markNotWatched(movieId)}
-                    className="shrink-0 flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-muted-foreground px-1.5 py-1 rounded-md hover:bg-muted/40 transition-colors"
-                    title="I didn't watch this one"
-                  >
-                    <EyeOff className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Didn't watch</span>
-                  </button>
-                )}
               </motion.div>
             );
           })}
-          {rankings.length === 0 && (
-            <p className="text-xs text-muted-foreground italic py-3 text-center">
-              You've marked everything as not watched. Tap "I watched this" below to rank a {labels.item}.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Didn't-watch section */}
-      {!everyoneSubmitted && notWatched.length > 0 && (
-        <div className="mt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-            <EyeOff className="w-3.5 h-3.5" /> Didn't watch ({notWatched.length})
-          </p>
-          <div className="space-y-1.5">
-            {notWatched.map(movieId => {
-              const movie = getMovieById(movieId);
-              if (!movie) return null;
-              return (
-                <div key={movieId} className="flex items-center gap-2 sm:gap-3 rounded-xl p-2 sm:p-3 bg-muted/10 opacity-70">
-                  {movie.poster_url ? (
-                    <img src={movie.poster_url} alt={movie.title} className="w-8 sm:w-10 rounded-lg object-cover shrink-0 grayscale" />
-                  ) : (
-                    <div className="w-8 sm:w-10 h-11 sm:h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                      <ItemIcon className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{movie.title}</p>
-                    <p className="text-[11px] text-muted-foreground">Not counted in your rankings</p>
-                  </div>
-                  {!submitted && (
-                    <button
-                      onClick={() => markWatched(movieId)}
-                      className="shrink-0 flex items-center gap-1 text-[10px] text-primary/80 hover:text-primary px-1.5 py-1 rounded-md hover:bg-primary/10 transition-colors"
-                      title="Actually, I watched this"
-                    >
-                      <Undo2 className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">I watched this</span>
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 
@@ -376,7 +298,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
           variant="gold"
           className="mt-4 w-full"
           onClick={submitRankings}
-          disabled={submitting || (rankings.length === 0 && notWatched.length === 0)}
+          disabled={submitting || rankings.length === 0}
         >
           <Check className="w-4 h-4 mr-2" />
           {submitting ? 'Submitting...' : 'Submit Rankings'}
@@ -438,25 +360,16 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
               {members.map(member => {
                 const memberRankings = allRankings[member.user_id];
                 if (!memberRankings) return null;
-                const watchedSorted = memberRankings.filter(r => !r.did_not_watch).sort((a, b) => a.rank - b.rank);
-                const skipped = memberRankings.filter(r => r.did_not_watch);
+                const sorted = [...memberRankings].sort((a, b) => a.rank - b.rank);
                 return (
                   <div key={member.user_id} className="bg-muted/10 rounded-lg p-2.5">
                     <p className="text-xs font-medium mb-1">{getProfile(member.user_id)?.display_name || '?'}</p>
                     <div className="flex flex-wrap gap-1">
-                      {watchedSorted.map(r => {
+                      {sorted.map(r => {
                         const movie = getMovieById(r.movie_pick_id);
                         return (
                           <span key={r.movie_pick_id} className="text-[10px] bg-muted/30 rounded px-1.5 py-0.5">
                             {r.rank}. {movie?.title || '?'}
-                          </span>
-                        );
-                      })}
-                      {skipped.map(r => {
-                        const movie = getMovieById(r.movie_pick_id);
-                        return (
-                          <span key={r.movie_pick_id} className="text-[10px] bg-muted/20 text-muted-foreground/60 rounded px-1.5 py-0.5 inline-flex items-center gap-0.5">
-                            <EyeOff className="w-2.5 h-2.5" /> {movie?.title || '?'}
                           </span>
                         );
                       })}
