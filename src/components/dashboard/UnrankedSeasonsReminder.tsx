@@ -11,9 +11,11 @@ interface Props {
   groupId: string;
   profiles: Profile[];
   onUpdate: () => void;
+  /** Season currently shown on the dashboard with its own inline ranking UI — excluded from the reminder. */
+  excludeSeasonId?: string;
 }
 
-const UnrankedSeasonsReminder = ({ groupId, profiles, onUpdate }: Props) => {
+const UnrankedSeasonsReminder = ({ groupId, profiles, onUpdate, excludeSeasonId }: Props) => {
   const { user } = useAuth();
   const [unrankedCount, setUnrankedCount] = useState(0);
   const [showReminder, setShowReminder] = useState(false);
@@ -38,7 +40,7 @@ const UnrankedSeasonsReminder = ({ groupId, profiles, onUpdate }: Props) => {
         .in('season_id', seasons.map(s => s.id));
 
       const rankedIds = new Set((existingRankings || []).map(r => r.season_id));
-      const count = seasons.filter(s => !rankedIds.has(s.id)).length;
+      const count = seasons.filter(s => !rankedIds.has(s.id) && s.id !== excludeSeasonId).length;
 
       if (count > 0) {
         setUnrankedCount(count);
@@ -47,7 +49,7 @@ const UnrankedSeasonsReminder = ({ groupId, profiles, onUpdate }: Props) => {
     };
 
     checkUnranked();
-  }, [user, groupId]);
+  }, [user, groupId, excludeSeasonId]);
 
   const handleRankNow = () => {
     setShowReminder(false);
