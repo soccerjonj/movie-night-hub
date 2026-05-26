@@ -681,19 +681,35 @@ const MemberProfile = () => {
         <motion.div
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-3 flex items-center gap-3"
+          className="relative overflow-hidden rounded-2xl border border-primary/20"
         >
-          <div className="w-12 aspect-[2/3] rounded-xl overflow-hidden bg-muted shrink-0 ring-1 ring-primary/30 shadow-md">
-            {featuredPick.poster_url
-              ? <img src={featuredPick.poster_url} alt={featuredPick.title} className="w-full h-full object-cover" />
-              : <div className="w-full h-full flex items-center justify-center"><Film className="w-4 h-4 text-muted-foreground" /></div>}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1">
-              <Star className="w-3 h-3 fill-primary/80" /> Most loved pick
-            </p>
-            <p className="text-sm font-bold truncate">{featuredPick.title}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">avg rank {featuredAvgRank.toFixed(1)} · {featuredRankCount} ranking{featuredRankCount !== 1 ? 's' : ''}</p>
+          {/* Cinematic blurred poster fill */}
+          {featuredPick.poster_url && (
+            <>
+              <div
+                className="absolute inset-0"
+                style={{ backgroundImage: `url(${featuredPick.poster_url})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(26px) saturate(1.3)', transform: 'scale(1.2)', opacity: 0.28 }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-card/95 via-card/82 to-card/45" />
+            </>
+          )}
+          <div className="relative flex items-center gap-3.5 p-3">
+            <div className="w-14 aspect-[2/3] rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-primary/30 shadow-[0_6px_20px_-6px_rgba(0,0,0,0.7)]">
+              {featuredPick.poster_url
+                ? <img src={featuredPick.poster_url} alt={featuredPick.title} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center"><Film className="w-4 h-4 text-muted-foreground" /></div>}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1">
+                <Star className="w-3 h-3 fill-primary/80" /> Most loved pick
+              </p>
+              <p className="text-base font-bold leading-tight truncate">{featuredPick.title}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{featuredRankCount} ranking{featuredRankCount !== 1 ? 's' : ''}</p>
+            </div>
+            <div className="text-right shrink-0 pr-1">
+              <p className="font-display text-2xl font-bold text-gradient-gold tabular-nums leading-none">{featuredAvgRank.toFixed(1)}</p>
+              <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider mt-1">avg rank</p>
+            </div>
           </div>
         </motion.div>
       )}
@@ -739,7 +755,7 @@ const MemberProfile = () => {
         </Button>
       )}
 
-      <div className="rounded-2xl border border-border/40 bg-muted/15 p-3 sm:p-4 space-y-3">
+      <div className="space-y-2.5 pt-1">
         {sectionLabel('Club taste')}
         <RankingInsights userId={userId} groupId={group.id} profiles={profiles} variant="default" dense hideTitle />
       </div>
