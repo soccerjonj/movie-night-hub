@@ -4,10 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Film, Crown, Camera, Crop, Award, Star, ListOrdered, Check, X, Trophy, Search, Share2 } from 'lucide-react';
+import { ArrowLeft, Film, Crown, Camera, Crop, Award, Star, ListOrdered, Check, X, Trophy, Search, Share2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import ReactCrop, { type Crop as CropType, centerCrop, makeAspectCrop } from 'react-image-crop';
@@ -640,14 +639,6 @@ const MemberProfile = () => {
     toast.success(url ? 'Cover updated' : 'Cover removed');
   };
 
-  const sectionLabel = (title: string) => (
-    <div className="flex items-center gap-3 py-1.5">
-      <Separator className="flex-1" />
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{title}</span>
-      <Separator className="flex-1" />
-    </div>
-  );
-
   const tabBtn = (id: 'overview' | 'picks' | 'guessing', label: string, count?: number) => (
     <button
       key={id}
@@ -755,8 +746,11 @@ const MemberProfile = () => {
         </Button>
       )}
 
-      <div className="space-y-2.5 pt-1">
-        {sectionLabel('Club taste')}
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Club Taste</span>
+        </div>
         <RankingInsights userId={userId} groupId={group.id} profiles={profiles} variant="default" dense hideTitle />
       </div>
     </div>
