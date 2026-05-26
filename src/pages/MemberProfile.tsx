@@ -388,7 +388,6 @@ const MemberProfile = () => {
 
   const accuracyTier = total === 0 ? 'none' : pct >= 70 ? 'gold' : pct >= 50 ? 'good' : 'low';
   const accuracyTextClass = accuracyTier === 'gold' ? 'text-gradient-gold' : accuracyTier === 'good' ? 'text-green-400' : accuracyTier === 'low' ? 'text-foreground/60' : 'text-muted-foreground';
-  const accuracyTileClass = accuracyTier === 'gold' ? 'bg-primary/10 border-primary/25' : accuracyTier === 'good' ? 'bg-green-500/10 border-green-500/20' : 'bg-muted/20 border-border/40';
 
   // Avg pick ranking
   const pickById = useMemo(() => new Map(picks.map(p => [p.id, p])), [picks]);
@@ -734,19 +733,6 @@ const MemberProfile = () => {
         )}
       </div>
 
-      {overallAvg !== null && (
-        <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-primary/8 to-transparent p-4 flex items-center gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/20">
-            <Star className="w-4 h-4 text-primary fill-primary/80" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">Group ranking avg</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{perPickAvgs.length} pick{perPickAvgs.length !== 1 ? 's' : ''} · lower is better</p>
-          </div>
-          <p className="font-display text-2xl font-bold text-gradient-gold tabular-nums shrink-0">{overallAvg.toFixed(1)}</p>
-        </div>
-      )}
-
       {isOwnProfile && hasUnrankedSeasons && (
         <Button variant="outline" size="sm" className="w-full rounded-xl border-dashed" onClick={() => setPastRankingsOpen(true)}>
           <ListOrdered className="w-4 h-4 mr-2" /> Add past rankings
@@ -975,20 +961,26 @@ const MemberProfile = () => {
           </div>
         </div>
 
-        {/* Color-coded stat tiles */}
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-2">
-          <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-2.5 sm:p-3 text-center">
-            <p className="font-display text-lg sm:text-xl font-bold text-violet-400 tabular-nums">{memberPicks.length}</p>
-            <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">{isBookClub ? 'Books' : 'Picks'}</p>
+        {/* Compact stat rail — one slim bar instead of chunky boxes */}
+        <div className="flex items-stretch rounded-xl border border-border/40 bg-muted/10 divide-x divide-border/40 overflow-hidden">
+          <div className="flex-1 text-center py-2.5">
+            <p className="font-display text-lg font-bold text-violet-400 tabular-nums leading-none">{memberPicks.length}</p>
+            <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider mt-1">{isBookClub ? 'Books' : 'Picks'}</p>
           </div>
-          <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-2.5 sm:p-3 text-center">
-            <p className="font-display text-lg sm:text-xl font-bold text-amber-400 tabular-nums">{earned.length}</p>
-            <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Badges</p>
+          <div className="flex-1 text-center py-2.5">
+            <p className="font-display text-lg font-bold text-amber-400 tabular-nums leading-none">{earned.length}</p>
+            <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider mt-1">Badges</p>
           </div>
-          <div className={`rounded-xl border p-2.5 sm:p-3 text-center ${accuracyTileClass}`}>
-            <p className={`font-display text-lg sm:text-xl font-bold tabular-nums ${accuracyTextClass}`}>{total > 0 ? `${pct}%` : '—'}</p>
-            <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Accuracy</p>
+          <div className="flex-1 text-center py-2.5">
+            <p className={`font-display text-lg font-bold tabular-nums leading-none ${accuracyTextClass}`}>{total > 0 ? `${pct}%` : '—'}</p>
+            <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider mt-1">Accuracy</p>
           </div>
+          {overallAvg !== null && (
+            <div className="flex-1 text-center py-2.5">
+              <p className="font-display text-lg font-bold text-gradient-gold tabular-nums leading-none">{overallAvg.toFixed(1)}</p>
+              <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider mt-1">Avg Rank</p>
+            </div>
+          )}
         </div>
       </div>
 
