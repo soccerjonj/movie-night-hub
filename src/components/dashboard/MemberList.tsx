@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { computeMemberBadges, computeCasualViewerBadges, type BadgePickInput, type EarnedBadge } from '@/lib/memberBadges';
+import BadgeMedallion from '@/components/BadgeMedallion';
 import { motion } from 'framer-motion';
 import ClubStatNumber from '@/components/dashboard/ClubStatNumber';
 import { useNavigate } from 'react-router-dom';
@@ -495,11 +496,11 @@ const MemberList = ({ members, profiles, group, isAdmin: _isAdmin, onUpdate: _on
                       <span className="text-[10px] text-muted-foreground">Invite pending</span>
                     )}
                     {!isPlaceholder && earned.length > 0 && (
-                      <span className="flex items-center gap-0.5 flex-wrap min-w-0">
-                        {earned.slice(0, 4).map(e => (
-                          <span key={e.badge.id} className="text-[12px] leading-none" title={e.badge.label}>{e.badge.emoji}</span>
+                      <span className="flex items-center gap-1 min-w-0">
+                        {earned.slice(0, 5).map(e => (
+                          <BadgeMedallion key={e.badge.id} badge={e.badge} size="xs" />
                         ))}
-                        {earned.length > 4 && <span className="text-[10px] text-muted-foreground ml-0.5">+{earned.length - 4}</span>}
+                        {earned.length > 5 && <span className="text-[10px] text-muted-foreground ml-0.5">+{earned.length - 5}</span>}
                       </span>
                     )}
                   </div>
