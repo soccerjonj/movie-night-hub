@@ -294,7 +294,12 @@ const Dashboard = () => {
 
               {/* Unranked seasons reminder (shows after guesses dismissed) */}
               {guessesDismissed && (
-                <UnrankedSeasonsReminder groupId={groupId!} profiles={profiles} onUpdate={refetch} />
+                <UnrankedSeasonsReminder
+                  groupId={groupId!}
+                  profiles={profiles}
+                  onUpdate={refetch}
+                  excludeSeasonId={season?.status === 'reviewing' ? season.id : undefined}
+                />
               )}
 
               {/* No season yet */}
