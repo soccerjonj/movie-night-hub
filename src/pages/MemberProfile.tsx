@@ -893,7 +893,7 @@ const MemberProfile = () => {
       </header>
 
       {/* Hero */}
-      <div className="relative h-44 sm:h-52 overflow-hidden bg-muted/30">
+      <div className="relative h-44 sm:h-52 overflow-hidden bg-muted/30 w-full max-w-2xl mx-auto sm:rounded-b-2xl">
         {/* Poster mosaic always present as base layer */}
         {coverPosters.length > 0 && (
           <div className="absolute inset-0 flex opacity-45">
