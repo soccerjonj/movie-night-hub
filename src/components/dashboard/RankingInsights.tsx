@@ -54,6 +54,7 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense
         supabase
           .from('movie_rankings')
           .select('user_id, movie_pick_id, rank')
+          .eq('did_not_watch', false)
           .in('season_id', seasonIds),
         supabase
           .from('movie_picks')
