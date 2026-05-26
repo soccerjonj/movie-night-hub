@@ -5,7 +5,7 @@ import { Profile } from '@/hooks/useGroup';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Film, GripVertical, Check, Star, Trophy } from 'lucide-react';
+import { Film, GripVertical, Check, Star, Trophy, EyeOff, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { useTouchDragReorder } from '@/hooks/useTouchDragReorder';
@@ -38,6 +38,7 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   const [movies, setMovies] = useState<MovieForRanking[]>([]);
   const [rankings, setRankings] = useState<string[]>([]);
+  const [notWatched, setNotWatched] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [dragItem, setDragItem] = useState<number | null>(null);
@@ -83,6 +84,7 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
     if (!selectedSeasonId) {
       setMovies([]);
       setRankings([]);
+      setNotWatched([]);
       return;
     }
     const fetchMovies = async () => {
@@ -97,9 +99,20 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
       );
       setMovies(unique);
       setRankings(unique.map(m => m.id));
+      setNotWatched([]);
     };
     fetchMovies();
   }, [selectedSeasonId]);
+
+  const markNotWatched = (movieId: string) => {
+    setRankings(prev => prev.filter(id => id !== movieId));
+    setNotWatched(prev => prev.includes(movieId) ? prev : [...prev, movieId]);
+  };
+
+  const markWatched = (movieId: string) => {
+    setNotWatched(prev => prev.filter(id => id !== movieId));
+    setRankings(prev => prev.includes(movieId) ? prev : [...prev, movieId]);
+  };
 
   const handleDragStart = (index: number) => setDragItem(index);
   const handleDragOver = (e: React.DragEvent, index: number) => {
@@ -125,16 +138,24 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
   };
 
   const handleSubmit = async () => {
-    if (!user || !selectedSeasonId || rankings.length === 0) return;
+    if (!user || !selectedSeasonId || (rankings.length === 0 && notWatched.length === 0)) return;
     setSubmitting(true);
     try {
-      const rows = rankings.map((moviePickId, index) => ({
+      const watchedRows = rankings.map((moviePickId, index) => ({
         season_id: selectedSeasonId,
         user_id: user.id,
         movie_pick_id: moviePickId,
         rank: index + 1,
+        did_not_watch: false,
       }));
-      const { error } = await supabase.from('movie_rankings').insert(rows);
+      const skippedRows = notWatched.map(moviePickId => ({
+        season_id: selectedSeasonId,
+        user_id: user.id,
+        movie_pick_id: moviePickId,
+        rank: 0,
+        did_not_watch: true,
+      }));
+      const { error } = await supabase.from('movie_rankings').insert([...watchedRows, ...skippedRows]);
       if (error) throw error;
       toast.success('Rankings submitted! 🎬');
 
@@ -249,9 +270,52 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                     <p className="font-medium text-xs truncate flex-1 min-w-0">{movie.title}</p>
 
                     {index === 0 && <Star className="w-3 h-3 text-primary fill-primary shrink-0" />}
+
+                    <button
+                      onClick={() => markNotWatched(movieId)}
+                      className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground p-1 rounded hover:bg-muted/40 transition-colors"
+                      title="I didn't watch this one"
+                    >
+                      <EyeOff className="w-3 h-3" />
+                    </button>
                   </motion.div>
                 );
               })}
+              {rankings.length === 0 && (
+                <p className="text-[11px] text-muted-foreground italic py-2 text-center">All marked not watched.</p>
+              )}
+
+              {/* Didn't-watch section */}
+              {notWatched.length > 0 && (
+                <div className="pt-2 mt-1 border-t border-border/30">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                    <EyeOff className="w-3 h-3" /> Didn't watch ({notWatched.length})
+                  </p>
+                  {notWatched.map(movieId => {
+                    const movie = getMovieById(movieId);
+                    if (!movie) return null;
+                    return (
+                      <div key={movieId} className="flex items-center gap-1.5 rounded-lg py-1 px-1.5 bg-muted/10 opacity-70 mb-0.5">
+                        {movie.poster_url ? (
+                          <img src={movie.poster_url} alt={movie.title} className="w-6 h-9 rounded object-cover shrink-0 grayscale" />
+                        ) : (
+                          <div className="w-6 h-9 rounded bg-muted flex items-center justify-center shrink-0">
+                            <Film className="w-2.5 h-2.5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <p className="font-medium text-xs truncate flex-1 min-w-0">{movie.title}</p>
+                        <button
+                          onClick={() => markWatched(movieId)}
+                          className="shrink-0 flex items-center gap-1 text-[10px] text-primary/80 hover:text-primary px-1.5 py-1 rounded hover:bg-primary/10 transition-colors"
+                          title="Actually, I watched this"
+                        >
+                          <Undo2 className="w-3 h-3" /> Watched
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Compact submit footer */}
@@ -261,7 +325,7 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                 size="sm"
                 className="w-full h-8"
                 onClick={handleSubmit}
-                disabled={submitting || rankings.length === 0}
+                disabled={submitting || (rankings.length === 0 && notWatched.length === 0)}
               >
                 <Check className="w-3.5 h-3.5 mr-1.5" />
                 {submitting ? 'Submitting...' : 'Submit Rankings'}

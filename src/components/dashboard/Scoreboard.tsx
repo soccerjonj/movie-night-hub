@@ -184,6 +184,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
           const { data: rankingsData } = await supabase
             .from('movie_rankings')
             .select('user_id, movie_pick_id, rank, season_id')
+            .eq('did_not_watch', false)
             .in('season_id', rankableSeasonIds);
 
           const rankings = rankingsData || [];
