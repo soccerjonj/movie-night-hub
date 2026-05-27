@@ -705,23 +705,27 @@ const MemberProfile = () => {
         </motion.div>
       )}
 
-      {/* Badges — 2-col grid */}
-      <div className="space-y-2.5">
+      {/* Badges — compact wrapping medallion row */}
+      <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Award className="w-4 h-4 text-primary shrink-0" />
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Badges</span>
+          {earned.length > 0 && (
+            <span className="text-[10px] font-bold tabular-nums text-amber-400/90 bg-amber-400/10 rounded-full px-1.5 py-px">{earned.length}</span>
+          )}
         </div>
         {earned.length > 0 ? (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {earned.map(({ badge, metricLabel }) => (
               <Popover key={badge.id}>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="group rounded-2xl border border-border/40 bg-gradient-to-b from-muted/25 to-transparent px-2 pt-3 pb-2.5 flex flex-col items-center text-center gap-1.5 hover:border-primary/40 hover:from-primary/10 hover:shadow-[0_6px_20px_-8px_hsl(38_90%_55%/0.35)] transition-all duration-200 w-full"
+                    aria-label={badge.label}
+                    className="group flex items-center gap-1.5 rounded-full border border-border/40 bg-gradient-to-b from-muted/30 to-muted/10 pl-1 pr-2.5 py-1 hover:border-primary/45 hover:from-primary/10 hover:shadow-[0_4px_14px_-6px_hsl(38_90%_55%/0.45)] active:scale-[0.97] transition-all duration-150"
                   >
-                    <BadgeMedallion badge={badge} size="md" className="transition-transform duration-200 group-hover:-translate-y-0.5" />
-                    <p className="text-[11px] font-bold leading-tight line-clamp-2">{badge.label}</p>
+                    <BadgeMedallion badge={badge} size="sm" ribbon={false} className="transition-transform duration-150 group-hover:scale-105" />
+                    <span className="text-[11px] font-semibold leading-none whitespace-nowrap">{badge.label}</span>
                   </button>
                 </PopoverTrigger>
                 <PopoverContent side="top" className="max-w-[260px] p-3">

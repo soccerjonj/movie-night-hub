@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useGroup';
 import { Heart, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp } from 'lucide-react';
@@ -16,9 +17,19 @@ interface Props {
   hideTitle?: boolean;
 }
 
+interface BreakdownRow {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  avg: number;
+  count: number;
+}
+
 interface Insight {
   users: { userId: string; displayName: string; avatarUrl: string | null }[];
   avgRank: number;
+  /** Full per-member ranking, best (lowest avg) first, for the expanded view. */
+  breakdown: BreakdownRow[];
 }
 
 const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense = false, hideTitle = false }: Props) => {
@@ -27,11 +38,14 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense
   const [biggestCritic, setBiggestCritic] = useState<Insight | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  /** Which insight row is expanded inline (Club Taste interactivity). */
+  const [openRow, setOpenRow] = useState<string | null>(null);
 
   const getProfile = (uid: string) => profiles.find(p => p.user_id === uid);
 
   useEffect(() => {
     setExpanded(false);
+    setOpenRow(null);
   }, [userId, groupId]);
 
   useEffect(() => {
@@ -132,12 +146,18 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense
 
       const findTied = (entries: [string, { total: number; count: number }][], mode: 'min' | 'max'): Insight | null => {
         if (entries.length === 0) return null;
-        const avgs = entries.map(([id, v]) => ({ id, avg: v.total / v.count }));
+        const avgs = entries.map(([id, v]) => ({ id, avg: v.total / v.count, count: v.count }));
         const targetAvg = mode === 'min'
           ? Math.min(...avgs.map(a => a.avg))
           : Math.max(...avgs.map(a => a.avg));
         const tied = avgs.filter(a => Math.abs(a.avg - targetAvg) < 0.001);
-        return { users: tied.map(t => toUser(t.id)), avgRank: targetAvg };
+        // Breakdown is always ranked best (lowest avg) → worst so the expanded
+        // view reads consistently regardless of which superlative opened it.
+        const breakdown: BreakdownRow[] = avgs
+          .slice()
+          .sort((a, b) => a.avg - b.avg)
+          .map(a => { const u = toUser(a.id); return { ...u, avg: a.avg, count: a.count }; });
+        return { users: tied.map(t => toUser(t.id)), avgRank: targetAvg, breakdown };
       };
 
       const pickerEntries = Object.entries(pickerScoresFromUser).filter(([, v]) => v.count > 0);
@@ -182,13 +202,39 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense
     );
   }
 
-  const InsightCard = ({ icon, label, insight, color, borderColor }: { icon: React.ReactNode; label: string; insight: Insight; color: string; borderColor: string }) => {
+  const subjectName = getProfile(userId)?.display_name || 'this member';
+
+  /** Plain-English explanation of each stat, shown in the expanded panel. */
+  const explainFor = (id: string): string => {
+    switch (id) {
+      case 'favorite_picker':
+        return `Whose movies ${subjectName} ranks highest. Lower average rank means ${subjectName} consistently put their picks near the top.`;
+      case 'biggest_fan':
+        return `Who ranks ${subjectName}'s picks highest. Lower average means this member keeps putting ${subjectName}'s movies near the top of their list.`;
+      case 'biggest_critic':
+        return `Who ranks ${subjectName}'s picks lowest. A higher average means this member tends to place ${subjectName}'s movies toward the bottom.`;
+      default:
+        return '';
+    }
+  };
+
+  const InsightCard = ({ id, icon, label, insight, color, borderColor, accentText, barColor }: { id: string; icon: React.ReactNode; label: string; insight: Insight; color: string; borderColor: string; accentText: string; barColor: string }) => {
     const firstUser = insight.users[0];
     const names = insight.users.map(u => u.displayName).join(', ');
-    if (dense) {
-      return (
-        <div className={`flex items-center gap-1.5 rounded-lg bg-muted/15 py-1 px-2 border-l-2 ${borderColor}`}>
-          <div className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-bold shrink-0 ${color}`}>
+    const isOpen = openRow === id;
+    const explanation = explainFor(id);
+    const maxAvg = Math.max(...insight.breakdown.map(b => b.avg), 1);
+    const avatarSize = dense ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs';
+
+    return (
+      <div className={`rounded-lg overflow-hidden bg-muted/15 border-l-2 ${borderColor} transition-colors ${isOpen ? 'bg-muted/25' : 'hover:bg-muted/25'}`}>
+        <button
+          type="button"
+          onClick={() => setOpenRow(isOpen ? null : id)}
+          aria-expanded={isOpen}
+          className={`w-full flex items-center gap-1.5 text-left ${dense ? 'py-1 px-2' : 'p-2.5 gap-2'}`}
+        >
+          <div className={`${avatarSize} rounded-full overflow-hidden flex items-center justify-center font-bold shrink-0 ${color}`}>
             {firstUser.avatarUrl ? (
               <img src={firstUser.avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -196,35 +242,53 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-0.5">
+            <div className={`flex items-center gap-0.5 ${dense ? '' : 'mb-0.5'}`}>
               {icon}
-              <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+              <span className={`font-medium text-muted-foreground uppercase tracking-wide ${dense ? 'text-[9px]' : 'text-[10px]'}`}>{label}</span>
             </div>
-            <p className="text-[11px] font-medium truncate leading-tight">{names}</p>
+            <p className={`font-medium truncate leading-tight ${dense ? 'text-[11px]' : 'text-sm'}`}>{names}</p>
           </div>
-          <p className="text-[9px] text-muted-foreground shrink-0 tabular-nums">{insight.avgRank.toFixed(1)}</p>
-        </div>
-      );
-    }
-    return (
-      <div className={`flex items-center gap-2 rounded-xl bg-muted/20 p-2.5 border-l-2 ${borderColor}`}>
-        <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0 ${color}`}>
-          {firstUser.avatarUrl ? (
-            <img src={firstUser.avatarUrl} alt={firstUser.displayName} className="w-full h-full object-cover" />
-          ) : (
-            firstUser.displayName.charAt(0).toUpperCase()
+          <span className={`tabular-nums font-semibold shrink-0 ${accentText} ${dense ? 'text-[10px]' : 'text-xs'}`}>{insight.avgRank.toFixed(1)}</span>
+          <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground/70 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        <AnimatePresence initial={false}>
+          {isOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden"
+            >
+              <div className={`${dense ? 'px-2 pb-2' : 'px-2.5 pb-2.5'} pt-0.5 space-y-2`}>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">{explanation}</p>
+                <div className="space-y-1">
+                  {insight.breakdown.map(row => {
+                    const isHighlight = insight.users.some(u => u.userId === row.userId);
+                    const barPct = Math.max(8, (row.avg / maxAvg) * 100);
+                    return (
+                      <div key={row.userId} className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded-full overflow-hidden flex items-center justify-center text-[8px] font-bold shrink-0 ${isHighlight ? color : 'bg-muted/40 text-muted-foreground'}`}>
+                          {row.avatarUrl ? (
+                            <img src={row.avatarUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            row.displayName.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <span className={`text-[11px] truncate flex-1 min-w-0 ${isHighlight ? 'font-semibold' : 'text-muted-foreground'}`}>{row.displayName}</span>
+                        <div className="w-12 h-1 rounded-full bg-muted/30 overflow-hidden shrink-0">
+                          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${barPct}%` }} />
+                        </div>
+                        <span className="text-[10px] tabular-nums text-muted-foreground shrink-0 w-7 text-right">{row.avg.toFixed(1)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
           )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1 mb-0.5">
-            {icon}
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
-          </div>
-          <p className="text-sm font-medium truncate">{names}</p>
-        </div>
-        <div className="text-right shrink-0">
-          <p className="text-[10px] text-muted-foreground">avg {insight.avgRank.toFixed(1)}</p>
-        </div>
+        </AnimatePresence>
       </div>
     );
   };
@@ -279,29 +343,38 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense
       <div className={dense ? 'space-y-1' : 'space-y-1.5'}>
         {favoritePicker && (
           <InsightCard
+            id="favorite_picker"
             icon={<Heart className="w-3 h-3 text-pink-400" />}
             label="Favorite Picker"
             insight={favoritePicker}
             color="bg-pink-500/10 text-pink-400"
             borderColor="border-pink-500/40"
+            accentText="text-pink-400"
+            barColor="bg-pink-400/70"
           />
         )}
         {biggestFan && (
           <InsightCard
+            id="biggest_fan"
             icon={<ThumbsUp className="w-3 h-3 text-green-400" />}
             label="Biggest Fan"
             insight={biggestFan}
             color="bg-green-500/10 text-green-400"
             borderColor="border-green-500/40"
+            accentText="text-green-400"
+            barColor="bg-green-400/70"
           />
         )}
         {biggestCritic && (
           <InsightCard
+            id="biggest_critic"
             icon={<ThumbsDown className="w-3 h-3 text-orange-400" />}
             label="Biggest Critic"
             insight={biggestCritic}
             color="bg-orange-500/10 text-orange-400"
             borderColor="border-orange-500/40"
+            accentText="text-orange-400"
+            barColor="bg-orange-400/70"
           />
         )}
       </div>
