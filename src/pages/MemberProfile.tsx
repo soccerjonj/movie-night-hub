@@ -772,7 +772,7 @@ const MemberProfile = () => {
         picksSeasonGroups.map(sg => (
           <div key={sg.sn} className="space-y-2.5">
             <p className="text-[11px] font-bold uppercase tracking-widest text-primary/80 pl-0.5">{sg.label}</p>
-            <div className="grid grid-cols-3 gap-1.5 gap-y-3 sm:gap-x-2 sm:gap-y-4">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 gap-y-3 sm:gap-x-2.5 sm:gap-y-4">
               {sg.picks.map(pick => {
                 const revealed = isPickRevealed(pick);
                 return (
