@@ -1150,7 +1150,11 @@ const MemberProfile = () => {
                 {url ? <img src={url} alt="" className="w-full h-full object-cover" /> : name.charAt(0).toUpperCase()}
               </div>
             );
-            const maxRank = Math.max(...ctx.ranking.map(r => r.rank), 1);
+            const rankChip = (rank: number) =>
+              rank === 1 ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/40'
+              : rank === 2 ? 'bg-slate-300/15 text-slate-200 ring-1 ring-slate-300/30'
+              : rank === 3 ? 'bg-amber-700/25 text-amber-500 ring-1 ring-amber-700/40'
+              : 'bg-muted/40 text-muted-foreground';
             return (
               <>
                 {/* Cinematic hero */}
@@ -1216,15 +1220,12 @@ const MemberProfile = () => {
                   {ctx.ranking.length > 0 && (
                     <div>
                       {sectionLabel(avg != null ? `How the club ranked it · avg ${avg.toFixed(1)}` : 'How the club ranked it')}
-                      <div className="space-y-1">
-                        {ctx.ranking.map((r, i) => (
-                          <div key={r.uid} className={`flex items-center gap-2 rounded-lg px-2 py-1 ${i === 0 ? 'bg-primary/10' : ''}`}>
-                            <span className={`tabular-nums text-[10px] font-bold w-4 shrink-0 ${i === 0 ? 'text-primary' : 'text-muted-foreground/60'}`}>{r.rank}</span>
+                      <div className="space-y-0.5">
+                        {ctx.ranking.map(r => (
+                          <div key={r.uid} className="flex items-center gap-2.5 rounded-lg px-2 py-1">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold tabular-nums shrink-0 ${rankChip(r.rank)}`}>{r.rank}</span>
                             <Avatar url={r.avatarUrl} name={r.name} />
-                            <span className={`text-xs truncate w-16 sm:w-24 shrink-0 ${i === 0 ? 'font-bold' : ''}`}>{r.name}</span>
-                            <div className="flex-1 h-1.5 rounded-full bg-muted/25 overflow-hidden">
-                              <div className="h-full rounded-full bg-gradient-to-r from-primary to-amber-400" style={{ width: `${Math.max(10, Math.round(((maxRank - r.rank + 1) / maxRank) * 100))}%` }} />
-                            </div>
+                            <span className={`text-xs truncate flex-1 ${r.rank === 1 ? 'font-bold' : ''}`}>{r.name}</span>
                           </div>
                         ))}
                       </div>
