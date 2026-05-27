@@ -848,20 +848,20 @@ const MemberProfile = () => {
               </Button>
             ))}
           </div>
-          <div className="space-y-5">
+          <div className="space-y-4">
             {guessGroupsVisible.map(grp => (
               <div key={grp.sn} className="space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-primary/80 pl-0.5">{grp.label}</p>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {grp.rows.map(m => (
-                    <div key={m.pick.id} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-colors ${m.guess ? m.isCorrect ? 'border-green-500/25 bg-green-500/[0.07]' : 'border-destructive/20 bg-destructive/[0.06]' : 'border-border/40 bg-card/30'}`}>
-                      <div className="w-10 aspect-[2/3] rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-border/30 shadow-sm">
+                    <div key={m.pick.id} className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 text-sm transition-colors ${m.guess ? m.isCorrect ? 'border-green-500/25 bg-green-500/[0.07]' : 'border-destructive/20 bg-destructive/[0.06]' : 'border-border/40 bg-card/30'}`}>
+                      <div className="w-9 aspect-[2/3] rounded-md overflow-hidden bg-muted shrink-0 ring-1 ring-border/30 shadow-sm">
                         {m.pick.poster_url ? <img src={m.pick.poster_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Film className="w-3.5 h-3.5 text-muted-foreground" /></div>}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate leading-snug">{m.pick.title}</p>
-                        <div className="mt-0.5 flex items-center gap-1.5 text-xs">
-                          {m.guess ? (<><span className="text-muted-foreground">Guessed</span><span className={`font-semibold ${m.isCorrect ? 'text-green-400' : 'text-destructive'}`}>{m.guessedName}</span>{m.isCorrect ? <Check className="w-3.5 h-3.5 text-green-400 shrink-0" /> : <X className="w-3.5 h-3.5 text-destructive shrink-0" />}</>)
+                        <p className="font-medium truncate leading-snug text-[13px]">{m.pick.title}</p>
+                        <div className="mt-0.5 flex items-center gap-1 text-xs">
+                          {m.guess ? (<><span className="text-muted-foreground">Guessed</span><span className={`font-semibold truncate ${m.isCorrect ? 'text-green-400' : 'text-destructive'}`}>{m.guessedName}</span>{m.isCorrect ? <Check className="w-3.5 h-3.5 text-green-400 shrink-0" /> : <X className="w-3.5 h-3.5 text-destructive shrink-0" />}</>)
                             : m.isOwnPick ? <span className="text-primary/75 italic">Their pick</span>
                             : <span className="text-muted-foreground italic">No guess</span>}
                         </div>
