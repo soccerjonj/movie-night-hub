@@ -1217,20 +1217,36 @@ const MemberProfile = () => {
                     </div>
                   )}
 
-                  {ctx.ranking.length > 0 && (
-                    <div>
-                      {sectionLabel(avg != null ? `How the club ranked it · avg ${avg.toFixed(1)}` : 'How the club ranked it')}
-                      <div className="space-y-0.5">
-                        {ctx.ranking.map(r => (
-                          <div key={r.uid} className="flex items-center gap-2.5 rounded-lg px-2 py-1">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold tabular-nums shrink-0 ${rankChip(r.rank)}`}>{r.rank}</span>
-                            <Avatar url={r.avatarUrl} name={r.name} />
-                            <span className={`text-xs truncate flex-1 ${r.rank === 1 ? 'font-bold' : ''}`}>{r.name}</span>
-                          </div>
-                        ))}
+                  {ctx.ranking.length > 0 && (() => {
+                    const groups = new Map<number, typeof ctx.ranking>();
+                    ctx.ranking.forEach(r => { if (!groups.has(r.rank)) groups.set(r.rank, []); groups.get(r.rank)!.push(r); });
+                    const ordered = Array.from(groups.entries()).sort((a, b) => a[0] - b[0]);
+                    const ordinal = (n: number) => { const s = ['th', 'st', 'nd', 'rd']; const v = n % 100; return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`; };
+                    const rowTint = (rank: number) => rank === 1 ? 'bg-amber-500/[0.07]' : rank === 2 ? 'bg-slate-300/[0.05]' : rank === 3 ? 'bg-amber-700/[0.06]' : 'bg-muted/10';
+                    return (
+                      <div>
+                        {sectionLabel(avg != null ? `How the club ranked it · avg ${avg.toFixed(1)}` : 'How the club ranked it')}
+                        <div className="space-y-1.5">
+                          {ordered.map(([rank, mems]) => (
+                            <div key={rank} className={`flex items-center gap-2.5 rounded-xl px-2 py-1.5 ${rowTint(rank)}`}>
+                              <div className="flex flex-col items-center gap-0.5 shrink-0 w-9">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold tabular-nums ${rankChip(rank)}`}>{rank}</span>
+                                <span className="text-[8px] font-medium uppercase tracking-wide text-muted-foreground/70 leading-none">{ordinal(rank)}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+                                {mems.map(m => (
+                                  <span key={m.uid} className="inline-flex items-center gap-1.5 rounded-full bg-muted/40 border border-border/30 pl-0.5 pr-2.5 py-0.5">
+                                    <Avatar url={m.avatarUrl} name={m.name} />
+                                    <span className="text-[11px] font-medium">{m.name}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* MOVIE FACTS */}
                   {(meta?.genres.length || meta?.director || meta?.cast.length || meta?.overview) && (
