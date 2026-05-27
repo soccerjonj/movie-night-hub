@@ -42,6 +42,7 @@ interface PickRow {
   season_id: string;
   revealed: boolean;
   tmdb_id: number | null;
+  overview: string | null;
 }
 
 interface TmdbDetails {
@@ -129,6 +130,33 @@ const MemberProfile = () => {
   // Share
   const { share, sharing } = useShare();
 
+  // Pick info dialog
+  const [selectedPick, setSelectedPick] = useState<PickRow | null>(null);
+  const [selectedOverview, setSelectedOverview] = useState<string | null>(null);
+  const [loadingOverview, setLoadingOverview] = useState(false);
+
+  const openPickInfo = async (pick: PickRow) => {
+    setSelectedPick(pick);
+    setSelectedOverview(pick.overview ?? null);
+    if (!pick.overview && pick.tmdb_id && TMDB_API_TOKEN) {
+      setLoadingOverview(true);
+      try {
+        const r = await fetch(`https://api.themoviedb.org/3/movie/${pick.tmdb_id}?language=en-US`, {
+          headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' },
+        });
+        const d = await r.json();
+        if (d.overview) setSelectedOverview(d.overview);
+      } catch { /* skip */ }
+      setLoadingOverview(false);
+    }
+  };
+
+  const fmtRuntime = (mins: number) => {
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins - h * 60);
+    return h === 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`;
+  };
+
   // Redirect if no group
   useEffect(() => {
     if (!groupLoading && !group) navigate('/clubs');
@@ -156,7 +184,7 @@ const MemberProfile = () => {
 
       if (seasonIds.length === 0) { setLoading(false); return; }
       const [picksRes, guessesRes, rankingsRes, participantsRes] = await Promise.all([
-        supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed, tmdb_id').in('season_id', seasonIds),
+        supabase.from('movie_picks').select('id, title, user_id, poster_url, year, watch_order, season_id, revealed, tmdb_id, overview').in('season_id', seasonIds),
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
         supabase.from('movie_rankings').select('user_id, movie_pick_id, rank, season_id').in('season_id', seasonIds),
         supabase.from('season_participants').select('user_id, season_id').in('season_id', seasonIds),
@@ -768,9 +796,13 @@ const MemberProfile = () => {
           {memberPicks.map(pick => {
             const revealed = isPickRevealed(pick);
             const sn = seasonNumForPick(pick);
+            const PosterEl = revealed ? 'button' : 'div';
             return (
               <div key={pick.id}>
-                <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/30 shadow-sm mb-1.5 hover:ring-primary/35 hover:shadow-[0_6px_24px_-6px_hsl(38_90%_55%/0.25)] transition-all duration-300">
+                <PosterEl
+                  {...(revealed ? { type: 'button' as const, onClick: () => openPickInfo(pick) } : {})}
+                  className={`relative block w-full aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/30 shadow-sm mb-1.5 transition-all duration-300 ${revealed ? 'hover:ring-primary/40 hover:shadow-[0_6px_24px_-6px_hsl(38_90%_55%/0.3)] active:scale-[0.97] cursor-pointer' : ''}`}
+                >
                   {revealed
                     ? pick.poster_url
                       ? <img src={pick.poster_url} alt={pick.title} className="h-full w-full object-cover" />
@@ -782,7 +814,7 @@ const MemberProfile = () => {
                       S{sn}
                     </span>
                   )}
-                </div>
+                </PosterEl>
                 {revealed && (
                   <div>
                     <p className="text-[11px] font-medium truncate leading-tight">{pick.title}</p>
@@ -1045,6 +1077,56 @@ const MemberProfile = () => {
         <DialogContent className="max-w-xs p-2">
           <DialogHeader><DialogTitle className="sr-only">Avatar</DialogTitle></DialogHeader>
           {previewAvatarUrl && <img src={previewAvatarUrl} alt="" className="w-full rounded-xl object-cover" />}
+        </DialogContent>
+      </Dialog>
+
+      {/* Pick info */}
+      <Dialog open={!!selectedPick} onOpenChange={open => { if (!open) { setSelectedPick(null); setSelectedOverview(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="sr-only">{selectedPick?.title || 'Pick'}</DialogTitle></DialogHeader>
+          {selectedPick && (() => {
+            const det = tmdbDetails[selectedPick.id];
+            const rating = det?.vote_average && det.vote_average > 0 ? det.vote_average : null;
+            const runtime = det?.runtime || null;
+            const slot = slotRankings.get(getSlotKey(selectedPick));
+            const avg = slot && slot.count > 0 ? slot.total / slot.count : null;
+            return (
+              <div className="space-y-3">
+                <div className="flex gap-4">
+                  <div className="w-24 aspect-[2/3] rounded-xl overflow-hidden bg-muted shrink-0 ring-1 ring-border/30 shadow-md">
+                    {selectedPick.poster_url
+                      ? <img src={selectedPick.poster_url} alt={selectedPick.title} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center"><Film className="w-5 h-5 text-muted-foreground" /></div>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">{seasonHeading(seasonNumForPick(selectedPick))}</p>
+                    <h3 className="font-display text-lg font-bold leading-tight mt-0.5">{selectedPick.title}</h3>
+                    {selectedPick.year && <p className="text-xs text-muted-foreground mt-0.5">{selectedPick.year}</p>}
+                    <div className="flex flex-wrap gap-1.5 mt-2.5">
+                      {rating != null && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-400 px-2 py-0.5 text-[11px] font-semibold">★ {rating.toFixed(1)}</span>
+                      )}
+                      {runtime != null && (
+                        <span className="inline-flex items-center rounded-full bg-muted/40 text-foreground/80 px-2 py-0.5 text-[11px] font-medium">{fmtRuntime(runtime)}</span>
+                      )}
+                      {avg != null && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[11px] font-semibold">
+                          <Star className="w-2.5 h-2.5 fill-primary/80" /> avg rank {avg.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {loadingOverview ? (
+                  <p className="text-xs text-muted-foreground italic">Loading synopsis…</p>
+                ) : selectedOverview ? (
+                  <p className="text-sm text-foreground/85 leading-relaxed">{selectedOverview}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No synopsis available.</p>
+                )}
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
