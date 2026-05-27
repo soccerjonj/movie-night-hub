@@ -59,6 +59,17 @@ interface GuessRow {
   season_id: string;
 }
 
+interface PickMeta {
+  backdrop: string | null;
+  tagline: string | null;
+  genres: string[];
+  director: string | null;
+  cast: string[];
+  overview: string | null;
+  rating: number | null;
+  runtime: number | null;
+}
+
 const TMDB_CACHE_KEY = 'mc_tmdb_details_v6';
 
 const PROFILE_COVER_ACCENTS = [
@@ -132,23 +143,63 @@ const MemberProfile = () => {
 
   // Pick info dialog
   const [selectedPick, setSelectedPick] = useState<PickRow | null>(null);
-  const [selectedOverview, setSelectedOverview] = useState<string | null>(null);
-  const [loadingOverview, setLoadingOverview] = useState(false);
+  const [pickMeta, setPickMeta] = useState<PickMeta | null>(null);
+  const [loadingMeta, setLoadingMeta] = useState(false);
 
   const openPickInfo = async (pick: PickRow) => {
     setSelectedPick(pick);
-    setSelectedOverview(pick.overview ?? null);
-    if (!pick.overview && pick.tmdb_id && TMDB_API_TOKEN) {
-      setLoadingOverview(true);
+    const det = tmdbDetails[pick.id];
+    setPickMeta({ backdrop: null, tagline: null, genres: [], director: null, cast: [], overview: pick.overview ?? null, rating: det?.vote_average ?? null, runtime: det?.runtime ?? null });
+    if (pick.tmdb_id && TMDB_API_TOKEN) {
+      setLoadingMeta(true);
       try {
-        const r = await fetch(`https://api.themoviedb.org/3/movie/${pick.tmdb_id}?language=en-US`, {
-          headers: { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' },
+        const headers = { Authorization: `Bearer ${TMDB_API_TOKEN}`, Accept: 'application/json' };
+        const [dRes, cRes] = await Promise.all([
+          fetch(`https://api.themoviedb.org/3/movie/${pick.tmdb_id}?language=en-US`, { headers }),
+          fetch(`https://api.themoviedb.org/3/movie/${pick.tmdb_id}/credits?language=en-US`, { headers }),
+        ]);
+        const d = await dRes.json();
+        const c = await cRes.json();
+        const director = c.crew?.find((x: { job: string; name: string }) => x.job === 'Director')?.name ?? null;
+        const cast = (c.cast || []).slice(0, 4).map((x: { name: string }) => x.name);
+        setPickMeta({
+          backdrop: d.backdrop_path ? `https://image.tmdb.org/t/p/w780${d.backdrop_path}` : null,
+          tagline: d.tagline || null,
+          genres: (d.genres || []).map((g: { name: string }) => g.name),
+          director,
+          cast,
+          overview: d.overview || pick.overview || null,
+          rating: typeof d.vote_average === 'number' && d.vote_average > 0 ? d.vote_average : (det?.vote_average ?? null),
+          runtime: typeof d.runtime === 'number' && d.runtime > 0 ? d.runtime : (det?.runtime ?? null),
         });
-        const d = await r.json();
-        if (d.overview) setSelectedOverview(d.overview);
       } catch { /* skip */ }
-      setLoadingOverview(false);
+      setLoadingMeta(false);
     }
+  };
+
+  /** Club context for a pick: who picked it, everyone's guesses, and the per-member ranking. */
+  const pickClubContext = (pick: PickRow) => {
+    const slotKey = getSlotKey(pick);
+    const siblings = picks.filter(p => getSlotKey(p) === slotKey);
+    const siblingIds = new Set(siblings.map(p => p.id));
+    const pickerIds = new Set(siblings.map(p => p.user_id));
+    const pickers = Array.from(pickerIds).map(uid => ({ uid, name: getProfile(uid)?.display_name || '?', avatarUrl: getProfile(uid)?.avatar_url || null }));
+    const guessRows = guesses
+      .filter(g => siblingIds.has(g.movie_pick_id))
+      .map(g => ({
+        guesserId: g.guesser_id,
+        guesserName: getProfile(g.guesser_id)?.display_name || '?',
+        guesserAvatar: getProfile(g.guesser_id)?.avatar_url || null,
+        guessedName: getProfile(g.guessed_user_id)?.display_name || '?',
+        correct: pickerIds.has(g.guessed_user_id),
+      }))
+      .sort((a, b) => Number(b.correct) - Number(a.correct));
+    const rankByUser = new Map<string, number>();
+    rankings.filter(r => siblingIds.has(r.movie_pick_id)).forEach(r => { if (!rankByUser.has(r.user_id)) rankByUser.set(r.user_id, r.rank); });
+    const ranking = Array.from(rankByUser.entries())
+      .map(([uid, rank]) => ({ uid, rank, name: getProfile(uid)?.display_name || '?', avatarUrl: getProfile(uid)?.avatar_url || null }))
+      .sort((a, b) => a.rank - b.rank);
+    return { pickers, guessRows, ranking };
   };
 
   const fmtRuntime = (mins: number) => {
@@ -1081,50 +1132,127 @@ const MemberProfile = () => {
       </Dialog>
 
       {/* Pick info */}
-      <Dialog open={!!selectedPick} onOpenChange={open => { if (!open) { setSelectedPick(null); setSelectedOverview(null); } }}>
-        <DialogContent className="max-w-md">
+      <Dialog open={!!selectedPick} onOpenChange={open => { if (!open) { setSelectedPick(null); setPickMeta(null); } }}>
+        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
           <DialogHeader><DialogTitle className="sr-only">{selectedPick?.title || 'Pick'}</DialogTitle></DialogHeader>
           {selectedPick && (() => {
-            const det = tmdbDetails[selectedPick.id];
-            const rating = det?.vote_average && det.vote_average > 0 ? det.vote_average : null;
-            const runtime = det?.runtime || null;
+            const meta = pickMeta;
+            const rating = meta?.rating ?? null;
+            const runtime = meta?.runtime ?? null;
             const slot = slotRankings.get(getSlotKey(selectedPick));
             const avg = slot && slot.count > 0 ? slot.total / slot.count : null;
+            const ctx = pickClubContext(selectedPick);
+            const sectionLabel = (text: string) => (
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-1.5">{text}</p>
+            );
+            const Avatar = ({ url, name, size = 'w-5 h-5' }: { url: string | null; name: string; size?: string }) => (
+              <div className={`${size} rounded-full overflow-hidden bg-primary/15 flex items-center justify-center text-[9px] font-bold text-primary shrink-0`}>
+                {url ? <img src={url} alt="" className="w-full h-full object-cover" /> : name.charAt(0).toUpperCase()}
+              </div>
+            );
+            const maxRank = Math.max(...ctx.ranking.map(r => r.rank), 1);
             return (
-              <div className="space-y-3">
-                <div className="flex gap-4">
-                  <div className="w-24 aspect-[2/3] rounded-xl overflow-hidden bg-muted shrink-0 ring-1 ring-border/30 shadow-md">
-                    {selectedPick.poster_url
-                      ? <img src={selectedPick.poster_url} alt={selectedPick.title} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center"><Film className="w-5 h-5 text-muted-foreground" /></div>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">{seasonHeading(seasonNumForPick(selectedPick))}</p>
-                    <h3 className="font-display text-lg font-bold leading-tight mt-0.5">{selectedPick.title}</h3>
-                    {selectedPick.year && <p className="text-xs text-muted-foreground mt-0.5">{selectedPick.year}</p>}
-                    <div className="flex flex-wrap gap-1.5 mt-2.5">
-                      {rating != null && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-400 px-2 py-0.5 text-[11px] font-semibold">★ {rating.toFixed(1)}</span>
-                      )}
-                      {runtime != null && (
-                        <span className="inline-flex items-center rounded-full bg-muted/40 text-foreground/80 px-2 py-0.5 text-[11px] font-medium">{fmtRuntime(runtime)}</span>
-                      )}
-                      {avg != null && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[11px] font-semibold">
-                          <Star className="w-2.5 h-2.5 fill-primary/80" /> avg rank {avg.toFixed(1)}
-                        </span>
-                      )}
+              <>
+                {/* Cinematic hero */}
+                <div className="relative h-36 shrink-0 bg-muted/30">
+                  {meta?.backdrop ? (
+                    <img src={meta.backdrop} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  ) : selectedPick.poster_url ? (
+                    <div className="absolute inset-0" style={{ backgroundImage: `url(${selectedPick.poster_url})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(20px) saturate(1.3)', transform: 'scale(1.2)', opacity: 0.5 }} />
+                  ) : null}
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/55 to-card/10" />
+                  <div className="absolute bottom-0 inset-x-0 p-3 flex items-end gap-3">
+                    <div className="w-16 aspect-[2/3] rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-white/15 shadow-[0_6px_20px_-4px_rgba(0,0,0,0.7)]">
+                      {selectedPick.poster_url
+                        ? <img src={selectedPick.poster_url} alt={selectedPick.title} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center"><Film className="w-5 h-5 text-muted-foreground" /></div>}
+                    </div>
+                    <div className="flex-1 min-w-0 pb-0.5">
+                      <span className="inline-block rounded-md bg-primary/20 text-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider mb-1">{seasonHeading(seasonNumForPick(selectedPick))}</span>
+                      <h3 className="font-display text-lg font-bold leading-tight line-clamp-2">{selectedPick.title}</h3>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
+                        {selectedPick.year && <span>{selectedPick.year}</span>}
+                        {rating != null && <span className="text-amber-400 font-medium">★ {rating.toFixed(1)}</span>}
+                        {runtime != null && <span>{fmtRuntime(runtime)}</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
-                {loadingOverview ? (
-                  <p className="text-xs text-muted-foreground italic">Loading synopsis…</p>
-                ) : selectedOverview ? (
-                  <p className="text-sm text-foreground/85 leading-relaxed">{selectedOverview}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground italic">No synopsis available.</p>
-                )}
-              </div>
+
+                {/* Body */}
+                <div className="max-h-[58vh] overflow-y-auto px-4 py-3.5 space-y-4">
+                  {meta?.tagline && <p className="text-xs italic text-muted-foreground -mt-1">“{meta.tagline}”</p>}
+
+                  {/* CLUB CONTEXT FIRST */}
+                  <div>
+                    {sectionLabel('Picked by')}
+                    <div className="flex flex-wrap gap-2">
+                      {ctx.pickers.map(p => (
+                        <span key={p.uid} className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 pl-1 pr-2.5 py-0.5">
+                          <Avatar url={p.avatarUrl} name={p.name} />
+                          <span className="text-xs font-semibold text-primary">{p.name}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {ctx.guessRows.length > 0 && (
+                    <div>
+                      {sectionLabel(`Who guessed the picker · ${ctx.guessRows.filter(g => g.correct).length}/${ctx.guessRows.length} correct`)}
+                      <div className="space-y-1">
+                        {ctx.guessRows.map(g => (
+                          <div key={g.guesserId} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs ${g.correct ? 'bg-green-500/[0.08]' : 'bg-destructive/[0.06]'}`}>
+                            <Avatar url={g.guesserAvatar} name={g.guesserName} />
+                            <span className="font-medium truncate">{g.guesserName}</span>
+                            <span className="text-muted-foreground">guessed</span>
+                            <span className={`font-semibold truncate ${g.correct ? 'text-green-400' : 'text-destructive'}`}>{g.guessedName}</span>
+                            <span className="ml-auto shrink-0">{g.correct ? <Check className="w-3.5 h-3.5 text-green-400" /> : <X className="w-3.5 h-3.5 text-destructive" />}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {ctx.ranking.length > 0 && (
+                    <div>
+                      {sectionLabel(avg != null ? `How the club ranked it · avg ${avg.toFixed(1)}` : 'How the club ranked it')}
+                      <div className="space-y-1">
+                        {ctx.ranking.map((r, i) => (
+                          <div key={r.uid} className={`flex items-center gap-2 rounded-lg px-2 py-1 ${i === 0 ? 'bg-primary/10' : ''}`}>
+                            <span className={`tabular-nums text-[10px] font-bold w-4 shrink-0 ${i === 0 ? 'text-primary' : 'text-muted-foreground/60'}`}>{r.rank}</span>
+                            <Avatar url={r.avatarUrl} name={r.name} />
+                            <span className={`text-xs truncate w-16 sm:w-24 shrink-0 ${i === 0 ? 'font-bold' : ''}`}>{r.name}</span>
+                            <div className="flex-1 h-1.5 rounded-full bg-muted/25 overflow-hidden">
+                              <div className="h-full rounded-full bg-gradient-to-r from-primary to-amber-400" style={{ width: `${Math.max(10, Math.round(((maxRank - r.rank + 1) / maxRank) * 100))}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MOVIE FACTS */}
+                  {(meta?.genres.length || meta?.director || meta?.cast.length || meta?.overview) && (
+                    <div className="pt-1 border-t border-border/30 space-y-2.5">
+                      {meta.genres.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-2.5">
+                          {meta.genres.map(g => (
+                            <span key={g} className="rounded-full bg-muted/40 text-foreground/80 px-2 py-0.5 text-[10px] font-medium">{g}</span>
+                          ))}
+                        </div>
+                      )}
+                      {(meta.director || meta.cast.length > 0) && (
+                        <div className="text-xs text-muted-foreground space-y-0.5">
+                          {meta.director && <p><span className="text-foreground/70 font-medium">Director:</span> {meta.director}</p>}
+                          {meta.cast.length > 0 && <p><span className="text-foreground/70 font-medium">Cast:</span> {meta.cast.join(', ')}</p>}
+                        </div>
+                      )}
+                      {meta.overview && <p className="text-[13px] text-foreground/85 leading-relaxed">{meta.overview}</p>}
+                    </div>
+                  )}
+                  {loadingMeta && !meta?.overview && <p className="text-xs text-muted-foreground italic">Loading details…</p>}
+                </div>
+              </>
             );
           })()}
         </DialogContent>
