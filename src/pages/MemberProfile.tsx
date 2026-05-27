@@ -441,11 +441,6 @@ const MemberProfile = () => {
     const s = seasons.find(ss => ss.season_number === sn);
     return s?.title ? `Season ${sn} — ${s.title}` : `Season ${sn}`;
   };
-  const pickSeasonNums = [...new Set(memberPicks.map(p => seasonNumForPick(p)))].sort((a, b) => b - a);
-  const picksSeasonGroups = pickSeasonNums.map(sn => ({
-    sn, label: seasonHeading(sn),
-    picks: memberPicks.filter(p => seasonNumForPick(p) === sn),
-  }));
 
   // Seasons participated count
   const seasonsParticipated = useMemo(() => {
@@ -769,33 +764,35 @@ const MemberProfile = () => {
           <p className="text-xs text-muted-foreground">When a season starts, their choices appear here.</p>
         </div>
       ) : (
-        picksSeasonGroups.map(sg => (
-          <div key={sg.sn} className="space-y-2.5">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-primary/80 pl-0.5">{sg.label}</p>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 gap-y-3 sm:gap-x-2.5 sm:gap-y-4">
-              {sg.picks.map(pick => {
-                const revealed = isPickRevealed(pick);
-                return (
-                  <div key={pick.id}>
-                    <div className="aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/30 shadow-sm mb-1.5 hover:ring-primary/35 hover:shadow-[0_6px_24px_-6px_hsl(38_90%_55%/0.25)] transition-all duration-300">
-                      {revealed
-                        ? pick.poster_url
-                          ? <img src={pick.poster_url} alt={pick.title} className="h-full w-full object-cover" />
-                          : <div className="w-full h-full flex items-center justify-center p-1.5 bg-muted/80"><span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-4 font-medium">{pick.title}</span></div>
-                        : <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-muted to-muted/60"><span className="text-xl text-muted-foreground/70 font-bold">?</span></div>}
-                    </div>
-                    {revealed && (
-                      <div>
-                        <p className="text-[11px] font-medium truncate leading-tight">{pick.title}</p>
-                        {pick.year && <p className="text-[10px] text-muted-foreground">{pick.year}</p>}
-                      </div>
-                    )}
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 gap-y-3 sm:gap-x-2.5 sm:gap-y-4">
+          {memberPicks.map(pick => {
+            const revealed = isPickRevealed(pick);
+            const sn = seasonNumForPick(pick);
+            return (
+              <div key={pick.id}>
+                <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-muted ring-1 ring-border/30 shadow-sm mb-1.5 hover:ring-primary/35 hover:shadow-[0_6px_24px_-6px_hsl(38_90%_55%/0.25)] transition-all duration-300">
+                  {revealed
+                    ? pick.poster_url
+                      ? <img src={pick.poster_url} alt={pick.title} className="h-full w-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center p-1.5 bg-muted/80"><span className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-4 font-medium">{pick.title}</span></div>
+                    : <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-muted to-muted/60"><span className="text-xl text-muted-foreground/70 font-bold">?</span></div>}
+                  {/* Season chip — keeps season context without a separate heading */}
+                  {sn > 0 && (
+                    <span className="absolute top-1 left-1 rounded-md bg-black/65 backdrop-blur-sm px-1.5 py-0.5 text-[9px] font-bold text-white/90 leading-none shadow-sm">
+                      S{sn}
+                    </span>
+                  )}
+                </div>
+                {revealed && (
+                  <div>
+                    <p className="text-[11px] font-medium truncate leading-tight">{pick.title}</p>
+                    {pick.year && <p className="text-[10px] text-muted-foreground">{pick.year}</p>}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        ))
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
