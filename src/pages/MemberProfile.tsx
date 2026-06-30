@@ -546,15 +546,16 @@ const MemberProfile = () => {
     });
   }, [picks, seasons, isPickWatched]);
 
-  type GuessMeta = { pick: PickRow; guess?: GuessRow; guessedName: string | null; isCorrect: boolean; isOwnPick: boolean };
+  type GuessMeta = { pick: PickRow; guess?: GuessRow; guessedName: string | null; pickerName: string; isCorrect: boolean; isOwnPick: boolean };
   const guessMetasRaw = useMemo<GuessMeta[]>(() => watchedPicks.map(pick => {
     const siblingPicks = picks.filter(p => p.season_id === pick.season_id && p.watch_order === pick.watch_order);
     const validUserIds = new Set(siblingPicks.map(sp => sp.user_id));
     const isOwnPick = validUserIds.has(userId!);
+    const pickerName = Array.from(validUserIds).map(uid => getProfile(uid)?.display_name || '?').join(' & ');
     const guess = userGuesses.find(g => g.movie_pick_id === pick.id) || userGuesses.find(g => siblingPicks.some(sp => sp.id === g.movie_pick_id));
     const guessedName = guess ? getProfile(guess.guessed_user_id)?.display_name || '?' : null;
     const isCorrect = guess ? validUserIds.has(guess.guessed_user_id) : false;
-    return { pick, guess, guessedName, isCorrect, isOwnPick };
+    return { pick, guess, guessedName, pickerName, isCorrect, isOwnPick };
   }), [watchedPicks, picks, userGuesses, userId]);
 
   const guessMetas = useMemo(() => guessMetasRaw.filter(m => {
@@ -743,10 +744,12 @@ const MemberProfile = () => {
   const overviewTab = (
     <div className="space-y-4 pt-1">
       {featuredPick && featuredAvgRank !== null && (
-        <motion.div
+        <motion.button
+          type="button"
+          onClick={() => openPickInfo(featuredPick)}
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="relative overflow-hidden rounded-2xl border border-primary/20"
+          className="relative overflow-hidden rounded-2xl border border-primary/20 w-full text-left transition-all hover:border-primary/40 hover:brightness-110 active:scale-[0.99]"
         >
           {/* Cinematic blurred poster fill */}
           {featuredPick.poster_url && (
@@ -776,7 +779,7 @@ const MemberProfile = () => {
               <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider mt-1">avg rank</p>
             </div>
           </div>
-        </motion.div>
+        </motion.button>
       )}
 
       {/* Badges — compact wrapping medallion row */}
@@ -916,11 +919,24 @@ const MemberProfile = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate leading-snug text-[13px]">{m.pick.title}</p>
-                        <div className="mt-0.5 flex items-center gap-1 text-xs">
-                          {m.guess ? (<><span className="text-muted-foreground">Guessed</span><span className={`font-semibold truncate ${m.isCorrect ? 'text-green-400' : 'text-destructive'}`}>{m.guessedName}</span>{m.isCorrect ? <Check className="w-3.5 h-3.5 text-green-400 shrink-0" /> : <X className="w-3.5 h-3.5 text-destructive shrink-0" />}</>)
-                            : m.isOwnPick ? <span className="text-primary/75 italic">Their pick</span>
-                            : <span className="text-muted-foreground italic">No guess</span>}
-                        </div>
+                        {m.guess ? (
+                          <div className="mt-0.5 flex items-center gap-1 text-xs min-w-0">
+                            {m.isCorrect
+                              ? <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                              : <X className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                            <span className="text-muted-foreground">Guessed</span>
+                            <span className={`font-semibold truncate ${m.isCorrect ? 'text-green-400' : 'text-destructive'}`}>{m.guessedName}</span>
+                          </div>
+                        ) : m.isOwnPick ? (
+                          <p className="mt-0.5 text-xs text-primary/75 italic">Their own pick</p>
+                        ) : (
+                          <p className="mt-0.5 text-xs text-muted-foreground italic">Didn't guess</p>
+                        )}
+                        {!m.isOwnPick && (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground/80 truncate">
+                            Picked by <span className="text-foreground/80 font-medium">{m.pickerName}</span>
+                          </p>
+                        )}
                       </div>
                     </button>
                   ))}
