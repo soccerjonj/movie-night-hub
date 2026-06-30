@@ -158,7 +158,7 @@ const decadeOf = (year: string | null | undefined) => {
 interface DrillDown {
   title: string;
   pickIds: string[];
-  mode?: 'default' | 'decade';
+  mode?: 'default' | 'decade' | 'timeline';
 }
 
 // Convert 0..1 love score → 0..5 stars (continuous decimal)
@@ -743,6 +743,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       newest,
       avgYear,
       medianYear,
+      yearTimeline: [...datedPicks].sort((a, b) => a.y - b.y).map(d => ({ pid: d.p.id, y: d.y })),
       tasteDecadeRows,
       tasteMembers,
       pickLove,
@@ -854,8 +855,14 @@ const Stats = ({ group, profiles, members }: Props) => {
         </Tile>
       )}
 
-      {/* Year range (span 2) with timeline */}
-      <Tile span2={isBookClub} index={3} label="Year range">
+      {/* Year range (span 2) with timeline — tap to open full timeline */}
+      <Tile
+        span2={isBookClub}
+        index={3}
+        label="Year range"
+        labelRight={stats.yearTimeline.length > 1 ? 'tap for timeline →' : undefined}
+        onClick={stats.yearTimeline.length > 1 ? () => openDrill('Movie timeline', stats.yearTimeline.map(d => d.pid), 'timeline') : undefined}
+      >
         <div className="flex items-baseline justify-between gap-2 mt-1.5">
           <span className="font-display text-2xl font-bold">
             {stats.oldest && stats.newest ? `${stats.oldest.y}–${stats.newest.y}` : '—'}
@@ -867,6 +874,10 @@ const Stats = ({ group, profiles, members }: Props) => {
         {stats.oldest && stats.newest && stats.newest.y > stats.oldest.y && (
           <div className="relative h-1.5 rounded-full bg-muted/30 mt-3 overflow-visible">
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500/50 via-primary to-sky-500/60" />
+            {stats.yearTimeline.map(d => {
+              const pct = Math.round(((d.y - stats.oldest!.y) / (stats.newest!.y - stats.oldest!.y)) * 100);
+              return <div key={d.pid} className="absolute top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-card/80" style={{ left: `calc(${pct}% - 2px)` }} />;
+            })}
             <div className="absolute -top-[3px] w-3 h-3 rounded-full bg-primary border-2 border-card" style={{ left: `calc(${yearTimelinePct}% - 6px)` }} />
           </div>
         )}
@@ -1075,7 +1086,7 @@ const Stats = ({ group, profiles, members }: Props) => {
             </DialogTitle>
           </DialogHeader>
 
-          {drill && !selectedPickId && drill.pickIds.length > 1 && drill.mode !== 'decade' && (
+          {drill && !selectedPickId && drill.pickIds.length > 1 && drill.mode !== 'decade' && drill.mode !== 'timeline' && (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
               {drill.pickIds.map((pid, i) => {
                 const entry = pickIdToEntry.get(pid);
@@ -1157,6 +1168,65 @@ const Stats = ({ group, profiles, members }: Props) => {
                     </motion.button>
                   );
                 })}
+            </div>
+          )}
+
+          {drill && !selectedPickId && drill.mode === 'timeline' && (
+            <div className="pt-1">
+              <p className="text-xs text-muted-foreground mb-3">{drill.pickIds.length} {labels.items} · oldest to newest</p>
+              {(() => {
+                const yearByPid = new Map(stats.yearTimeline.map(d => [d.pid, d.y]));
+                let lastYear: number | null = null;
+                return drill.pickIds.map((pid, i) => {
+                  const entry = pickIdToEntry.get(pid);
+                  if (!entry) return null;
+                  const p = entry.canonical;
+                  const year = yearByPid.get(pid) ?? null;
+                  const love = stats.pickLove.get(pid);
+                  const avg = love ? love.sum / love.count : null;
+                  const showYear = year !== lastYear;
+                  lastYear = year;
+                  return (
+                    <div key={pid} className="relative flex gap-3 pb-3">
+                      {/* timeline rail */}
+                      <div className="relative w-11 shrink-0 flex flex-col items-center">
+                        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-border/50" />
+                        {showYear && (
+                          <span className="relative z-10 font-display text-[11px] font-bold text-primary tabular-nums bg-background px-1">{year ?? '—'}</span>
+                        )}
+                        <span className={`relative z-10 w-2.5 h-2.5 rounded-full bg-primary ring-[3px] ring-background ${showYear ? 'mt-1' : 'mt-1.5'}`} />
+                      </div>
+                      {/* movie row */}
+                      <motion.button
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.22, delay: Math.min(i * 0.03, 0.4), ease: [0.16, 1, 0.3, 1] }}
+                        onClick={() => setSelectedPickId(pid)}
+                        className="flex-1 min-w-0 flex items-center gap-3 p-2 rounded-lg hover:bg-primary/5 hover:ring-1 hover:ring-primary/20 transition-all text-left"
+                      >
+                        <div className="w-10 aspect-[2/3] rounded overflow-hidden bg-muted shrink-0 ring-1 ring-border/30">
+                          {p.poster_url ? (
+                            <img src={p.poster_url} alt={p.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center"><Film className="w-4 h-4 text-muted-foreground" /></div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium line-clamp-1">{p.title}</p>
+                          {avg != null ? (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <StarRating avg={avg} size={12} />
+                              <span className="text-[11px] text-muted-foreground tabular-nums">{toStars(avg).toFixed(1)}</span>
+                            </div>
+                          ) : (
+                            year != null && <p className="text-[11px] text-muted-foreground mt-0.5">{year}</p>
+                          )}
+                        </div>
+                      </motion.button>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           )}
 
