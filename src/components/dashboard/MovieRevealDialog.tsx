@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
-import { Film, Check, X, Sparkles } from 'lucide-react';
+import { Film, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Props {
@@ -94,7 +94,6 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="w-4 h-4 text-primary" />
             Movie Reveal
           </DialogTitle>
         </DialogHeader>

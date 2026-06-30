@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
-import { Users, Crown, Ghost, Film, BookOpen, Trophy, Star, Clock, Sparkles, ChevronRight } from 'lucide-react';
+import { Users, Crown, Ghost, Film, BookOpen, Trophy, Star, Clock, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -396,7 +396,6 @@ const MemberList = ({ members, profiles, group, isAdmin: _isAdmin, onUpdate: _on
               transition={{ duration: 0.35, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
               className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 mb-3 ${activityBlurb.kind === 'next' ? 'border-amber-500/25 bg-amber-500/8' : 'border-primary/15 bg-primary/5'}`}
             >
-              <Sparkles className={`w-4 h-4 shrink-0 mt-0.5 ${activityBlurb.kind === 'next' ? 'text-amber-400' : 'text-primary'}`} />
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{activityBlurb.line}</p>
                 <p className="text-sm font-medium text-foreground truncate">{activityBlurb.sub}</p>
