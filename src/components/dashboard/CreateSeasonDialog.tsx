@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Users, Link, Unlink, Sparkles, Shuffle, Tag, Trash2 } from 'lucide-react';
+import { Plus, Users, Link, Unlink, Shuffle, Tag, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -234,8 +234,8 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
         <div className="space-y-6 py-2">
           {/* Season Theme */}
           <div className="space-y-2">
-            <Label className="text-sm font-semibold flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-primary" /> {labels.seasonNoun} Theme
+            <Label className="text-sm font-semibold">
+              {labels.seasonNoun} Theme
             </Label>
             <Input
               value={title}

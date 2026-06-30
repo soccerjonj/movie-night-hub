@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Users, CalendarClock, Play, Settings, ChevronRight, X, Sparkles } from 'lucide-react';
+import { Users, CalendarClock, Play, Settings, ChevronRight, X, Clapperboard } from 'lucide-react';
 import { ClubLabels } from '@/lib/clubTypes';
 
 interface Props {
@@ -17,7 +17,7 @@ const steps = (labels: ClubLabels) => [
     description: `Open the ⚙️ Settings panel and use the "Members" dropdown to add placeholder names for everyone in your club. Then share the join code so they can claim their spot.`,
   },
   {
-    icon: <Sparkles className="w-8 h-8" />,
+    icon: <Clapperboard className="w-8 h-8" />,
     title: `Create a ${labels.seasonNoun}`,
     description: `Click "New ${labels.seasonNoun}" in the admin panel to start your first ${labels.seasonNoun.toLowerCase()}. You'll choose participants, set a theme, and configure ${labels.watching} intervals.`,
   },
