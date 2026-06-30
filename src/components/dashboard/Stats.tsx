@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useGroup';
-import { Film, Clock, Star, Globe, Calendar, Tag, Trophy, BarChart3, Languages, BookOpen, ChevronLeft, Check, X, Trophy as TrophyIcon, Users, Clapperboard, Building2 } from 'lucide-react';
+import { Film, Clock, Star, Globe, Calendar, Tag, Trophy, BarChart3, Languages, BookOpen, ChevronLeft, ChevronRight, Check, X, Trophy as TrophyIcon, Users, Clapperboard, Building2, Share2, Crown } from 'lucide-react';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import { getClubLabels } from '@/lib/clubTypes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { useShare } from '@/hooks/useShare';
 
 interface Props {
-  group: { id: string; club_type?: string };
+  group: { id: string; name?: string; club_type?: string };
   profiles: Profile[];
   members: { user_id: string }[];
 }
@@ -230,6 +231,8 @@ const Stats = ({ group, profiles, members }: Props) => {
   // Drill-down state — list of pickIds + selected pickId for full detail
   const [drill, setDrill] = useState<DrillDown | null>(null);
   const [selectedPickId, setSelectedPickId] = useState<string | null>(null);
+
+  const { share, sharing } = useShare();
 
   const getProfile = (uid: string) => profiles.find(p => p.user_id === uid);
   const getName = (uid: string) => getProfile(uid)?.display_name || 'Unknown';
@@ -691,6 +694,32 @@ const Stats = ({ group, profiles, members }: Props) => {
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
+    // Top Pickers leaderboard — ranked by how loved their picks are (avg group love → stars)
+    const pickerLeaderboard = pickerRows.map(pr => {
+      let sum = 0, count = 0;
+      for (const pid of pr.pickIds) {
+        const love = pickLove.get(pid);
+        if (love && love.count > 0) { sum += love.sum / love.count; count += 1; }
+      }
+      const avgLove = count > 0 ? sum / count : null;
+      return {
+        user_id: pr.key,
+        name: pr.label,
+        avgLove,
+        stars: avgLove != null ? toStars(avgLove) : null,
+        pickCount: pr.count,
+        pickIds: pr.pickIds,
+      };
+    });
+    const hasLove = pickerLeaderboard.some(p => p.avgLove != null);
+    pickerLeaderboard.sort((a, b) => {
+      if (hasLove) {
+        const av = a.avgLove ?? -1, bv = b.avgLove ?? -1;
+        if (bv !== av) return bv - av;
+      }
+      return b.pickCount - a.pickCount;
+    });
+
     return {
       total,
       decadeRows,
@@ -701,6 +730,8 @@ const Stats = ({ group, profiles, members }: Props) => {
       directorRows,
       companyRows,
       pickerRows,
+      pickerLeaderboard,
+      pickersRankedByLove: hasLove,
       totalRuntime,
       runtimeCount,
       longest,
@@ -758,212 +789,253 @@ const Stats = ({ group, profiles, members }: Props) => {
     }
   };
 
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Headline cards — stagger in on mount */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard
-          index={0}
-          icon={<Film className="w-4 h-4" />}
-          label={`${labels.items} ${labels.watched}`}
-          value={stats.total.toString()}
-          onClick={() => openDrill(`All ${labels.items}`, movieEntries.map(e => e.canonical.id))}
-        />
-        {!isBookClub && (
-          <StatCard
-            index={1}
-            icon={<Clock className="w-4 h-4" />}
-            label="Total runtime"
-            value={stats.runtimeCount > 0 ? formatRuntime(stats.totalRuntime) : '—'}
-            sub={stats.runtimeCount > 0 && stats.runtimeCount < stats.total ? `from ${stats.runtimeCount}/${stats.total}` : undefined}
-          />
-        )}
-        {!isBookClub && (
-          <StatCard
-            index={2}
-            icon={<Star className="w-4 h-4" />}
-            label="Avg TMDB rating"
-            value={stats.avgRating != null ? stats.avgRating.toFixed(1) : '—'}
-          />
-        )}
-        <StatCard
-          index={isBookClub ? 1 : 3}
-          icon={<Calendar className="w-4 h-4" />}
-          label="Year range"
-          value={
-            stats.oldest && stats.newest
-              ? `${stats.oldest.y}–${stats.newest.y}`
-              : '—'
-          }
-          sub={
-            stats.avgYear != null && stats.medianYear != null
-              ? `avg ${stats.avgYear} · med ${stats.medianYear}`
-              : undefined
-          }
-        />
-      </div>
+  const decadeCount = stats.decadeRows.length;
+  const yearTimelinePct = stats.oldest && stats.newest && stats.avgYear != null && stats.newest.y > stats.oldest.y
+    ? Math.round(((stats.avgYear - stats.oldest.y) / (stats.newest.y - stats.oldest.y)) * 100)
+    : 50;
 
-      {/* Decades */}
-      <Section index={1} title="By decade" icon={<Calendar className="w-4 h-4" />}>
-        {stats.decadeRows.length === 0 ? (
-          <Empty />
-        ) : (
-          <div className="space-y-1.5">
+  const records = !isBookClub ? [
+    stats.highestRated && { key: 'high', tag: 'Highest rated', accent: 'text-primary', pid: stats.highestRated.pickId, val: stats.highestRated.rating.toFixed(1), valIcon: '★ ' },
+    stats.longest && { key: 'long', tag: 'Longest', accent: 'text-sky-400', pid: stats.longest.pickId, val: formatRuntime(stats.longest.runtime) },
+    stats.shortest && { key: 'short', tag: 'Shortest', accent: 'text-emerald-400', pid: stats.shortest.pickId, val: formatRuntime(stats.shortest.runtime) },
+    stats.lowestRated && { key: 'low', tag: 'Lowest rated', accent: 'text-rose-400', pid: stats.lowestRated.pickId, val: stats.lowestRated.rating.toFixed(1), valIcon: '★ ' },
+    stats.oldest && { key: 'old', tag: 'Oldest', accent: 'text-violet-400', pid: stats.oldest.p.id, val: `${stats.oldest.y}` },
+    stats.newest && { key: 'new', tag: 'Newest', accent: 'text-amber-400', pid: stats.newest.p.id, val: `${stats.newest.y}` },
+  ].filter(Boolean) as { key: string; tag: string; accent: string; pid: string; val: string; valIcon?: string }[] : [];
+
+  const onShare = () => {
+    const groupName = group.name || 'Our movie club';
+    share({
+      title: `${groupName} — club stats`,
+      text: `${groupName} watched ${stats.total} ${labels.items} across ${decadeCount} decade${decadeCount === 1 ? '' : 's'}${!isBookClub && stats.runtimeCount > 0 ? ` — ${formatRuntime(stats.totalRuntime)} together` : ''}.`,
+      url: typeof window !== 'undefined' ? window.location.href : undefined,
+    });
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {/* HERO — recap + share (span 2) */}
+      <Tile span2 index={0} className="relative overflow-hidden bg-gradient-to-br from-primary/[0.14] to-transparent border-primary/25">
+        <div className="flex items-start justify-between gap-3">
+          <button onClick={() => openDrill(`All ${labels.items}`, movieEntries.map(e => e.canonical.id))} className="text-left flex-1 min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{group.name || 'Club'} · Stats</p>
+            <div className="flex items-end gap-3 mt-1.5">
+              <span className="font-display text-5xl sm:text-6xl font-bold text-gradient-gold leading-none">{stats.total}</span>
+              <span className="text-sm font-semibold pb-1.5 leading-tight">
+                {labels.items} {labels.watched}
+                <span className="block text-[11px] font-normal text-muted-foreground mt-0.5">
+                  across {decadeCount} decade{decadeCount === 1 ? '' : 's'}{!isBookClub && stats.runtimeCount > 0 ? ` · ${formatRuntime(stats.totalRuntime)} together` : ''}
+                </span>
+              </span>
+            </div>
+          </button>
+          <Button variant="outline" size="sm" onClick={onShare} disabled={sharing} className="shrink-0 h-8 rounded-full border-primary/30 text-primary hover:bg-primary/10">
+            <Share2 className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Share</span>
+          </Button>
+        </div>
+      </Tile>
+
+      {/* Runtime + Avg rating (movie-only) */}
+      {!isBookClub && (
+        <Tile index={1} label="Total runtime">
+          <div className="font-display text-2xl font-bold mt-1.5">{stats.runtimeCount > 0 ? formatRuntime(stats.totalRuntime) : '—'}</div>
+          {stats.runtimeCount > 0 && stats.runtimeCount < stats.total && (
+            <p className="text-[10px] text-muted-foreground mt-1">from {stats.runtimeCount}/{stats.total}</p>
+          )}
+        </Tile>
+      )}
+      {!isBookClub && (
+        <Tile index={2} label="Avg TMDB">
+          <div className="flex items-baseline gap-1 mt-1.5">
+            <span className="font-display text-2xl font-bold text-gradient-gold">{stats.avgRating != null ? stats.avgRating.toFixed(1) : '—'}</span>
+            {stats.avgRating != null && <span className="text-xs text-muted-foreground font-medium">/10</span>}
+          </div>
+          {stats.avgRating != null && <div className="mt-1.5"><StarRating avg={stats.avgRating / 10} size={12} /></div>}
+        </Tile>
+      )}
+
+      {/* Year range (span 2) with timeline */}
+      <Tile span2={isBookClub} index={3} label="Year range">
+        <div className="flex items-baseline justify-between gap-2 mt-1.5">
+          <span className="font-display text-2xl font-bold">
+            {stats.oldest && stats.newest ? `${stats.oldest.y}–${stats.newest.y}` : '—'}
+          </span>
+          {stats.avgYear != null && (
+            <span className="text-[10px] text-muted-foreground rounded-full bg-muted/40 px-2 py-0.5">avg <span className="text-primary font-semibold">{stats.avgYear}</span></span>
+          )}
+        </div>
+        {stats.oldest && stats.newest && stats.newest.y > stats.oldest.y && (
+          <div className="relative h-1.5 rounded-full bg-muted/30 mt-3 overflow-visible">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500/50 via-primary to-sky-500/60" />
+            <div className="absolute -top-[3px] w-3 h-3 rounded-full bg-primary border-2 border-card" style={{ left: `calc(${yearTimelinePct}% - 6px)` }} />
+          </div>
+        )}
+      </Tile>
+
+      {/* By decade (span 2) */}
+      {stats.decadeRows.length > 0 && (
+        <Tile span2 index={4} label="By decade" onClick={undefined}>
+          <div className="space-y-1 mt-1">
             {stats.decadeRows.map((r, i) => (
               <BarRow key={r.key} label={r.label} count={r.count} max={maxDecade} index={i}
                 onClick={() => openDrill(`${r.label}`, r.pickIds)} />
             ))}
           </div>
-        )}
-      </Section>
-
-      {/* Taste by decade */}
-      {stats.tasteDecadeRows.length > 0 && (
-        <Section index={2} title="Taste by decade" icon={<Star className="w-4 h-4" />} sub="Avg star rating per decade">
-          <TasteByDecade
-            overall={stats.tasteDecadeRows}
-            members={stats.tasteMembers}
-            profiles={profiles}
-            onSelectDecade={(r) => openDrill(r.label, r.pickIds, 'decade')}
-          />
-        </Section>
+        </Tile>
       )}
 
-      {/* Movie-only sections */}
+      {/* TOP PICKERS leaderboard (span 2) */}
+      {stats.pickerLeaderboard.length > 0 && (
+        <Tile span2 index={5} label="Top pickers" labelRight={stats.pickersRankedByLove ? 'most loved' : 'by volume'} labelIcon={<Trophy className="w-3 h-3 text-primary" />}>
+          <div className="space-y-1 mt-1.5">
+            {stats.pickerLeaderboard.slice(0, 7).map((p, i) => {
+              const medal = i === 0 ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/40'
+                : i === 1 ? 'bg-slate-300/15 text-slate-200 ring-1 ring-slate-300/30'
+                : i === 2 ? 'bg-amber-700/25 text-amber-500 ring-1 ring-amber-700/40'
+                : 'bg-muted/40 text-muted-foreground';
+              return (
+                <button key={p.user_id} onClick={() => openDrill(p.name, p.pickIds)}
+                  className={`w-full flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-primary/[0.06] ${i === 0 ? 'bg-primary/[0.06]' : ''}`}>
+                  <span className={`relative w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold tabular-nums shrink-0 ${medal}`}>
+                    {i + 1}
+                    {i === 0 && <Crown className="w-3 h-3 text-amber-300 absolute -top-2.5 left-1/2 -translate-x-1/2" />}
+                  </span>
+                  <Avatar profile={getProfile(p.user_id)} size={26} />
+                  <span className={`flex-1 min-w-0 truncate text-sm ${i === 0 ? 'font-bold' : 'font-medium'}`}>{p.name}</span>
+                  {p.stars != null ? (
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      <StarRating avg={p.stars / 5} size={11} />
+                      <span className="text-xs font-semibold text-primary tabular-nums w-7 text-right">{p.stars.toFixed(1)}</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs font-semibold text-primary tabular-nums shrink-0">{p.pickCount}</span>
+                  )}
+                  <span className="text-[10px] text-muted-foreground shrink-0 w-10 text-right">{p.pickCount} pick{p.pickCount === 1 ? '' : 's'}</span>
+                </button>
+              );
+            })}
+          </div>
+          {stats.pickersRankedByLove && (
+            <p className="text-[10px] text-muted-foreground/70 mt-2 pl-1">★ = how high the club ranked their picks</p>
+          )}
+        </Tile>
+      )}
+
+      {/* Taste by decade (span 2) */}
+      {stats.tasteDecadeRows.length > 0 && (
+        <Tile span2 index={6} label="Taste by decade" labelRight="avg ★ per decade" labelIcon={<Star className="w-3 h-3 text-primary" />}>
+          <div className="mt-1">
+            <TasteByDecade
+              overall={stats.tasteDecadeRows}
+              members={stats.tasteMembers}
+              profiles={profiles}
+              onSelectDecade={(r) => openDrill(r.label, r.pickIds, 'decade')}
+            />
+          </div>
+        </Tile>
+      )}
+
+      {/* Movie-only tiles */}
       {!isBookClub && (
         <>
-          <Section index={3} title="By genre" icon={<Tag className="w-4 h-4" />} sub={enrichLoading ? 'Loading TMDB data…' : undefined}>
-            {stats.genreRows.length === 0 ? (
-              <Empty hint="Pulled from TMDB" />
-            ) : (
-              <div className="space-y-1.5">
-                {stats.genreRows.slice(0, 12).map((r, i) => (
+          {/* Genres */}
+          {stats.genreRows.length > 0 && (
+            <Tile span2 index={7} label="Top genres" labelRight={enrichLoading ? 'loading…' : undefined} labelIcon={<Tag className="w-3 h-3 text-primary" />}>
+              <div className="space-y-1 mt-1">
+                {stats.genreRows.slice(0, 8).map((r, i) => (
                   <BarRow key={r.key} label={r.label} count={r.count} max={maxGenre} index={i}
                     onClick={() => openDrill(r.label, r.pickIds)} />
                 ))}
               </div>
-            )}
-          </Section>
+            </Tile>
+          )}
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <Section index={4} title="Languages" icon={<Languages className="w-4 h-4" />}>
-              {stats.langRows.length === 0 ? <Empty /> : (
-                <div className="space-y-1.5">
-                  {stats.langRows.slice(0, 8).map((r, i) => (
-                    <BarRow key={r.key} label={r.label} count={r.count} max={maxLang} index={i}
-                      onClick={() => openDrill(r.label, r.pickIds)} />
-                  ))}
-                </div>
-              )}
-            </Section>
-            <Section index={4} title="Countries" icon={<Globe className="w-4 h-4" />}>
-              {stats.countryRows.length === 0 ? <Empty /> : (
-                <div className="space-y-1.5">
-                  {stats.countryRows.slice(0, 8).map((r, i) => (
-                    <BarRow key={r.key} label={r.label} count={r.count} max={maxCountry} index={i}
-                      onClick={() => openDrill(r.label, r.pickIds)} />
-                  ))}
-                </div>
-              )}
-            </Section>
-          </div>
+          {/* Languages */}
+          {stats.langRows.length > 0 && (
+            <Tile index={8} label="Languages" labelIcon={<Languages className="w-3 h-3 text-primary" />}>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {stats.langRows.slice(0, 6).map(r => (
+                  <button key={r.key} onClick={() => openDrill(r.label, r.pickIds)}
+                    className="inline-flex items-center gap-1 rounded-full bg-muted/40 border border-border/40 px-2 py-0.5 text-[11px] font-medium hover:border-primary/30 transition-colors">
+                    {r.label} <span className="text-primary font-semibold">{r.count}</span>
+                  </button>
+                ))}
+              </div>
+            </Tile>
+          )}
+
+          {/* Countries */}
+          {stats.countryRows.length > 0 && (
+            <Tile index={8} label="Countries" labelIcon={<Globe className="w-3 h-3 text-primary" />}>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {stats.countryRows.slice(0, 6).map(r => (
+                  <button key={r.key} onClick={() => openDrill(r.label, r.pickIds)}
+                    className="inline-flex items-center gap-1 rounded-full bg-muted/40 border border-border/40 px-2 py-0.5 text-[11px] font-medium hover:border-primary/30 transition-colors">
+                    {r.label} <span className="text-primary font-semibold">{r.count}</span>
+                  </button>
+                ))}
+              </div>
+            </Tile>
+          )}
 
           {/* Actors */}
-          <Section
-            index={5}
-            title="Actors"
-            icon={<Users className="w-4 h-4" />}
-            sub={enrichLoading ? 'Loading TMDB data…' : (stats.actorRows.length > 0 ? `${stats.actorRows.length} unique` : undefined)}
-          >
-            {stats.actorRows.length === 0 ? (
-              <Empty hint="Top-billed cast pulled from TMDB" />
-            ) : (
-              <ActorGrid
-                actors={stats.actorRows}
-                onSelect={(a) => openDrill(a.label, a.pickIds)}
-              />
-            )}
-          </Section>
+          {stats.actorRows.length > 0 && (
+            <Tile span2 index={9} label="Recurring cast" labelRight={enrichLoading ? 'loading…' : `${stats.actorRows.length} unique`} labelIcon={<Users className="w-3 h-3 text-primary" />}>
+              <div className="mt-2">
+                <ActorGrid actors={stats.actorRows} onSelect={(a) => openDrill(a.label, a.pickIds)} />
+              </div>
+            </Tile>
+          )}
 
           {/* Directors */}
-          <Section
-            index={6}
-            title="Directors"
-            icon={<Clapperboard className="w-4 h-4" />}
-            sub={enrichLoading ? 'Loading TMDB data…' : (stats.directorRows.length > 0 ? `${stats.directorRows.length} unique` : undefined)}
-          >
-            {stats.directorRows.length === 0 ? (
-              <Empty hint="Pulled from TMDB" />
-            ) : (
-              <ActorGrid
-                actors={stats.directorRows}
-                onSelect={(a) => openDrill(a.label, a.pickIds)}
-                noun="director"
-                pluralNoun="directors"
-              />
-            )}
-          </Section>
+          {stats.directorRows.length > 0 && (
+            <Tile span2 index={10} label="Directors" labelRight={enrichLoading ? 'loading…' : `${stats.directorRows.length} unique`} labelIcon={<Clapperboard className="w-3 h-3 text-primary" />}>
+              <div className="mt-2">
+                <ActorGrid actors={stats.directorRows} onSelect={(a) => openDrill(a.label, a.pickIds)} noun="director" pluralNoun="directors" />
+              </div>
+            </Tile>
+          )}
 
-          {/* Production companies */}
-          <Section
-            index={7}
-            title="Production companies"
-            icon={<Building2 className="w-4 h-4" />}
-            sub={enrichLoading ? 'Loading TMDB data…' : (stats.companyRows.length > 0 ? `${stats.companyRows.length} unique` : undefined)}
-          >
-            {stats.companyRows.length === 0 ? (
-              <Empty hint="Pulled from TMDB" />
-            ) : (
-              <ActorGrid
-                actors={stats.companyRows}
-                onSelect={(a) => openDrill(a.label, a.pickIds)}
-                noun="studio"
-                pluralNoun="studios"
-                variant="logo"
-              />
-            )}
-          </Section>
+          {/* Studios */}
+          {stats.companyRows.length > 0 && (
+            <Tile span2 index={11} label="Production companies" labelRight={enrichLoading ? 'loading…' : `${stats.companyRows.length} unique`} labelIcon={<Building2 className="w-3 h-3 text-primary" />}>
+              <div className="mt-2">
+                <ActorGrid actors={stats.companyRows} onSelect={(a) => openDrill(a.label, a.pickIds)} noun="studio" pluralNoun="studios" variant="logo" />
+              </div>
+            </Tile>
+          )}
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <Section index={8} title="Records" icon={<Trophy className="w-4 h-4" />}>
-              <ul className="space-y-1">
-                <RecordRow label="Longest"
-                  value={stats.longest ? `${pickIdToEntry.get(stats.longest.pickId)?.canonical.title} · ${formatRuntime(stats.longest.runtime)}` : '—'}
-                  posterUrl={stats.longest ? (pickIdToEntry.get(stats.longest.pickId)?.canonical.poster_url ?? undefined) : undefined}
-                  onClick={stats.longest ? () => openDrill('Longest', [stats.longest!.pickId]) : undefined} />
-                <RecordRow label="Shortest"
-                  value={stats.shortest ? `${pickIdToEntry.get(stats.shortest.pickId)?.canonical.title} · ${formatRuntime(stats.shortest.runtime)}` : '—'}
-                  posterUrl={stats.shortest ? (pickIdToEntry.get(stats.shortest.pickId)?.canonical.poster_url ?? undefined) : undefined}
-                  onClick={stats.shortest ? () => openDrill('Shortest', [stats.shortest!.pickId]) : undefined} />
-                <RecordRow label="Highest rated"
-                  value={stats.highestRated ? `${pickIdToEntry.get(stats.highestRated.pickId)?.canonical.title} · ${stats.highestRated.rating.toFixed(1)}` : '—'}
-                  posterUrl={stats.highestRated ? (pickIdToEntry.get(stats.highestRated.pickId)?.canonical.poster_url ?? undefined) : undefined}
-                  onClick={stats.highestRated ? () => openDrill('Highest rated', [stats.highestRated!.pickId]) : undefined} />
-                <RecordRow label="Lowest rated"
-                  value={stats.lowestRated ? `${pickIdToEntry.get(stats.lowestRated.pickId)?.canonical.title} · ${stats.lowestRated.rating.toFixed(1)}` : '—'}
-                  posterUrl={stats.lowestRated ? (pickIdToEntry.get(stats.lowestRated.pickId)?.canonical.poster_url ?? undefined) : undefined}
-                  onClick={stats.lowestRated ? () => openDrill('Lowest rated', [stats.lowestRated!.pickId]) : undefined} />
-                <RecordRow label="Oldest"
-                  value={stats.oldest ? `${stats.oldest.p.title} · ${stats.oldest.y}` : '—'}
-                  posterUrl={stats.oldest ? (stats.oldest.p.poster_url ?? undefined) : undefined}
-                  onClick={stats.oldest ? () => openDrill('Oldest', [stats.oldest!.p.id]) : undefined} />
-                <RecordRow label="Newest"
-                  value={stats.newest ? `${stats.newest.p.title} · ${stats.newest.y}` : '—'}
-                  posterUrl={stats.newest ? (stats.newest.p.poster_url ?? undefined) : undefined}
-                  onClick={stats.newest ? () => openDrill('Newest', [stats.newest!.p.id]) : undefined} />
-              </ul>
-            </Section>
-            <Section index={8} title="Coverage" icon={<BookOpen className="w-4 h-4" />}>
-              <p className="text-sm text-muted-foreground">
-                TMDB details loaded for{' '}
-                <span className="text-foreground font-medium">
-                  {Object.keys(tmdbDetails).length}/{stats.total}
-                </span>{' '}
-                {labels.items}.
-                {enrichLoading && ' Still fetching…'}
-              </p>
-            </Section>
-          </div>
+          {/* Records strip (span 2) */}
+          {records.length > 0 && (
+            <Tile span2 index={12} label="Records" labelRight="tap to explore →" labelIcon={<Trophy className="w-3 h-3 text-primary" />}>
+              <div className="flex gap-2.5 overflow-x-auto pb-1 mt-2 -mx-1 px-1">
+                {records.map(rec => {
+                  const entry = pickIdToEntry.get(rec.pid);
+                  const p = entry?.canonical;
+                  return (
+                    <button key={rec.key} onClick={() => openDrill(rec.tag, [rec.pid])}
+                      className="shrink-0 w-[120px] rounded-xl bg-card/40 border border-border/40 p-2 text-left hover:border-primary/30 transition-colors">
+                      <p className={`text-[9px] font-bold uppercase tracking-wider mb-1.5 ${rec.accent}`}>{rec.tag}</p>
+                      <div className="flex gap-2">
+                        <div className="w-8 h-12 rounded-md overflow-hidden bg-muted shrink-0 ring-1 ring-border/30">
+                          {p?.poster_url ? <img src={p.poster_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Film className="w-3 h-3 text-muted-foreground" /></div>}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold leading-tight line-clamp-2">{p?.title || '—'}</p>
+                          <p className={`text-xs font-bold mt-1 ${rec.accent}`}>{rec.valIcon}{rec.val}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </Tile>
+          )}
+
+          {/* Coverage footer */}
+          <p className="col-span-2 text-center text-[11px] text-muted-foreground/70 pt-1">
+            TMDB details loaded for {Object.keys(tmdbDetails).length}/{stats.total} {labels.items}{enrichLoading ? ' · still fetching…' : ''}
+          </p>
         </>
       )}
 
@@ -1583,63 +1655,47 @@ const Avatar = ({ profile, size = 24 }: { profile?: Profile; size?: number }) =>
   );
 };
 
-const StatCard = ({
-  icon, label, value, sub, onClick, index = 0,
-}: { icon: React.ReactNode; label: string; value: string; sub?: string; onClick?: () => void; index?: number }) => {
-  const inner = (
-    <>
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
-        {icon}
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="text-xl sm:text-2xl font-display font-bold text-gradient-gold leading-tight">{value}</div>
-      {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
-    </>
-  );
-
+// ── Bento tile ────────────────────────────────────────────────────────────────
+const Tile = ({
+  children, label, labelRight, labelIcon, span2 = false, onClick, index = 0, className = '',
+}: {
+  children: React.ReactNode;
+  label?: string;
+  labelRight?: string;
+  labelIcon?: React.ReactNode;
+  span2?: boolean;
+  onClick?: () => void;
+  index?: number;
+  className?: string;
+}) => {
   const motionProps = {
-    initial: { opacity: 0, y: 8 },
+    initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.35, delay: index * 0.07, ease: [0.16, 1, 0.3, 1] as const },
+    transition: { duration: 0.35, delay: Math.min(index * 0.05, 0.5), ease: [0.16, 1, 0.3, 1] as const },
   };
-
+  const header = label && (
+    <div className="flex items-center justify-between gap-2 mb-0.5">
+      <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        {labelIcon}{label}
+      </span>
+      {labelRight && <span className="text-[10px] text-muted-foreground/70">{labelRight}</span>}
+    </div>
+  );
+  const base = `glass-card rounded-2xl p-3.5 sm:p-4 ${span2 ? 'col-span-2' : ''} ${className}`;
   if (onClick) {
     return (
-      <motion.button
-        {...motionProps}
-        onClick={onClick}
-        className="glass-card rounded-xl p-3 sm:p-4 text-left hover:ring-1 hover:ring-primary/40 hover:shadow-[0_0_20px_-8px_hsl(38_90%_55%_/_0.3)] hover:bg-primary/5 transition-all duration-200 w-full"
-      >
-        {inner}
+      <motion.button {...motionProps} onClick={onClick}
+        className={`${base} text-left w-full hover:ring-1 hover:ring-primary/40 hover:bg-primary/5 transition-all duration-200`}>
+        {header}{children}
       </motion.button>
     );
   }
   return (
-    <motion.div {...motionProps} className="glass-card rounded-xl p-3 sm:p-4">
-      {inner}
+    <motion.div {...motionProps} className={base}>
+      {header}{children}
     </motion.div>
   );
 };
-
-const Section = ({
-  title, icon, children, sub, index = 0,
-}: { title: string; icon: React.ReactNode; children: React.ReactNode; sub?: string; index?: number }) => (
-  <motion.div
-    className="glass-card rounded-2xl p-4 sm:p-5"
-    initial={{ opacity: 0, y: 12 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.4, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] as const }}
-  >
-    <div className="flex items-center justify-between mb-3">
-      <div className="flex items-center gap-2 text-sm font-semibold">
-        <span className="text-primary">{icon}</span>
-        {title}
-      </div>
-      {sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}
-    </div>
-    {children}
-  </motion.div>
-);
 
 const BarRow = ({
   label, count, max, onClick, index = 0,
@@ -1674,47 +1730,5 @@ const BarRow = ({
   }
   return <div className="flex items-center gap-3 px-1 py-1.5">{content}</div>;
 };
-
-const RecordRow = ({
-  label, value, onClick, posterUrl,
-}: { label: string; value: string; onClick?: () => void; posterUrl?: string }) => {
-  const content = (
-    <>
-      {posterUrl && (
-        <div className="w-7 h-10 rounded overflow-hidden bg-muted shrink-0 ring-1 ring-border/30">
-          <img src={posterUrl} alt="" className="w-full h-full object-cover" />
-        </div>
-      )}
-      {!posterUrl && (
-        <div className="w-7 h-10 rounded bg-muted/50 shrink-0 flex items-center justify-center ring-1 ring-border/20">
-          <Film className="w-3 h-3 text-muted-foreground/40" />
-        </div>
-      )}
-      <span className="text-muted-foreground shrink-0 text-xs w-20">{label}</span>
-      <span className="font-medium text-right truncate text-sm flex-1">{value}</span>
-    </>
-  );
-  if (onClick) {
-    return (
-      <li>
-        <button
-          onClick={onClick}
-          className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 -mx-2 hover:bg-primary/5 hover:ring-1 hover:ring-primary/15 transition-all text-left"
-        >
-          {content}
-        </button>
-      </li>
-    );
-  }
-  return (
-    <li className="flex items-center gap-2 px-2 py-1.5">
-      {content}
-    </li>
-  );
-};
-
-const Empty = ({ hint }: { hint?: string } = {}) => (
-  <p className="text-sm text-muted-foreground">No data yet{hint ? ` — ${hint}` : ''}.</p>
-);
 
 export default Stats;
