@@ -556,7 +556,7 @@ const MemberProfile = () => {
     const guessedName = guess ? getProfile(guess.guessed_user_id)?.display_name || '?' : null;
     const isCorrect = guess ? validUserIds.has(guess.guessed_user_id) : false;
     return { pick, guess, guessedName, pickerName, isCorrect, isOwnPick };
-  }), [watchedPicks, picks, userGuesses, userId]);
+  }), [watchedPicks, picks, userGuesses, userId, profiles]);
 
   const guessMetas = useMemo(() => guessMetasRaw.filter(m => {
     if (guessFilter === 'all') return true;
