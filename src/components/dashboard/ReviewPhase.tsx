@@ -133,7 +133,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
 
       const { error } = await supabase.from('movie_rankings').insert(rows);
       if (error) throw error;
-      toast.success('Rankings submitted! 🎬');
+      toast.success('Rankings submitted!');
       setSubmitted(true);
       onUpdate();
     } catch (err: unknown) {

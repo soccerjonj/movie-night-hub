@@ -136,7 +136,7 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
       }));
       const { error } = await supabase.from('movie_rankings').insert(rows);
       if (error) throw error;
-      toast.success('Rankings submitted! 🎬');
+      toast.success('Rankings submitted!');
 
       setUnrankedSeasons(prev => prev.filter(s => s.id !== selectedSeasonId));
       const remaining = unrankedSeasons.filter(s => s.id !== selectedSeasonId);

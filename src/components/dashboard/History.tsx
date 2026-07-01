@@ -321,12 +321,11 @@ const History = ({ group, profiles, members }: Props) => {
     return result;
   })();
 
-  const getMedal = (i: number) => {
-    if (i === 0) return '🥇';
-    if (i === 1) return '🥈';
-    if (i === 2) return '🥉';
-    return `${i + 1}`;
-  };
+  const medalClass = (i: number) =>
+    i === 0 ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/40' :
+    i === 1 ? 'bg-slate-300/15 text-slate-200 ring-1 ring-slate-300/30' :
+    i === 2 ? 'bg-amber-700/25 text-amber-500 ring-1 ring-amber-700/40' :
+    'bg-muted text-muted-foreground';
 
   return (
     <div className="space-y-6">
@@ -529,7 +528,7 @@ const History = ({ group, profiles, members }: Props) => {
                           i === 0 && entry.correct > 0 ? 'bg-primary/10 ring-1 ring-primary/20' : 'bg-muted/20'
                         }`}
                       >
-                        <span className="text-lg w-8 text-center">{getMedal(i)}</span>
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold tabular-nums shrink-0 ${medalClass(i)}`}>{i + 1}</span>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{profile?.display_name || 'Unknown'}</p>
                           <p className="text-xs text-muted-foreground">

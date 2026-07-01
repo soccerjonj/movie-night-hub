@@ -773,7 +773,7 @@ const GroupSetup = () => {
                   </div>
                   {chapterChoice === 'now' && (
                     <p className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-3">
-                      📖 Chapter assignment will be available from the admin panel once your club is created. You'll be able to set chapter ranges for each due date there.
+                      Chapter assignment will be available from the admin panel once your club is created. You'll be able to set chapter ranges for each due date there.
                     </p>
                   )}
                 </>

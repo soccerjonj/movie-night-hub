@@ -173,10 +173,10 @@ const ImportSeasonDialog = ({ group, profiles, existingSeasonCount, onImported }
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="completed">✅ Completed</SelectItem>
-                  <SelectItem value="watching">🍿 Watching</SelectItem>
-                  <SelectItem value="guessing">🔮 Guessing</SelectItem>
-                  <SelectItem value="picking">🎬 Picking</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="watching">Watching</SelectItem>
+                  <SelectItem value="guessing">Guessing</SelectItem>
+                  <SelectItem value="picking">Picking</SelectItem>
                 </SelectContent>
               </Select>
             </div>

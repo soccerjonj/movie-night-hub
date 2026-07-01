@@ -1551,7 +1551,7 @@ const TasteByDecade = ({
                   <div className="text-sm font-medium">{m.name}</div>
                   {m.favorite && m.least && m.favorite.decade !== m.least.decade && (
                     <div className="text-[11px] text-muted-foreground ml-auto">
-                      ❤ {m.favorite.label} · ✗ {m.least.label}
+                      Loves {m.favorite.label} · Least {m.least.label}
                     </div>
                   )}
                 </div>
