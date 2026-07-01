@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGroup } from '@/hooks/useGroup';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Film, Crown, Camera, Crop, Award, Star, ListOrdered, Check, X, Trophy, Search, Share2, Users } from 'lucide-react';
+import { ArrowLeft, Film, Crown, Camera, Crop, Award, Star, ListOrdered, Check, X, Trophy, Search, Share2, Users, Ghost } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -898,7 +898,7 @@ const MemberProfile = () => {
               <Button key={f} type="button" variant={guessFilter === f ? 'secondary' : 'ghost'} size="sm"
                 className={`h-8 flex-1 text-[10px] px-2 rounded-lg capitalize ${guessFilter === f ? 'shadow-sm' : ''}`}
                 onClick={() => setGuessFilter(f)}>
-                {f === 'all' ? 'All' : f === 'correct' ? '✓ Correct' : f === 'miss' ? '✗ Misses' : 'No guess'}
+                {f === 'all' ? 'All' : f === 'correct' ? 'Correct' : f === 'miss' ? 'Misses' : 'No guess'}
               </Button>
             ))}
           </div>
@@ -1037,7 +1037,7 @@ const MemberProfile = () => {
             >
               {profile?.is_placeholder ? (
                 <div className="w-full h-full flex items-center justify-center bg-muted">
-                  <span className="text-3xl">👤</span>
+                  <Ghost className="w-8 h-8 text-muted-foreground/60" />
                 </div>
               ) : profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />

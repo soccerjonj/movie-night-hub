@@ -452,7 +452,7 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     try {
       const { error } = await supabase.from('seasons').update({ status: 'completed' }).eq('id', season.id);
       if (error) throw error;
-      toast.success(`${labels.seasonNoun} completed! 🎉`);
+      toast.success(`${labels.seasonNoun} completed!`);
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to complete season');

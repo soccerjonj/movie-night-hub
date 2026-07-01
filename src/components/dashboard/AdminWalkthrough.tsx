@@ -14,7 +14,7 @@ const steps = (labels: ClubLabels) => [
   {
     icon: <Users className="w-8 h-8" />,
     title: 'Add Your Members',
-    description: `Open the ⚙️ Settings panel and use the "Members" dropdown to add placeholder names for everyone in your club. Then share the join code so they can claim their spot.`,
+    description: `Open the Settings panel and use the "Members" dropdown to add placeholder names for everyone in your club. Then share the join code so they can claim their spot.`,
   },
   {
     icon: <Clapperboard className="w-8 h-8" />,
@@ -29,7 +29,7 @@ const steps = (labels: ClubLabels) => [
   {
     icon: <Play className="w-8 h-8" />,
     title: `Manage the ${labels.seasonNoun}`,
-    description: `Use the ⚙️ button in the top bar to open admin tools. From there you can advance ${labels.items}, reveal picks, edit schedules, and move between phases.`,
+    description: `Use the settings button in the top bar to open admin tools. From there you can advance ${labels.items}, reveal picks, edit schedules, and move between phases.`,
   },
 ];
 

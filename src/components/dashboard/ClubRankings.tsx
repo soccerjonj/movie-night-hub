@@ -127,13 +127,6 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
 
   if (rankedMovies.length === 0) return null;
 
-  const getMedal = (i: number) => {
-    if (i === 0) return '🥇';
-    if (i === 1) return '🥈';
-    if (i === 2) return '🥉';
-    return null;
-  };
-
   const favorite = rankedMovies[0];
   const leastFavorite = rankedMovies[rankedMovies.length - 1];
 
@@ -206,13 +199,13 @@ const ClubRankings = ({ seasonIds, profiles, label, hideFavorites }: Props) => {
               index === 0 ? 'bg-primary/5' : 'bg-muted/10'
             }`}
           >
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-              index === 0 ? 'bg-primary text-primary-foreground' :
-              index === 1 ? 'bg-primary/60 text-primary-foreground' :
-              index === 2 ? 'bg-primary/30 text-foreground' :
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold tabular-nums shrink-0 ${
+              index === 0 ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/40' :
+              index === 1 ? 'bg-slate-300/15 text-slate-200 ring-1 ring-slate-300/30' :
+              index === 2 ? 'bg-amber-700/25 text-amber-500 ring-1 ring-amber-700/40' :
               'bg-muted text-muted-foreground'
             }`}>
-              {getMedal(index) || index + 1}
+              {index + 1}
             </div>
 
             {movie.posterUrl ? (
