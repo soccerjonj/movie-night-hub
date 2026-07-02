@@ -357,50 +357,52 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
                 </>
               )}
             </div>
-            {isWatched && (
-              <span className="text-xs text-primary">
-                Picked by {getProfile(pick.user_id)?.display_name}
-              </span>
-            )}
+            {(() => {
+              const gName = userGuesses[pick.id] ? getProfile(userGuesses[pick.id])?.display_name : null;
+              if (isWatched) {
+                return (
+                  <span className="text-xs text-muted-foreground">
+                    Picked by <span className="text-primary">{getProfile(pick.user_id)?.display_name}</span>
+                    {gName && <> · you guessed {gName}</>}
+                  </span>
+                );
+              }
+              if (isCurrent && gName) {
+                return <span className="text-xs text-muted-foreground">You guessed <span className="text-violet-300">{gName}</span></span>;
+              }
+              return null;
+            })()}
           </div>
 
           <div className="flex items-center shrink-0">
             {(() => {
               const guessedUserId = userGuesses[pick.id];
               const guessedName = guessedUserId ? getProfile(guessedUserId)?.display_name : null;
+              const isYourPick = pick.user_id === user?.id;
+              const pillBase = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold';
 
-              if (isWatched && guessedName) {
+              if (isWatched) {
+                if (!guessedName) return <span className="text-[10px] text-muted-foreground/50 italic">No guess</span>;
                 const isCorrect = guessedUserId === pick.user_id;
-                return (
-                  <div className="text-right">
-                    <span className="text-[10px] text-muted-foreground block">Your guess:</span>
-                    <div className={`flex items-center gap-1 text-xs font-medium ${isCorrect ? 'text-green-400' : 'text-destructive'}`}>
-                      {isCorrect ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                      {guessedName}
-                    </div>
-                  </div>
-                );
-              }
-
-              if (!isWatched && guessedName) {
-                return (
-                  <div className="text-right">
-                    <span className="text-[10px] text-muted-foreground block">Your guess:</span>
-                    <span className="text-xs font-medium text-primary">{guessedName}</span>
-                  </div>
-                );
-              }
-
-              if (!isWatched && !guessedName) {
-                const isYourPick = pick.user_id === user?.id;
-                return isYourPick ? (
-                  <span className="text-[10px] text-primary/70 italic">Your pick</span>
+                return isCorrect ? (
+                  <span className={`${pillBase} bg-green-500/15 text-green-400 border border-green-500/25`}><Check className="w-3 h-3" /> Correct</span>
                 ) : (
-                  <span className="text-[10px] text-muted-foreground/50 italic">No guess</span>
+                  <span className={`${pillBase} bg-destructive/10 text-destructive border border-destructive/25`}><X className="w-3 h-3" /> Wrong</span>
                 );
               }
 
-              return null;
+              if (isCurrent) {
+                if (guessedName) return <span className={`${pillBase} bg-primary/15 text-primary border border-primary/25`}>Pending</span>;
+                return isYourPick
+                  ? <span className="text-[10px] text-primary/70 italic">Your pick</span>
+                  : <span className="text-[10px] text-muted-foreground/50 italic">No guess</span>;
+              }
+
+              // Upcoming
+              if (guessedName) return <span className={`${pillBase} bg-violet-500/12 text-violet-300 border border-violet-500/25`}>{guessedName}</span>;
+              return isYourPick
+                ? <span className="text-[10px] text-primary/70 italic">Your pick</span>
+                : <span className="text-[10px] text-muted-foreground/50 italic">No guess</span>;
             })()}
           </div>
         </button>
