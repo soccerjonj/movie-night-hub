@@ -113,23 +113,67 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       className="glass-card rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6"
     >
-      {/* Status badge row — season title removed (shown in header) */}
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
-          season.status === 'watching'
-            ? 'bg-primary/10 border-primary/25 text-primary'
-            : season.status === 'completed'
-            ? 'bg-green-500/15 border-green-500/25 text-green-400'
-            : 'bg-muted/30 border-border/50 text-muted-foreground'
-        }`}>
-          {season.status === 'watching'
-            ? clubType === 'book'
-              ? `Currently reading: ${readingStatus ?? 'Chapters TBD'}`
-              : `${labels.Item} ${season.current_movie_index + 1} of ${uniquePicks.length}`
-            : labels.statusLabels[season.status]}
-        </span>
-        {season.status === 'completed' && <ShareSeasonButton season={season} group={group} labels={labels} />}
-      </div>
+      {/* Status badge row — hidden for completed movie clubs (they get the recap hero below) */}
+      {!(season.status === 'completed' && clubType !== 'book') && (
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
+            season.status === 'watching'
+              ? 'bg-primary/10 border-primary/25 text-primary'
+              : season.status === 'completed'
+              ? 'bg-green-500/15 border-green-500/25 text-green-400'
+              : 'bg-muted/30 border-border/50 text-muted-foreground'
+          }`}>
+            {season.status === 'watching'
+              ? clubType === 'book'
+                ? `Currently reading: ${readingStatus ?? 'Chapters TBD'}`
+                : `${labels.Item} ${season.current_movie_index + 1} of ${uniquePicks.length}`
+              : labels.statusLabels[season.status]}
+          </span>
+          {season.status === 'completed' && <ShareSeasonButton season={season} group={group} labels={labels} />}
+        </div>
+      )}
+
+      {/* Completed movie club: cinematic "Season Complete" recap hero */}
+      {season.status === 'completed' && clubType !== 'book' && (() => {
+        const pickerIds = Array.from(new Set(moviePicks.map(p => p.user_id)));
+        const avatars = pickerIds.slice(0, 4);
+        return (
+          <div className="relative overflow-hidden rounded-2xl ring-1 ring-white/5 bg-gradient-to-br from-emerald-500/[0.12] via-card to-card mb-1 p-4 sm:p-5">
+            <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_80%_0%,hsl(38_90%_55%/0.16),transparent_60%)]" />
+            <div className="relative z-10">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_hsl(160_84%_50%)]" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-400">{labels.statusLabels.completed}</span>
+              </span>
+              <h3 className="font-display text-2xl sm:text-3xl font-bold leading-[1.05]">
+                {labels.seasonNoun} {season.season_number}{season.title ? ` · ${season.title}` : ''}
+                <span className="text-gradient-gold"> — a wrap</span>
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-2">
+                {uniquePicks.length} {labels.items} watched, ranked, and guessed.
+              </p>
+              <div className="flex items-center gap-3 mt-4">
+                <ShareSeasonButton season={season} group={group} labels={labels} prominent />
+                {avatars.length > 0 && (
+                  <div className="flex -space-x-2">
+                    {avatars.map(uid => {
+                      const p = getProfile(uid);
+                      return (
+                        <div key={uid} className="w-7 h-7 rounded-full ring-2 ring-card overflow-hidden bg-primary/15 flex items-center justify-center text-[10px] font-bold text-primary">
+                          {p?.avatar_url ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" /> : (p?.display_name?.charAt(0).toUpperCase() ?? '?')}
+                        </div>
+                      );
+                    })}
+                    {pickerIds.length > 4 && (
+                      <div className="w-7 h-7 rounded-full ring-2 ring-card bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">+{pickerIds.length - 4}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Movie club: cinematic full-bleed Now Watching hero */}
       {season.status === 'watching' && currentMovie && clubType !== 'book' && (() => {
@@ -314,8 +358,8 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
   );
 };
 
-// Small share button for completed seasons
-const ShareSeasonButton = ({ season, group, labels }: { season: Season; group?: Group; labels: ReturnType<typeof getClubLabels> }) => {
+// Share button for completed seasons — ghost by default, gold when prominent (recap hero)
+const ShareSeasonButton = ({ season, group, labels, prominent = false }: { season: Season; group?: Group; labels: ReturnType<typeof getClubLabels>; prominent?: boolean }) => {
   const { share, sharing } = useShare();
   const onClick = () => {
     const groupName = group?.name || 'My Movie Club';
@@ -326,6 +370,17 @@ const ShareSeasonButton = ({ season, group, labels }: { season: Season; group?: 
       url: typeof window !== 'undefined' ? window.location.href : undefined,
     });
   };
+  if (prominent) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={sharing}
+        className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-amber-300 text-black font-semibold text-sm px-4 py-2 shadow-[0_6px_20px_-6px_hsl(38_90%_55%/0.5)] hover:brightness-105 active:scale-[0.98] transition disabled:opacity-60"
+      >
+        <Share2 className="w-3.5 h-3.5" /> Share recap
+      </button>
+    );
+  }
   return (
     <Button
       variant="ghost"

@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock, Pencil, PartyPopper, X, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -186,45 +186,73 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
 
   const showForm = !submitted || editing;
 
+  const submittedCount = guessingMembers.filter(m => submittedMembers.has(m.user_id)).length;
+  const submitPct = guessingMembers.length > 0 ? (submittedCount / guessingMembers.length) * 100 : 0;
+
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
-      <div className="flex items-center gap-2 mb-1">
-        <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-        <h2 className="font-display text-lg sm:text-xl font-bold">Guess Who Picked What</h2>
+      {/* Cinematic hero */}
+      <div className="relative overflow-hidden rounded-2xl ring-1 ring-white/5 bg-gradient-to-br from-card via-card to-muted/20 p-4 sm:p-5 mb-4">
+        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_80%_10%,hsl(38_90%_55%/0.14),transparent_55%)]" />
+        <div className="relative z-10">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-black/30 backdrop-blur-sm border border-primary/30 px-2.5 py-1">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Guessing Round</span>
+          </span>
+          <h2 className="font-display text-2xl sm:text-3xl font-bold leading-[1.05] mt-2.5 text-gradient-gold">Guess who picked what</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1.5">
+            {submitted && !editing
+              ? "You've submitted your guesses!"
+              : 'Match each movie to the member who chose it — use each name once.'}
+          </p>
+        </div>
       </div>
-      <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
-        {submitted && !editing ? "You've submitted your guesses!" : 'For each movie, guess which member picked it.'}
-      </p>
 
-      {/* Submission status */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {guessingMembers.map((member) => {
-          const profile = getProfile(member.user_id);
-          const hasSubmitted = submittedMembers.has(member.user_id);
-          return (
-            <div
-              key={member.user_id}
-              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border ${
-                hasSubmitted
-                  ? 'bg-primary/10 border-primary/30 text-primary'
-                  : 'bg-muted/30 border-border text-muted-foreground'
-              }`}
-            >
-              <Avatar className="w-3.5 h-3.5">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="text-[7px]">
-                  {(profile?.display_name || '?')[0]}
-                </AvatarFallback>
-              </Avatar>
-              <span className="max-w-[60px] truncate sm:max-w-none">{profile?.display_name || 'Unknown'}</span>
-              {hasSubmitted ? (
-                <CheckCircle2 className="w-3 h-3 text-primary flex-shrink-0" />
-              ) : (
-                <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-              )}
-            </div>
-          );
-        })}
+      {/* Submission-status card */}
+      <div className="rounded-xl border border-border/40 bg-muted/15 p-3 mb-4">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-xs font-semibold text-foreground">
+            <span className="text-primary tabular-nums">{submittedCount}</span> of <span className="tabular-nums">{guessingMembers.length}</span> locked in
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5 mb-2.5">
+          {guessingMembers.map((member) => {
+            const profile = getProfile(member.user_id);
+            const hasSubmitted = submittedMembers.has(member.user_id);
+            return (
+              <div
+                key={member.user_id}
+                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border transition-colors ${
+                  hasSubmitted
+                    ? 'bg-primary/10 border-primary/30 text-primary'
+                    : 'bg-muted/30 border-border text-muted-foreground opacity-60'
+                }`}
+              >
+                <Avatar className="w-3.5 h-3.5">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="text-[7px]">
+                    {(profile?.display_name || '?')[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="max-w-[60px] truncate sm:max-w-none">{profile?.display_name || 'Unknown'}</span>
+                {hasSubmitted ? (
+                  <CheckCircle2 className="w-3 h-3 text-primary flex-shrink-0" />
+                ) : (
+                  <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-primary to-amber-300 transition-all duration-500"
+            style={{ width: `${submitPct}%` }}
+          />
+        </div>
       </div>
 
       {/* Submitted state - collapsed */}
@@ -422,21 +450,45 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Select
-                      value={guesses[pick.id] || ''}
-                      onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
-                    >
-                      <SelectTrigger className="w-full sm:w-40 bg-muted/50 h-9 text-sm">
-                        <SelectValue placeholder="Who picked this?" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getAvailableMembers(pick.id).map((member) => (
-                          <SelectItem key={member.user_id} value={member.user_id}>
-                            {getProfile(member.user_id)?.display_name || 'Unknown'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {(() => {
+                      const guessedProfile = guesses[pick.id] ? getProfile(guesses[pick.id]) : null;
+                      const hasGuess = !!guesses[pick.id];
+                      return (
+                        <Select
+                          value={guesses[pick.id] || ''}
+                          onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
+                        >
+                          <SelectTrigger
+                            className={`w-full h-9 text-sm rounded-full border transition-colors [&>svg]:opacity-100 ${
+                              hasGuess
+                                ? 'bg-violet-500/12 border-violet-500/25 text-violet-200 [&>svg]:text-violet-300'
+                                : 'bg-transparent border-dashed border-primary/40 text-primary [&>svg]:text-primary'
+                            }`}
+                          >
+                            {hasGuess ? (
+                              <span className="flex items-center gap-1.5 min-w-0">
+                                <Avatar className="w-4 h-4 shrink-0">
+                                  <AvatarImage src={guessedProfile?.avatar_url || undefined} />
+                                  <AvatarFallback className="text-[8px]">{(guessedProfile?.display_name || '?')[0]}</AvatarFallback>
+                                </Avatar>
+                                <span className="truncate font-medium">{guessedProfile?.display_name || 'Unknown'}</span>
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1.5 font-medium">
+                                <HelpCircle className="w-3.5 h-3.5" /> Tap to guess
+                              </span>
+                            )}
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getAvailableMembers(pick.id).map((member) => (
+                              <SelectItem key={member.user_id} value={member.user_id}>
+                                {getProfile(member.user_id)?.display_name || 'Unknown'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                     {guesses[pick.id] && (
                       <button
                         onClick={() => setGuesses(prev => {
@@ -456,10 +508,14 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
             })}
           </div>
 
-          <div className={`mt-6 rounded-xl transition-all duration-500 ${allGuessed && !submitting ? 'shadow-[0_0_24px_-6px_hsl(38_90%_55%_/_0.5)]' : ''}`}>
+          <p className="mt-3 text-[11px] text-muted-foreground text-center">
+            Each member picked exactly one — every name gets used once.
+          </p>
+
+          <div className={`mt-4 rounded-xl transition-all duration-500 ${allGuessed && !submitting ? 'shadow-[0_0_24px_-6px_hsl(38_90%_55%_/_0.5)]' : ''}`}>
           <Button
             variant="gold"
-            className="w-full"
+            className={`w-full ${!allGuessed || submitting ? 'opacity-50' : ''}`}
             onClick={submitGuesses}
             disabled={!allGuessed || submitting}
           >

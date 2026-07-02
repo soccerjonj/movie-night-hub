@@ -282,63 +282,114 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     }
   };
 
+  const waitingMembers = members.filter((m) => !moviePicks.some((p) => p.user_id === m.user_id));
+
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
-      {/* Prominent Season Theme */}
-      {season.title && (
-        <div className="mb-4 p-3 rounded-xl bg-primary/5 border border-primary/10 text-center">
-          <p className="text-xs uppercase tracking-wider text-primary/70 mb-0.5">Season Theme</p>
-          <h3 className="font-display text-lg sm:text-xl font-bold text-primary">{season.title}</h3>
+      {/* Cinematic picking hero */}
+      <div className="relative overflow-hidden rounded-2xl ring-1 ring-white/5 bg-gradient-to-br from-card via-card to-muted/20 px-4 sm:px-6 py-5 sm:py-7 mb-4">
+        {/* Soft gold radial glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_80%_10%,hsl(38_90%_55%/0.14),transparent_55%)]" />
+
+        {/* Top row: picking pill */}
+        <div className="relative z-10 flex items-center justify-between gap-2 mb-4">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-primary/30 px-2.5 py-1">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Picking Movies</span>
+          </span>
         </div>
-      )}
-      <h2 className="font-display text-lg sm:text-xl font-bold mb-1">Pick Your Movie</h2>
-      <p className="text-sm text-muted-foreground mb-3">
-        {pickedCount} of {totalMembers} members have picked
-      </p>
+
+        {/* Season theme headline */}
+        <div className="relative z-10">
+          {season.title ? (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70 mb-1">Season Theme</p>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold leading-[1.02] text-gradient-gold">{season.title}</h2>
+            </>
+          ) : (
+            <h2 className="font-display text-3xl sm:text-4xl font-bold leading-[1.02] text-gradient-gold">Pick your movie</h2>
+          )}
+          <p className="text-sm text-muted-foreground mt-2">Everyone secretly picks a movie — reveals come later.</p>
+        </div>
+      </div>
+
+      {/* Progress card */}
+      <div className="rounded-2xl bg-muted/15 border border-border/30 p-4 mb-4">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <p className="text-sm font-semibold">
+            <span className="text-primary tabular-nums">{pickedCount}</span>
+            <span className="text-muted-foreground"> of {totalMembers} picked</span>
+          </p>
+        </div>
+
+        {/* Avatar chips */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {members.map((member) => {
+            const profile = profiles.find((p) => p.user_id === member.user_id);
+            const hasPicked = moviePicks.some((p) => p.user_id === member.user_id);
+            const memberConstraint = constraints[member.user_id];
+            const isOwnConstraint = user?.id === member.user_id;
+            const showConstraint = memberConstraint && (isOwnConstraint || (season as any).constraints_visible !== false);
+            return (
+              <div
+                key={member.id}
+                className={`inline-flex items-center gap-1.5 rounded-full pl-1 pr-2.5 py-1 text-xs border transition-all ${
+                  hasPicked
+                    ? "bg-primary/10 border-primary/25 text-primary"
+                    : "bg-muted/20 border-dashed border-border/60 text-muted-foreground opacity-60"
+                }`}
+                title={memberConstraint ? `Constraint: ${memberConstraint}` : undefined}
+              >
+                <span
+                  className={`relative flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${
+                    hasPicked ? "bg-primary/20 text-primary" : "bg-muted/40 text-muted-foreground"
+                  }`}
+                >
+                  {(profile?.display_name || "?").charAt(0).toUpperCase()}
+                  {hasPicked && (
+                    <span className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center w-3 h-3 rounded-full bg-primary text-primary-foreground">
+                      <Check className="w-2 h-2" strokeWidth={3} />
+                    </span>
+                  )}
+                </span>
+                <span className="font-medium">{profile?.display_name || "Unknown"}</span>
+                {showConstraint && <span className="text-[10px] opacity-70">({memberConstraint})</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Segmented progress bar */}
+        {totalMembers > 0 && (
+          <div className="flex gap-1">
+            {members.map((member, i) => {
+              const filled = i < pickedCount;
+              return (
+                <div
+                  key={member.id}
+                  className={`h-2 flex-1 rounded-full transition-all duration-500 ${
+                    filled ? "bg-gradient-to-r from-primary to-amber-300" : "bg-muted/40"
+                  }`}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* User's constraint callout */}
       {userConstraint && !userPick && (
-        <div className="mb-3 p-2.5 rounded-lg bg-accent/10 border border-accent/20 text-center">
-          <p className="text-xs uppercase tracking-wider text-accent-foreground/60 mb-0.5">Your Constraint</p>
+        <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-center">
+          <p className="text-[10px] uppercase tracking-wider text-accent-foreground/60 mb-0.5">Your Constraint</p>
           <p className="text-sm font-semibold text-accent-foreground">{userConstraint}</p>
         </div>
       )}
 
-      {/* Member pick status */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {members.map((member) => {
-          const profile = profiles.find((p) => p.user_id === member.user_id);
-          const hasPicked = moviePicks.some((p) => p.user_id === member.user_id);
-          const memberConstraint = constraints[member.user_id];
-          const isOwnConstraint = user?.id === member.user_id;
-          const showConstraint = memberConstraint && (isOwnConstraint || (season as any).constraints_visible !== false);
-          return (
-            <div
-              key={member.id}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${
-                hasPicked ? "bg-primary/10 text-primary" : "bg-muted/20 text-muted-foreground"
-              }`}
-              title={memberConstraint ? `Constraint: ${memberConstraint}` : undefined}
-            >
-              {hasPicked ? (
-                <Check className="w-3 h-3" />
-              ) : (
-                <span className="w-3 h-3 rounded-full border border-current opacity-40" />
-              )}
-              {profile?.display_name || "Unknown"}
-              {showConstraint && <span className="text-[10px] opacity-70">({memberConstraint})</span>}
-            </div>
-          );
-        })}
-      </div>
-
       {userPick && !editing ? (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs text-primary font-medium px-1">
-            <Check className="w-3.5 h-3.5 text-primary" />
-            <span>Your pick</span>
-            <span className="text-muted-foreground">• secret until revealed</span>
-          </div>
+        <div className="space-y-3">
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 px-4 sm:px-5 py-4 sm:py-5">
               <div className="flex flex-row sm:flex-col items-start gap-3 sm:gap-0 w-full sm:w-auto">
@@ -354,45 +405,64 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   </div>
                 )}
                 <div className="sm:hidden flex-1 min-w-0">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Your pick</p>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 border border-primary/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary mb-1.5">
+                    <Check className="w-2.5 h-2.5" strokeWidth={3} /> Your Pick
+                  </span>
                   <h3 className="font-display text-lg font-bold">{userPick.title}</h3>
-                  {userPick.year && <p className="text-xs text-muted-foreground mt-0.5">{userPick.year}</p>}
-                  {pickedDirector && <p className="text-xs text-muted-foreground mt-0.5">Directed by {pickedDirector}</p>}
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {userPick.year}
+                    {userPick.year && pickedDirector && " · "}
+                    {pickedDirector && `dir. ${pickedDirector}`}
+                  </p>
+                  {season.guessing_enabled && (
+                    <span className="inline-flex items-center gap-1 mt-2 rounded-full bg-violet-500/15 border border-violet-500/25 px-2 py-0.5 text-[10px] font-medium text-violet-300">
+                      Secret until reveal
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="sm:hidden text-xs text-muted-foreground">
                 {userPick.overview || "No description available."}
               </div>
               <div className="flex-1 hidden sm:block text-left">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Your pick</p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 border border-primary/25 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary mb-2">
+                  <Check className="w-3 h-3" strokeWidth={3} /> Your Pick
+                </span>
                 <h3 className="font-display text-2xl font-bold">{userPick.title}</h3>
-                {userPick.year && <p className="text-sm text-muted-foreground mt-0.5">{userPick.year}</p>}
-                {pickedDirector && <p className="text-sm text-muted-foreground mt-0.5">Directed by {pickedDirector}</p>}
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {userPick.year}
+                  {userPick.year && pickedDirector && " · "}
+                  {pickedDirector && `dir. ${pickedDirector}`}
+                </p>
                 <p className="text-sm text-muted-foreground mt-2">{userPick.overview || "No description available."}</p>
+                {season.guessing_enabled && (
+                  <span className="inline-flex items-center gap-1 mt-3 rounded-full bg-violet-500/15 border border-violet-500/25 px-2.5 py-1 text-[11px] font-medium text-violet-300">
+                    Secret until reveal
+                  </span>
+                )}
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="text-[11px]" onClick={() => setEditing(true)}>
-              Change Pick
-            </Button>
-          </div>
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-primary" onClick={() => setEditing(true)}>
+            Change pick
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">
+          <h3 className="font-display text-lg font-bold">Pick your movie</h3>
           <div className="flex gap-2">
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for a movie..."
-              className="bg-muted/50 border-border flex-1"
+              className="bg-muted/50 border-border rounded-xl flex-1"
               onKeyDown={(e) => e.key === "Enter" && searchMovies(undefined, 1)}
             />
             <Input
               value={yearFilter}
               onChange={(e) => setYearFilter(e.target.value.replace(/\D/g, "").slice(0, 4))}
               placeholder="Year"
-              className="bg-muted/50 border-border w-20"
+              className="bg-muted/50 border-border rounded-xl w-20"
             />
             <Button variant="gold" onClick={() => searchMovies(undefined, 1)} disabled={searching}>
               <Search className="w-4 h-4" />
@@ -516,6 +586,16 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
             </div>
           )}
         </div>
+      )}
+
+      {/* Waiting on members */}
+      {waitingMembers.length > 0 && (
+        <p className="mt-4 text-xs text-muted-foreground">
+          <span className="text-muted-foreground/70">Waiting on {waitingMembers.length} {waitingMembers.length === 1 ? "member" : "members"}:</span>{" "}
+          {waitingMembers
+            .map((m) => profiles.find((p) => p.user_id === m.user_id)?.display_name || "Unknown")
+            .join(", ")}
+        </p>
       )}
     </div>
   );

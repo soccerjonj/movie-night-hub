@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile, GroupMember } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
-import { Film, BookOpen, GripVertical, Check, Trophy, Star } from 'lucide-react';
+import { Film, BookOpen, GripVertical, Check, Trophy, Star, ChevronRight, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTouchDragReorder } from '@/hooks/useTouchDragReorder';
@@ -168,45 +168,82 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
 
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
-      <div className="flex items-center gap-2 mb-1">
-        <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-        <h2 className="font-display text-lg sm:text-xl font-bold">{clubType === 'book' ? 'Book Review' : 'Season Review'}</h2>
+      {/* Cinematic hero */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-card via-card to-muted/20 ring-1 ring-white/5 p-4 sm:p-5 mb-4">
+        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_80%_10%,hsl(38_90%_55%/0.14),transparent_55%)]" />
+        <div className="relative z-10">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/30 px-2.5 py-1 mb-2.5">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+              {clubType === 'book' ? 'Book Review' : 'Season Review'}
+            </span>
+          </span>
+          <h2 className="font-display text-2xl sm:text-3xl font-bold leading-[1.05] text-gradient-gold">
+            Rank the season
+          </h2>
+          {season.title && (
+            <span className="inline-flex items-center gap-1.5 mt-2 rounded-full bg-muted/30 border border-border/50 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+              <Film className="w-3 h-3 text-primary" /> {season.title}
+            </span>
+          )}
+          <p className="text-xs sm:text-sm text-foreground/70 leading-relaxed mt-2.5">
+            {submitted
+              ? `You've submitted your rankings! ${everyoneSubmitted ? 'Results are in!' : `Waiting for others (${submittedCount}/${members.length}).`}`
+              : `Drag your ${labels.items} from favorite to least — your ranking sets the scoreboard.`}
+          </p>
+        </div>
       </div>
-      <p className="text-xs sm:text-sm text-muted-foreground mb-3">
-        {submitted
-          ? `You've submitted your rankings! ${everyoneSubmitted ? 'Results are in!' : `Waiting for others (${submittedCount}/${members.length}).`}`
-          : `Drag to rank ${labels.items} from your favorite (#1) to least favorite.`}
-      </p>
 
-      {/* Submission status */}
+      {/* Submission status card */}
       {!everyoneSubmitted && (
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {members.map(member => {
-            const profile = getProfile(member.user_id);
-            const hasSubmitted = !!allRankings[member.user_id];
-            return (
-              <div
-                key={member.user_id}
-                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                  hasSubmitted
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-muted/30 text-muted-foreground'
-                }`}
-              >
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="w-4 h-4 rounded-full object-cover" />
-                ) : (
-                  <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${
-                    hasSubmitted ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {profile?.display_name?.charAt(0).toUpperCase() || '?'}
-                  </div>
-                )}
-                <span className="truncate max-w-[80px]">{profile?.display_name || '?'}</span>
-                {hasSubmitted && <Check className="w-3 h-3 shrink-0" />}
-              </div>
-            );
-          })}
+        <div className="rounded-2xl bg-muted/15 border border-border/30 p-3 sm:p-4 mb-4">
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-xs font-semibold text-foreground">
+              {submittedCount} <span className="text-muted-foreground font-medium">of {members.length} submitted</span>
+            </span>
+            <span className="text-[11px] font-medium text-primary/70 tabular-nums">
+              {members.length > 0 ? Math.round((submittedCount / members.length) * 100) : 0}%
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden mb-3">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-primary to-amber-300 transition-all duration-500"
+              style={{ width: `${members.length > 0 ? (submittedCount / members.length) * 100 : 0}%` }}
+            />
+          </div>
+          {/* Avatar chips */}
+          <div className="flex flex-wrap gap-1.5">
+            {members.map(member => {
+              const profile = getProfile(member.user_id);
+              const hasSubmitted = !!allRankings[member.user_id];
+              return (
+                <div
+                  key={member.user_id}
+                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium border ${
+                    hasSubmitted
+                      ? 'bg-amber-500/10 border-amber-400/30 text-amber-300'
+                      : 'bg-muted/20 border-dashed border-border/50 text-muted-foreground/60'
+                  }`}
+                >
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className={`w-4 h-4 rounded-full object-cover ${hasSubmitted ? '' : 'opacity-50'}`} />
+                  ) : (
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${
+                      hasSubmitted ? 'bg-amber-500/20 text-amber-300' : 'bg-muted text-muted-foreground/60'
+                    }`}>
+                      {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <span className="truncate max-w-[80px]">{profile?.display_name || '?'}</span>
+                  {hasSubmitted && <Check className="w-3 h-3 shrink-0 text-amber-300" />}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -218,6 +255,13 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
             if (!movie) return null;
             const isDragging = dragItem === index;
             const isDragOver = dragOverItem === index;
+            const isTop = index === 0;
+
+            const medalChip =
+              index === 0 ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/40' :
+              index === 1 ? 'bg-slate-300/15 text-slate-200 ring-1 ring-slate-300/30' :
+              index === 2 ? 'bg-amber-700/25 text-amber-500 ring-1 ring-amber-700/40' :
+              'bg-muted/40 text-muted-foreground';
 
             return (
               <motion.div
@@ -226,6 +270,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
                 className={`flex items-center gap-2 sm:gap-3 rounded-xl p-2 sm:p-3 transition-colors ${
                   isDragging ? 'opacity-50 bg-primary/10' :
                   isDragOver ? 'bg-primary/5 ring-1 ring-primary/30' :
+                  isTop ? 'bg-amber-500/[0.06] ring-1 ring-amber-400/25' :
                   'bg-muted/20 hover:bg-muted/30'
                 } ${submitted ? 'pointer-events-none opacity-70' : 'cursor-grab active:cursor-grabbing'}`}
                 draggable={!submitted}
@@ -238,32 +283,12 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
                 onTouchEnd={() => !submitted && handleTouchEnd()}
               >
                 {!submitted && (
-                  <div className="flex flex-col gap-0.5 shrink-0">
-                    <button
-                      onClick={() => moveItem(index, index - 1)}
-                      className="text-muted-foreground hover:text-foreground text-xs p-0.5"
-                      disabled={index === 0}
-                    >▲</button>
-                    <button
-                      onClick={() => moveItem(index, index + 1)}
-                      className="text-muted-foreground hover:text-foreground text-xs p-0.5"
-                      disabled={index === rankings.length - 1}
-                    >▼</button>
-                  </div>
+                  <GripVertical className="w-4 h-4 text-muted-foreground/60 shrink-0" />
                 )}
 
-                <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${
-                  index === 0 ? 'bg-gradient-to-br from-amber-300 to-yellow-500 text-amber-950 shadow-[0_0_10px_-2px_rgba(251,191,36,0.5)]' :
-                  index === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-400 text-slate-800' :
-                  index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-700 text-amber-100' :
-                  'bg-muted text-muted-foreground'
-                }`}>
+                <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${medalChip}`}>
                   {index + 1}
                 </div>
-
-                {!submitted && (
-                  <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
-                )}
 
                 {movie.poster_url ? (
                   <img src={movie.poster_url} alt={movie.title} className="w-8 sm:w-10 rounded-lg object-cover shrink-0" />
@@ -285,24 +310,48 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
                   </p>
                 </div>
 
-                {index === 0 && <Star className="w-4 h-4 text-primary fill-primary shrink-0" />}
+                {isTop ? (
+                  <Star className="w-4 h-4 text-amber-300 fill-amber-300 shrink-0" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                )}
               </motion.div>
             );
           })}
         </div>
       )}
 
+      {/* Helper line */}
+      {!submitted && !everyoneSubmitted && (
+        <p className="text-[11px] text-muted-foreground/70 mt-3 text-center">
+          Only you see your order until everyone submits.
+        </p>
+      )}
+
       {/* Submit button */}
       {!submitted && (
         <Button
           variant="gold"
-          className="mt-4 w-full"
+          className="mt-3 w-full bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 font-semibold hover:from-amber-300 hover:to-yellow-400 shadow-[0_4px_16px_-4px_rgba(245,158,11,0.5)]"
           onClick={submitRankings}
           disabled={submitting || rankings.length === 0}
         >
           <Check className="w-4 h-4 mr-2" />
           {submitting ? 'Submitting...' : 'Submit Rankings'}
         </Button>
+      )}
+
+      {/* Locked-results teaser while waiting on others */}
+      {submitted && !everyoneSubmitted && (
+        <div className="mt-4 rounded-2xl bg-muted/15 border border-dashed border-border/40 p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-muted/30 flex items-center justify-center shrink-0">
+            <Lock className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Results reveal when all {members.length} are in</p>
+            <p className="text-[11px] text-muted-foreground">Waiting for others ({submittedCount}/{members.length}).</p>
+          </div>
+        </div>
       )}
 
       {/* Results when everyone has submitted */}
