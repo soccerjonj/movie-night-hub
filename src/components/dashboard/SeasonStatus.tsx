@@ -106,6 +106,18 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
   const overviewText = currentMovie?.overview || '';
   const overviewLong = overviewText.length > 160;
 
+  // In the pre-watch / review phases, the phase component renders its own hero
+  // (with the status pill), so SeasonStatus only adds meeting/call info here.
+  // Don't render a redundant status-badge box — and if there's no meeting info
+  // to show either, render nothing at all.
+  const isInteractivePhase = clubType !== 'book' && season.status !== 'watching' && season.status !== 'completed';
+  const hasMeetingInfo = Boolean(
+    (season.next_call_date && callIsFuture) ||
+    (season.call_link && !isInPerson) ||
+    (isInPerson && group?.meeting_location)
+  );
+  if (isInteractivePhase && !hasMeetingInfo) return null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -113,8 +125,8 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       className="glass-card rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6"
     >
-      {/* Status badge row — hidden for completed movie clubs (they get the recap hero below) */}
-      {!(season.status === 'completed' && clubType !== 'book') && (
+      {/* Status badge row — hidden for the redesigned movie-club phases (each has its own hero pill) */}
+      {!isInteractivePhase && !(season.status === 'completed' && clubType !== 'book') && (
         <div className="flex items-center justify-between gap-2 mb-4">
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
             season.status === 'watching'
