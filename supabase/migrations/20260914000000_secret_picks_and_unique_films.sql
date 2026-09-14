@@ -5,8 +5,10 @@
 -- into the database, and adds a hard guarantee that two members can't pick the
 -- same film in one season.
 
--- 1) Diagnostic: refuse to proceed if a season already contains duplicate films.
---    Each offender is printed as a NOTICE so it can be resolved, then re-run.
+-- 1) Diagnostic: refuse to proceed if a season contains duplicate *unordered*
+--    films. Picks that already have a watch_order are exempt: two members can
+--    legitimately share one pick (same film, same slot), and imported seasons
+--    contain such shared picks. Each offender is printed as a NOTICE.
 DO $$
 DECLARE
   r RECORD;
@@ -15,7 +17,7 @@ BEGIN
   FOR r IN
     SELECT season_id, tmdb_id, COUNT(*) AS c, string_agg(title, ' / ') AS titles
     FROM public.movie_picks
-    WHERE tmdb_id IS NOT NULL
+    WHERE tmdb_id IS NOT NULL AND watch_order IS NULL
     GROUP BY season_id, tmdb_id
     HAVING COUNT(*) > 1
   LOOP
@@ -27,10 +29,13 @@ BEGIN
   END IF;
 END $$;
 
--- 2) One film per season. Partial so legacy picks without a tmdb_id are unaffected.
+-- 2) One film per season while picks are still unordered (picking/guessing).
+--    An accidental duplicate can only arise before watch_order is assigned, so
+--    scoping the index there blocks it without forbidding shared picks, which
+--    always carry a slot. Legacy picks without a tmdb_id are unaffected too.
 CREATE UNIQUE INDEX IF NOT EXISTS movie_picks_one_film_per_season
   ON public.movie_picks (season_id, tmdb_id)
-  WHERE tmdb_id IS NOT NULL;
+  WHERE tmdb_id IS NOT NULL AND watch_order IS NULL;
 
 -- 3) Direct reads: own picks always; others' picks only once nothing about them
 --    is secret (season over, guessing disabled, or the pick has been revealed).

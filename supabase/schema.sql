@@ -500,9 +500,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 -- Secret picks + one film per season (20260914)
 -- ---------------------------------------------------------------------------
 -- 2) One film per season. Partial so legacy picks without a tmdb_id are unaffected.
+-- 2) One film per season while picks are still unordered (picking/guessing).
+--    An accidental duplicate can only arise before watch_order is assigned, so
+--    scoping the index there blocks it without forbidding shared picks, which
+--    always carry a slot. Legacy picks without a tmdb_id are unaffected too.
 CREATE UNIQUE INDEX IF NOT EXISTS movie_picks_one_film_per_season
   ON public.movie_picks (season_id, tmdb_id)
-  WHERE tmdb_id IS NOT NULL;
+  WHERE tmdb_id IS NOT NULL AND watch_order IS NULL;
 
 -- 4) Masked season feed for the phase UI. Per row, the secret column is nulled:
 --      picking            -> film hidden (title/tmdb_id/poster/year/overview), picker visible
