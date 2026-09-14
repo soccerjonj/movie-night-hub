@@ -34,27 +34,12 @@ FROM (
 WHERE p.season_id = d.season_id AND p.tmdb_id = d.tmdb_id AND p.watch_order = d.watch_order
   AND p.pick_group IS NULL;
 
--- 1) Diagnostic: refuse to proceed if a season contains the same film picked
---    twice by different units while still unordered. Shared picks are exempt.
-DO $$
-DECLARE
-  r RECORD;
-  n INT := 0;
-BEGIN
-  FOR r IN
-    SELECT season_id, tmdb_id, COUNT(*) AS c, string_agg(title, ' / ') AS titles
-    FROM public.movie_picks
-    WHERE tmdb_id IS NOT NULL AND watch_order IS NULL AND pick_group IS NULL
-    GROUP BY season_id, tmdb_id
-    HAVING COUNT(*) > 1
-  LOOP
-    n := n + 1;
-    RAISE NOTICE 'Duplicate film: season % tmdb_id % (% rows): %', r.season_id, r.tmdb_id, r.c, r.titles;
-  END LOOP;
-  IF n > 0 THEN
-    RAISE EXCEPTION '% duplicate film(s) found within a season - resolve them (see NOTICEs) before adding the unique index', n;
-  END IF;
-END $$;
+-- 1) Note on duplicates: if a season still contains the same film picked twice
+--    by different units while unordered, step 2 fails with Postgres's own error,
+--    which names the offending (season_id, tmdb_id). Find and fix them with:
+--      SELECT season_id, tmdb_id, COUNT(*) FROM public.movie_picks
+--      WHERE tmdb_id IS NOT NULL AND watch_order IS NULL AND pick_group IS NULL
+--      GROUP BY 1, 2 HAVING COUNT(*) > 1;
 
 -- 2) Hard guarantee for solo picks while unordered. Shared-pick rows are exempt
 --    (they are by definition the same film several times); submit_pick() below
