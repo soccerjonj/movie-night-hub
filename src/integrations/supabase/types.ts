@@ -525,6 +525,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_taken_picks: {
+        Args: { _season_id: string; _tmdb_ids: number[] }
+        Returns: number[]
+      }
+      get_season_picks: {
+        Args: { _season_id: string }
+        Returns: {
+          id: string
+          season_id: string
+          user_id: string | null
+          tmdb_id: number | null
+          title: string
+          poster_url: string | null
+          year: string | null
+          overview: string | null
+          watch_order: number | null
+          revealed: boolean
+          created_at: string
+        }[]
+      }
       claim_placeholder: {
         Args: {
           _group_id: string

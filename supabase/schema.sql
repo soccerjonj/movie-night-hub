@@ -238,9 +238,21 @@ DROP POLICY IF EXISTS "Members can view movie picks" ON public.movie_picks;
 CREATE POLICY "Members can view movie picks" ON public.movie_picks
   FOR SELECT TO authenticated
   USING (
-    EXISTS (
+    user_id = auth.uid()
+    OR EXISTS (
       SELECT 1 FROM public.seasons s
-      WHERE s.id = season_id AND public.is_group_member(auth.uid(), s.group_id)
+      WHERE s.id = movie_picks.season_id
+        AND (
+          public.is_group_admin(auth.uid(), s.group_id)
+          OR (
+            public.is_group_member(auth.uid(), s.group_id)
+            AND (
+              s.status IN ('reviewing', 'completed')
+              OR s.guessing_enabled = false
+              OR movie_picks.revealed = true
+            )
+          )
+        )
     )
   );
 
@@ -483,3 +495,81 @@ BEGIN
   DELETE FROM public.profiles WHERE user_id = _placeholder_user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- ---------------------------------------------------------------------------
+-- Secret picks + one film per season (20260914)
+-- ---------------------------------------------------------------------------
+-- 2) One film per season. Partial so legacy picks without a tmdb_id are unaffected.
+CREATE UNIQUE INDEX IF NOT EXISTS movie_picks_one_film_per_season
+  ON public.movie_picks (season_id, tmdb_id)
+  WHERE tmdb_id IS NOT NULL;
+
+-- 4) Masked season feed for the phase UI. Per row, the secret column is nulled:
+--      picking            -> film hidden (title/tmdb_id/poster/year/overview), picker visible
+--      guessing, watching -> picker hidden until revealed, film visible
+--      reviewing/completed, guessing disabled, own pick, admin -> everything visible
+CREATE OR REPLACE FUNCTION public.get_season_picks(_season_id UUID)
+RETURNS TABLE (
+  id UUID,
+  season_id UUID,
+  user_id UUID,
+  tmdb_id INT,
+  title TEXT,
+  poster_url TEXT,
+  year TEXT,
+  overview TEXT,
+  watch_order INT,
+  revealed BOOLEAN,
+  created_at TIMESTAMPTZ
+) AS $$
+  SELECT
+    p.id,
+    p.season_id,
+    CASE WHEN v.show_picker THEN p.user_id ELSE NULL END,
+    CASE WHEN v.show_film   THEN p.tmdb_id ELSE NULL END,
+    CASE WHEN v.show_film   THEN p.title ELSE 'Sealed pick' END,
+    CASE WHEN v.show_film   THEN p.poster_url ELSE NULL END,
+    CASE WHEN v.show_film   THEN p.year ELSE NULL END,
+    CASE WHEN v.show_film   THEN p.overview ELSE NULL END,
+    p.watch_order,
+    p.revealed,
+    p.created_at
+  FROM public.movie_picks p
+  JOIN public.seasons s ON s.id = p.season_id
+  CROSS JOIN LATERAL (
+    SELECT (
+      p.user_id = auth.uid()
+      OR public.is_group_admin(auth.uid(), s.group_id)
+      OR s.status IN ('reviewing', 'completed')
+      OR s.guessing_enabled = false
+    ) AS full_access
+  ) f
+  CROSS JOIN LATERAL (
+    SELECT
+      (f.full_access OR s.status <> 'picking')                       AS show_film,
+      (f.full_access OR s.status = 'picking' OR p.revealed = true)   AS show_picker
+  ) v
+  WHERE p.season_id = _season_id
+    AND public.is_group_member(auth.uid(), s.group_id)
+  ORDER BY p.watch_order NULLS LAST, p.created_at;
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.get_season_picks(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_season_picks(UUID) TO authenticated;
+
+-- 5) Duplicate check that works while films are secret: given candidate tmdb_ids,
+--    return the subset another member has already picked this season. Bounded to
+--    the ids passed in, so it reveals nothing beyond what the caller searched for.
+CREATE OR REPLACE FUNCTION public.check_taken_picks(_season_id UUID, _tmdb_ids INT[])
+RETURNS INT[] AS $$
+  SELECT COALESCE(array_agg(DISTINCT p.tmdb_id), '{}')
+  FROM public.movie_picks p
+  JOIN public.seasons s ON s.id = p.season_id
+  WHERE p.season_id = _season_id
+    AND p.tmdb_id = ANY (_tmdb_ids)
+    AND p.user_id <> auth.uid()
+    AND public.is_group_member(auth.uid(), s.group_id);
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.check_taken_picks(UUID, INT[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.check_taken_picks(UUID, INT[]) TO authenticated;

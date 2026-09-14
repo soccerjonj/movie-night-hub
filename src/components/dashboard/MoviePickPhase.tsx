@@ -63,6 +63,9 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const [directorsMap, setDirectorsMap] = useState<Record<number, string>>({});
   const [pickedDirector, setPickedDirector] = useState<string | null>(null);
   const [constraints, setConstraints] = useState<Record<string, string>>({});
+  // tmdb_ids another member has already picked this season (checked server-side,
+  // since other picks are secret during the picking phase)
+  const [takenIds, setTakenIds] = useState<Set<number>>(new Set());
 
   const userPick = moviePicks.find((p) => p.user_id === user?.id);
   const pickedCount = moviePicks.length;
@@ -155,6 +158,14 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     });
   };
 
+  const checkTaken = async (ids: number[]): Promise<Set<number>> => {
+    if (ids.length === 0) return new Set();
+    const { data } = await supabase.rpc("check_taken_picks", { _season_id: season.id, _tmdb_ids: ids });
+    const found = new Set<number>(data ?? []);
+    if (found.size > 0) setTakenIds((prev) => new Set([...prev, ...found]));
+    return found;
+  };
+
   const searchMovies = async (q?: string, page = 1) => {
     const term = q ?? query;
     if (!term.trim()) {
@@ -197,8 +208,9 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       setSearchPage(page);
       setLastSearchTerm(term);
       setHasMoreResults(page < (data.total_pages || 1));
-      // Fetch directors in background
+      // Fetch directors + taken status in background
       fetchDirectorsForMovies(newResults);
+      checkTaken(newResults.map((m) => m.id));
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to search movies");
     } finally {
@@ -223,10 +235,18 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     return () => clearTimeout(timer);
   }, [query, yearFilter]);
 
+  const TAKEN_MSG = "Someone in the club already picked that film — choose another.";
+
   const pickMovie = async (movie: TMDBMovie) => {
     if (!user) return;
     setSubmitting(true);
     try {
+      // Re-check right before saving; the unique index below is the race backstop.
+      const taken = await checkTaken([movie.id]);
+      if (taken.has(movie.id)) {
+        toast.error(TAKEN_MSG);
+        return;
+      }
       if (userPick) {
         // Update existing pick
         const { error } = await supabase
@@ -260,7 +280,13 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       setEditing(false);
       onUpdate();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save movie pick");
+      // 23505 = unique_violation from movie_picks_one_film_per_season
+      if (typeof err === "object" && err && (err as { code?: string }).code === "23505") {
+        setTakenIds((prev) => new Set([...prev, movie.id]));
+        toast.error(TAKEN_MSG);
+      } else {
+        toast.error(err instanceof Error ? err.message : "Failed to save movie pick");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -514,9 +540,15 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                   {selected.overview && <p className="text-sm text-muted-foreground mt-3 line-clamp-4">{selected.overview}</p>}
 
                   <div className="flex items-center gap-2 mt-auto pt-4">
-                    <Button variant="gold" onClick={() => pickMovie(selected)} disabled={submitting} className="flex-1 min-w-0 rounded-xl">
-                      <span className="truncate">Pick “{selected.title}”</span>
-                    </Button>
+                    {takenIds.has(selected.id) ? (
+                      <div className="flex-1 min-w-0 inline-flex items-center gap-1.5 rounded-xl bg-muted/30 border border-border/50 px-3 py-2 text-sm text-muted-foreground">
+                        <Lock className="w-3.5 h-3.5 shrink-0" /> Already picked by someone in the club
+                      </div>
+                    ) : (
+                      <Button variant="gold" onClick={() => pickMovie(selected)} disabled={submitting} className="flex-1 min-w-0 rounded-xl">
+                        <span className="truncate">Pick “{selected.title}”</span>
+                      </Button>
+                    )}
                     <a
                       href={getLetterboxdUrl(selected.title, selected.release_date?.split("-")[0])}
                       target="_blank"
@@ -537,12 +569,20 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-[460px] overflow-y-auto pr-0.5">
               {results.map((movie, idx) => {
                 const year = movie.release_date?.split("-")[0];
+                const taken = takenIds.has(movie.id);
                 return (
                   <button
                     key={`${movie.id}-${idx}`}
                     onClick={() => setSelected(movie)}
-                    className="group relative aspect-[2/3] rounded-lg overflow-hidden bg-muted/30 ring-1 ring-white/5 hover:ring-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary transition text-left"
+                    className={`group relative aspect-[2/3] rounded-lg overflow-hidden bg-muted/30 ring-1 ring-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary transition text-left ${
+                      taken ? "opacity-50 saturate-50" : "hover:ring-primary/60"
+                    }`}
                   >
+                    {taken && (
+                      <span className="absolute top-1 left-1 z-10 inline-flex items-center gap-1 rounded bg-black/70 backdrop-blur-sm text-[9px] font-bold uppercase tracking-wider text-white/80 px-1.5 py-0.5">
+                        <Lock className="w-2.5 h-2.5" /> Taken
+                      </span>
+                    )}
                     {movie.poster_path ? (
                       <img
                         src={`${TMDB_IMAGE_BASE}${movie.poster_path}`}
