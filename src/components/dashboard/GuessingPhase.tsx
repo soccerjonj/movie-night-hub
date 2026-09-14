@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock, Pencil, PartyPopper, X, Eye } from 'lucide-react';
+import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock, Pencil, PartyPopper, X, Eye, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -34,18 +34,26 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   const [showGuessDetail, setShowGuessDetail] = useState(false);
   const [showAllInline, setShowAllInline] = useState(false);
   const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null);
+  // Per-member pick counts from the server: pickers are secret in the feed during
+  // guessing, but the roster of who picked (and how many) is the answer bank.
+  const [pickCounts, setPickCounts] = useState<Record<string, number>>({});
+  const [myGroup, setMyGroup] = useState<number | null>(null);
 
   const storageKey = `${STORAGE_KEY_PREFIX}${season.id}_${user?.id}`;
+
+  const myPartnerIds = useMemo(() => {
+    if (myGroup == null || !user) return new Set<string>();
+    return new Set(moviePicks.filter(p => p.pick_group === myGroup && p.user_id && p.user_id !== user.id).map(p => p.user_id as string));
+  }, [moviePicks, myGroup, user]);
 
   const memberPickCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     members.forEach(m => {
-      if (m.user_id === user?.id) return;
-      const pickCount = moviePicks.filter(p => p.user_id === m.user_id).length;
-      counts[m.user_id] = pickCount;
+      if (m.user_id === user?.id || myPartnerIds.has(m.user_id)) return;
+      counts[m.user_id] = pickCounts[m.user_id] || 0;
     });
     return counts;
-  }, [moviePicks, members, user?.id]);
+  }, [pickCounts, members, user?.id, myPartnerIds]);
 
   // Load guesses from DB or localStorage, submission status, and edit status
   useEffect(() => {
@@ -77,6 +85,19 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
       }
     };
 
+    const loadPickCounts = async () => {
+      const [{ data: counts }, { data: grp }] = await Promise.all([
+        supabase.rpc('get_season_pick_counts', { _season_id: season.id }),
+        supabase.rpc('my_pick_group', { _season_id: season.id }),
+      ]);
+      if (counts) {
+        const map: Record<string, number> = {};
+        (counts as { user_id: string; pick_count: number }[]).forEach(r => { map[r.user_id] = r.pick_count; });
+        setPickCounts(map);
+      }
+      setMyGroup((grp as number | null) ?? null);
+    };
+
     const loadEditStatus = async () => {
       if (!user) return;
       const { data } = await supabase
@@ -91,6 +112,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
 
     loadGuesses();
     loadSubmissionStatus();
+    loadPickCounts();
     loadEditStatus();
   }, [season.id, user, storageKey]);
 
@@ -158,13 +180,10 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     if (!user) return;
     setSubmitting(true);
     try {
-      const rows = Object.entries(guesses).map(([movie_pick_id, guessed_user_id]) => ({
-        season_id: season.id,
-        guesser_id: user.id,
-        movie_pick_id,
-        guessed_user_id,
-      }));
-      const { error } = await supabase.from('guesses').insert(rows);
+      const rows = Object.entries(guesses).map(([movie_pick_id, guessed_user_id]) => ({ movie_pick_id, guessed_user_id }));
+      // save_guesses replaces existing guesses and, for shared picks, aligns each
+      // correctly named member to their own row so per-row scoring stays exact.
+      const { error } = await supabase.rpc('save_guesses', { _season_id: season.id, _guesses: rows });
       if (error) throw error;
       toast.success('Guesses submitted!');
       setSubmitted(true);
@@ -179,8 +198,23 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     }
   };
 
-  const otherPicks = moviePicks.filter(p => p.user_id !== user?.id);
-  const myPicks = moviePicks.filter(p => p.user_id === user?.id);
+  const isMine = (p: MoviePick) => p.user_id === user?.id || (myGroup != null && p.pick_group === myGroup);
+  const otherPicks = moviePicks.filter(p => !isMine(p));
+  const myPicks = moviePicks.filter(p => isMine(p));
+  // A shared pick is several rows of one film; guess it once with one slot per row.
+  const otherUnits = useMemo(() => {
+    const units: MoviePick[][] = [];
+    const byGroup = new Map<number, MoviePick[]>();
+    otherPicks.forEach(p => {
+      if (p.pick_group == null) { units.push([p]); return; }
+      if (!byGroup.has(p.pick_group)) { const u: MoviePick[] = []; byGroup.set(p.pick_group, u); units.push(u); }
+      byGroup.get(p.pick_group)!.push(p);
+    });
+    return units;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moviePicks, myGroup, user?.id]);
+  const guessedNames = (unit: MoviePick[]) =>
+    unit.map(r => (guesses[r.id] ? getProfile(guesses[r.id])?.display_name : null)).filter(Boolean).join(' & ') || '—';
   const allGuessed = otherPicks.every(p => guesses[p.id]);
   const guessingMembers = members.filter(m => !profiles.find(p => p.user_id === m.user_id)?.is_placeholder);
 
@@ -268,20 +302,21 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
 
           {/* Compact inline summary */}
           <div
-            className={`space-y-1 ${!showAllInline && otherPicks.length > 3 ? 'cursor-pointer' : ''}`}
-            onClick={() => { if (!showAllInline && otherPicks.length > 3) setShowAllInline(true); }}
+            className={`space-y-1 ${!showAllInline && otherUnits.length > 3 ? 'cursor-pointer' : ''}`}
+            onClick={() => { if (!showAllInline && otherUnits.length > 3) setShowAllInline(true); }}
           >
-            {(showAllInline ? otherPicks : otherPicks.slice(0, 3)).map((pick) => {
-              const guessedProfile = guesses[pick.id] ? getProfile(guesses[pick.id]) : null;
+            {(showAllInline ? otherUnits : otherUnits.slice(0, 3)).map((unit) => {
+              const pick = unit[0];
               return (
                 <div key={pick.id} className="flex items-center gap-2 px-3 py-1.5 bg-muted/20 rounded-lg text-xs">
                   <span className="truncate flex-1 text-muted-foreground">{pick.title}</span>
-                  <span className="shrink-0 font-medium text-foreground">{guessedProfile?.display_name || '—'}</span>
+                  {unit.length > 1 && <Link2 className="w-3 h-3 text-primary/60 shrink-0" />}
+                  <span className="shrink-0 font-medium text-foreground">{guessedNames(unit)}</span>
                 </div>
               );
             })}
-            {otherPicks.length > 3 && !showAllInline && (
-              <p className="text-[11px] text-muted-foreground text-center">+{otherPicks.length - 3} more</p>
+            {otherUnits.length > 3 && !showAllInline && (
+              <p className="text-[11px] text-muted-foreground text-center">+{otherUnits.length - 3} more</p>
             )}
             {showAllInline && myPicks.length > 0 && (
               <>
@@ -294,7 +329,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                 ))}
               </>
             )}
-            {showAllInline && otherPicks.length > 3 && (
+            {showAllInline && otherUnits.length > 3 && (
               <p
                 className="text-[11px] text-primary text-center cursor-pointer hover:underline"
                 onClick={(e) => { e.stopPropagation(); setShowAllInline(false); }}
@@ -334,7 +369,8 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto space-y-1.5 mt-2">
-            {otherPicks.map((pick) => {
+            {otherUnits.map((unit) => {
+              const pick = unit[0];
               const guessedProfile = guesses[pick.id] ? getProfile(guesses[pick.id]) : null;
               const isExpanded = expandedDetailId === pick.id;
               return (
@@ -353,14 +389,16 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{pick.title}</p>
-                      {pick.year && <p className="text-[11px] text-muted-foreground">{pick.year}</p>}
+                      <p className="text-[11px] text-muted-foreground">
+                        {pick.year}{pick.year && unit.length > 1 && ' · '}{unit.length > 1 && `shared by ${unit.length}`}
+                      </p>
                     </div>
                     <div className="shrink-0 flex items-center gap-1.5">
                       <Avatar className="w-5 h-5">
                         <AvatarImage src={guessedProfile?.avatar_url || undefined} />
                         <AvatarFallback className="text-[8px]">{(guessedProfile?.display_name || '?')[0]}</AvatarFallback>
                       </Avatar>
-                      <span className="text-xs font-medium max-w-[80px] truncate">{guessedProfile?.display_name || '—'}</span>
+                      <span className="text-xs font-medium max-w-[110px] truncate">{guessedNames(unit)}</span>
                     </div>
                   </div>
                   {isExpanded && pick.overview && (
@@ -415,7 +453,8 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
       {showForm && (
         <>
           <div className="space-y-3">
-            {otherPicks.map((pick) => {
+            {otherUnits.map((unit) => {
+              const pick = unit[0];
               const isLong = (pick.overview?.length || 0) > TRUNCATE_LEN;
               const expanded = expandedOverviews[pick.id];
               return (
@@ -431,6 +470,11 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm leading-tight">{pick.title}</p>
                       {pick.year && <p className="text-[11px] text-muted-foreground">{pick.year}</p>}
+                      {unit.length > 1 && (
+                        <span className="inline-flex items-center gap-1 mt-1 rounded-full bg-primary/10 border border-primary/25 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          <Link2 className="w-3 h-3" /> Shared pick · {unit.length} people
+                        </span>
+                      )}
                       {pick.overview && (
                         <div
                           className={`mt-1 ${isLong ? 'cursor-pointer' : ''}`}
@@ -449,7 +493,11 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  {unit.map((pick, slotIdx) => (
+                  <div key={pick.id} className="flex items-center gap-1.5">
+                    {unit.length > 1 && (
+                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-12">Pick {slotIdx + 1}</span>
+                    )}
                     {(() => {
                       const guessedProfile = guesses[pick.id] ? getProfile(guesses[pick.id]) : null;
                       const hasGuess = !!guesses[pick.id];
@@ -503,13 +551,14 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                       </button>
                     )}
                   </div>
+                  ))}
                 </div>
               );
             })}
           </div>
 
           <p className="mt-3 text-[11px] text-muted-foreground text-center">
-            Each member picked exactly one — every name gets used once.
+            Every name gets used once — a shared pick takes one name per slot.
           </p>
 
           <div className={`mt-4 rounded-xl transition-all duration-500 ${allGuessed && !submitting ? 'shadow-[0_0_24px_-6px_hsl(38_90%_55%_/_0.5)]' : ''}`}>

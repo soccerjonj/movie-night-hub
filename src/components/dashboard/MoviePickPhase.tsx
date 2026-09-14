@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Season, MoviePick, GroupMember, Profile } from "@/hooks/useGroup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Check, Film, Star, ExternalLink, X, Lock, EyeOff, Ticket } from "lucide-react";
+import { Search, Check, Film, Star, ExternalLink, X, Lock, EyeOff, Ticket, Link2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,28 +63,39 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const [directorsMap, setDirectorsMap] = useState<Record<number, string>>({});
   const [pickedDirector, setPickedDirector] = useState<string | null>(null);
   const [constraints, setConstraints] = useState<Record<string, string>>({});
+  // co-pick groups configured by the admin in season setup (user_id -> group number)
+  const [groupOf, setGroupOf] = useState<Record<string, number>>({});
   // tmdb_ids another member has already picked this season (checked server-side,
   // since other picks are secret during the picking phase)
   const [takenIds, setTakenIds] = useState<Set<number>>(new Set());
 
   const userPick = moviePicks.find((p) => p.user_id === user?.id);
-  const pickedCount = moviePicks.length;
-  const totalMembers = members.length;
   const userConstraint = user ? constraints[user.id] : null;
+  const myGroup = user ? (groupOf[user.id] ?? null) : null;
+  const partners = user && myGroup != null
+    ? members.filter((m) => m.user_id !== user.id && groupOf[m.user_id] === myGroup)
+    : [];
+  // A "unit" is a solo member or one co-pick group; the hero counts units, not rows.
+  const unitKey = (userId: string) => (groupOf[userId] != null ? `g${groupOf[userId]}` : userId);
+  const totalUnits = new Set(members.map((m) => unitKey(m.user_id))).size;
+  const pickedUnits = new Set(moviePicks.filter((p) => p.user_id).map((p) => unitKey(p.user_id as string))).size;
 
   // Fetch participant constraints
   useEffect(() => {
     const fetchConstraints = async () => {
       const { data } = await supabase
         .from("season_participants")
-        .select("user_id, pick_constraint")
+        .select("user_id, pick_constraint, pick_group")
         .eq("season_id", season.id);
       if (data) {
         const map: Record<string, string> = {};
+        const groups: Record<string, number> = {};
         data.forEach((r) => {
           if (r.pick_constraint) map[r.user_id] = r.pick_constraint;
+          if (r.pick_group != null) groups[r.user_id] = r.pick_group;
         });
         setConstraints(map);
+        setGroupOf(groups);
       }
     };
     fetchConstraints();
@@ -241,46 +252,30 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     if (!user) return;
     setSubmitting(true);
     try {
-      // Re-check right before saving; the unique index below is the race backstop.
+      // Re-check right before saving; submit_pick + the unique index are the backstops.
       const taken = await checkTaken([movie.id]);
       if (taken.has(movie.id)) {
         toast.error(TAKEN_MSG);
         return;
       }
-      if (userPick) {
-        // Update existing pick
-        const { error } = await supabase
-          .from("movie_picks")
-          .update({
-            tmdb_id: movie.id,
-            title: movie.title,
-            poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
-            year: movie.release_date?.split("-")[0] || null,
-            overview: movie.overview || null,
-          })
-          .eq("id", userPick.id);
-        if (error) throw error;
-        toast.success(`Pick changed to "${movie.title}"!`);
-      } else {
-        const { error } = await supabase.from("movie_picks").insert({
-          season_id: season.id,
-          user_id: user.id,
-          tmdb_id: movie.id,
-          title: movie.title,
-          poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
-          year: movie.release_date?.split("-")[0] || null,
-          overview: movie.overview || null,
-        });
-        if (error) throw error;
-        toast.success(`"${movie.title}" picked!`);
-      }
+      // Writes a row for every member of the caller's co-pick group (or just the caller).
+      const { error } = await supabase.rpc("submit_pick", {
+        _season_id: season.id,
+        _tmdb_id: movie.id,
+        _title: movie.title,
+        _poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
+        _year: movie.release_date?.split("-")[0] || null,
+        _overview: movie.overview || null,
+      });
+      if (error) throw error;
+      toast.success(userPick ? `Pick changed to "${movie.title}"!` : `"${movie.title}" picked!`);
       setResults([]);
       setQuery("");
       setSelected(null);
       setEditing(false);
       onUpdate();
     } catch (err: unknown) {
-      // 23505 = unique_violation from movie_picks_one_film_per_season
+      // 23505 = another unit already has this film (index or submit_pick check)
       if (typeof err === "object" && err && (err as { code?: string }).code === "23505") {
         setTakenIds((prev) => new Set([...prev, movie.id]));
         toast.error(TAKEN_MSG);
@@ -338,8 +333,8 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
 
           <div className="flex items-end gap-3 mt-4">
             <div className="font-display text-4xl sm:text-5xl font-bold leading-none text-gradient-gold tabular-nums">
-              {pickedCount}
-              <span className="text-lg sm:text-xl font-semibold text-muted-foreground">/{totalMembers}</span>
+              {pickedUnits}
+              <span className="text-lg sm:text-xl font-semibold text-muted-foreground">/{totalUnits}</span>
             </div>
             <div className="text-xs sm:text-sm leading-tight pb-0.5">
               <p className="text-foreground/80">picks sealed</p>
@@ -364,6 +359,8 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
             const profile = profiles.find((p) => p.user_id === member.user_id);
             const pick = moviePicks.find((p) => p.user_id === member.user_id);
             const isMe = user?.id === member.user_id;
+            const memberGroup = groupOf[member.user_id] ?? null;
+            const inMyGroup = !isMe && myGroup != null && memberGroup === myGroup;
             const name = profile?.display_name || "Unknown";
             const initial = name.charAt(0).toUpperCase();
             const memberConstraint = constraints[member.user_id];
@@ -379,8 +376,8 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
             );
             return (
               <div key={member.id} className="text-center min-w-0" title={showConstraint ? `Constraint: ${memberConstraint}` : undefined}>
-                {pick && isMe ? (
-                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden ring-2 ring-primary shadow-[0_0_18px_-4px_hsl(38_90%_55%/0.6)]">
+                {pick && (isMe || inMyGroup) ? (
+                  <div className={`relative aspect-[2/3] rounded-lg overflow-hidden ring-2 ring-primary ${isMe ? "shadow-[0_0_18px_-4px_hsl(38_90%_55%/0.6)]" : "ring-primary/60"}`}>
                     {pick.poster_url ? (
                       <img src={pick.poster_url} alt={pick.title} className="w-full h-full object-cover" />
                     ) : (
@@ -388,15 +385,19 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                         <Film className="w-5 h-5 text-muted-foreground/40" />
                       </div>
                     )}
-                    <span className="absolute top-1 left-1 rounded bg-primary text-primary-foreground text-[8px] font-bold tracking-[0.12em] px-1.5 py-0.5">YOU</span>
+                    <span className="absolute top-1 left-1 rounded bg-primary text-primary-foreground text-[8px] font-bold tracking-[0.12em] px-1.5 py-0.5">
+                      {isMe ? "YOU" : "WITH YOU"}
+                    </span>
                   </div>
                 ) : pick ? (
-                  <div className="aspect-[2/3] rounded-lg bg-gradient-to-b from-muted/30 to-card ring-1 ring-primary/40 flex flex-col items-center justify-center gap-1.5">
+                  <div className="relative aspect-[2/3] rounded-lg bg-gradient-to-b from-muted/30 to-card ring-1 ring-primary/40 flex flex-col items-center justify-center gap-1.5">
+                    {memberGroup != null && <Link2 className="absolute top-1 right-1 w-3 h-3 text-primary/60" aria-label="Shared pick" />}
                     {avatar(false)}
                     <Lock className="w-3 h-3 text-primary/70" />
                   </div>
                 ) : (
-                  <div className="aspect-[2/3] rounded-lg border-2 border-dashed border-border/50 flex flex-col items-center justify-center gap-1.5">
+                  <div className="relative aspect-[2/3] rounded-lg border-2 border-dashed border-border/50 flex flex-col items-center justify-center gap-1.5">
+                    {memberGroup != null && <Link2 className="absolute top-1 right-1 w-3 h-3 text-muted-foreground/50" aria-label="Shared pick" />}
                     {avatar(true)}
                     <span className="text-[9px] text-muted-foreground">waiting</span>
                   </div>
@@ -454,11 +455,18 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
                 {userPick.year && pickedDirector && " · "}
                 {pickedDirector && `dir. ${pickedDirector}`}
               </p>
-              {season.guessing_enabled && (
-                <span className="inline-flex items-center gap-1 mt-2 rounded-full bg-violet-500/15 border border-violet-500/25 px-2 py-0.5 text-[10px] font-medium text-violet-300">
-                  <EyeOff className="w-3 h-3" /> Secret until reveal
-                </span>
-              )}
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {season.guessing_enabled && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 border border-violet-500/25 px-2 py-0.5 text-[10px] font-medium text-violet-300">
+                    <EyeOff className="w-3 h-3" /> Secret until reveal
+                  </span>
+                )}
+                {partners.length > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/25 px-2 py-0.5 text-[10px] font-medium text-primary">
+                    <Link2 className="w-3 h-3" /> Shared with {partners.map((m) => profiles.find((p) => p.user_id === m.user_id)?.display_name || "Unknown").join(" & ")}
+                  </span>
+                )}
+              </div>
               {userPick.overview && <p className="hidden sm:block text-sm text-muted-foreground mt-2 line-clamp-3">{userPick.overview}</p>}
             </div>
           </div>
@@ -492,6 +500,12 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
               <Search className="w-4 h-4" />
             </Button>
           </div>
+          {partners.length > 0 && (
+            <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
+              <Link2 className="w-3.5 h-3.5 text-primary" />
+              Shared pick — whatever you choose counts for you and {partners.map((m) => profiles.find((p) => p.user_id === m.user_id)?.display_name || "Unknown").join(" & ")}.
+            </p>
+          )}
           {editing && userPick && (
             <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-primary transition-colors">
               Keep “{userPick.title}”

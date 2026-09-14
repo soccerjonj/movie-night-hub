@@ -41,6 +41,8 @@ export interface MoviePick {
   overview: string | null;
   watch_order: number | null;
   revealed: boolean;
+  /** co-pick group number when this is a shared pick (season_participants.pick_group) */
+  pick_group?: number | null;
 }
 
 export interface Profile {

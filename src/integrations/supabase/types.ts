@@ -542,8 +542,32 @@ export type Database = {
           overview: string | null
           watch_order: number | null
           revealed: boolean
+          pick_group: number | null
           created_at: string
         }[]
+      }
+      get_season_pick_counts: {
+        Args: { _season_id: string }
+        Returns: { user_id: string; pick_count: number }[]
+      }
+      my_pick_group: {
+        Args: { _season_id: string }
+        Returns: number | null
+      }
+      submit_pick: {
+        Args: {
+          _season_id: string
+          _tmdb_id: number | null
+          _title: string
+          _poster_url: string | null
+          _year: string | null
+          _overview: string | null
+        }
+        Returns: undefined
+      }
+      save_guesses: {
+        Args: { _season_id: string; _guesses: Json }
+        Returns: undefined
       }
       claim_placeholder: {
         Args: {
