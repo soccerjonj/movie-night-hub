@@ -62,7 +62,7 @@ const AuthPage = () => {
           <h1 className="text-3xl font-display font-bold text-gradient-gold">Movie Club Hub</h1>
           <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1.5 text-sm">
             <Popcorn className="w-4 h-4" />
-            Your private screening room
+            Pick a movie, guess who picked what, rank the season
           </p>
         </div>
 
