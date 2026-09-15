@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
@@ -516,7 +516,8 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                     </div>
                   </div>
                   {unit.map((pick, slotIdx) => (
-                  <div key={pick.id} className="flex items-center gap-1.5">
+                  <Fragment key={pick.id}>
+                  <div className="flex items-center gap-1.5">
                     {unit.length > 1 && (
                       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-12">Pick {slotIdx + 1}</span>
                     )}
@@ -620,6 +621,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                       })}
                     </div>
                   )}
+                  </Fragment>
                   ))}
                 </div>
               );
