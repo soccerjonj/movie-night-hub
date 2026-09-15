@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
+import { orderedUnits } from '@/lib/pickUnits';
 import { Film, BookOpen, ChevronDown, ChevronUp, Check, X, Users, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -57,7 +58,11 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
   const [posterPickTarget, setPosterPickTarget] = useState<MoviePick | null>(null);
   const [altPosters, setAltPosters] = useState<string[]>([]);
   const [loadingAltPosters, setLoadingAltPosters] = useState(false);
-  const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
+  // One entry per slot: a shared pick's rows collapse to their first row here.
+  // Row-level detail (all pickers, all guesses) is looked up via slotRowsOf().
+  const sortedPicks = orderedUnits(moviePicks).map(u => u[0]);
+  const slotRowsOf = (pick: MoviePick) => moviePicks.filter(p => p.watch_order === pick.watch_order);
+  const pickerOf = (pickId: string) => moviePicks.find(p => p.id === pickId)?.user_id;
 
   // Fetch current user's guesses
   useEffect(() => {
@@ -154,9 +159,10 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
     if (olderWatched.length === 0 || allGuesses.length === 0) return null;
     let correct = 0, total = 0;
     for (const pick of olderWatched) {
-      const gs = allGuesses.filter(g => g.movie_pick_id === pick.id);
+      const rowIds = slotRowsOf(pick).map(r => r.id);
+      const gs = allGuesses.filter(g => rowIds.includes(g.movie_pick_id));
       total += gs.length;
-      correct += gs.filter(g => g.guessed_user_id === pick.user_id).length;
+      correct += gs.filter(g => g.guessed_user_id === pickerOf(g.movie_pick_id)).length;
     }
     return total > 0 ? Math.round((correct / total) * 100) : null;
   })();
@@ -186,19 +192,20 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
     return chapterText || pageText || 'Reading details TBD';
   };
 
-  const getGuessesForPick = (pickId: string) => {
-    return allGuesses.filter(g => g.movie_pick_id === pickId);
+  const getGuessesForSlot = (pick: MoviePick) => {
+    const rowIds = slotRowsOf(pick).map(r => r.id);
+    return allGuesses.filter(g => rowIds.includes(g.movie_pick_id));
   };
 
   const renderGuessBreakdown = (pick: MoviePick, isWatched: boolean) => {
-    const guesses = getGuessesForPick(pick.id);
+    const guesses = getGuessesForSlot(pick);
     if (guesses.length === 0) {
       return (
         <p className="text-xs text-muted-foreground italic py-2">No guesses recorded</p>
       );
     }
 
-    const correctCount = isWatched ? guesses.filter(g => g.guessed_user_id === pick.user_id).length : 0;
+    const correctCount = isWatched ? guesses.filter(g => g.guessed_user_id === pickerOf(g.movie_pick_id)).length : 0;
     const pct = isWatched ? Math.round((correctCount / guesses.length) * 100) : 0;
 
     return (
@@ -212,12 +219,12 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
         {guesses.map(g => {
           const guesserName = getProfile(g.guesser_id)?.display_name || 'Unknown';
           const guessedName = getProfile(g.guessed_user_id)?.display_name || 'Unknown';
-          const isCorrect = isWatched && g.guessed_user_id === pick.user_id;
-          const isWrong = isWatched && g.guessed_user_id !== pick.user_id;
+          const isCorrect = isWatched && g.guessed_user_id === pickerOf(g.movie_pick_id);
+          const isWrong = isWatched && g.guessed_user_id !== pickerOf(g.movie_pick_id);
 
           return (
             <div
-              key={g.guesser_id}
+              key={`${g.guesser_id}-${g.movie_pick_id}`}
               className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs ${
                 isCorrect ? 'bg-green-500/10' : isWrong ? 'bg-destructive/5' : 'bg-muted/20'
               }`}
@@ -358,11 +365,11 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
               )}
             </div>
             {(() => {
-              const gName = userGuesses[pick.id] ? getProfile(userGuesses[pick.id])?.display_name : null;
+              const gName = slotRowsOf(pick).map(r => userGuesses[r.id] ? getProfile(userGuesses[r.id])?.display_name : null).filter(Boolean).join(' & ') || null;
               if (isWatched) {
                 return (
                   <span className="text-xs text-muted-foreground">
-                    Picked by <span className="text-primary">{getProfile(pick.user_id)?.display_name}</span>
+                    Picked by <span className="text-primary">{moviePicks.filter(p => p.watch_order === pick.watch_order).map(p => getProfile(p.user_id)?.display_name || '?').join(' & ')}</span>
                     {gName && <> · you guessed {gName}</>}
                   </span>
                 );
@@ -376,14 +383,15 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
 
           <div className="flex items-center shrink-0">
             {(() => {
-              const guessedUserId = userGuesses[pick.id];
-              const guessedName = guessedUserId ? getProfile(guessedUserId)?.display_name : null;
-              const isYourPick = pick.user_id === user?.id;
+              const rows = slotRowsOf(pick);
+              const guessedName = rows.map(r => userGuesses[r.id] ? getProfile(userGuesses[r.id])?.display_name : null).filter(Boolean).join(' & ') || null;
+              const isYourPick = rows.some(r => r.user_id === user?.id);
               const pillBase = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold';
 
               if (isWatched) {
                 if (!guessedName) return <span className="text-[10px] text-muted-foreground/50 italic">No guess</span>;
-                const isCorrect = guessedUserId === pick.user_id;
+                // a shared pick is only "Correct" when every slot row was named right
+                const isCorrect = rows.every(r => userGuesses[r.id] && userGuesses[r.id] === r.user_id);
                 return isCorrect ? (
                   <span className={`${pillBase} bg-green-500/15 text-green-400 border border-green-500/25`}><Check className="w-3 h-3" /> Correct</span>
                 ) : (

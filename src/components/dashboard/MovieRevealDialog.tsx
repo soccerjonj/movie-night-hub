@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
+import { unitAtSlot } from '@/lib/pickUnits';
 import { Film, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -40,6 +41,8 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [revealedPick, setRevealedPick] = useState<MoviePick | null>(null);
+  // every row in the revealed slot (several for a shared pick)
+  const [slotRows, setSlotRows] = useState<MoviePick[]>([]);
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
   const shownForIndex = useRef<string | null>(null);
 
@@ -59,15 +62,16 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
       shownForIndex.current = revealKey;
       setLastSeenIndex(season.id, currentIdx);
 
-      const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
-      const justWatched = sortedPicks[currentIdx - 1];
+      const rows = unitAtSlot(moviePicks, currentIdx - 1);
+      const justWatched = rows[0];
       if (justWatched) {
         setRevealedPick(justWatched);
+        setSlotRows(rows);
         supabase
           .from('guesses')
           .select('guesser_id, guessed_user_id, movie_pick_id')
           .eq('season_id', season.id)
-          .eq('movie_pick_id', justWatched.id)
+          .in('movie_pick_id', rows.map(r => r.id))
           .then(({ data }) => {
             if (data) setGuesses(data);
             setOpen(true);
@@ -85,9 +89,19 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
   if (!revealedPick) return null;
 
   const pickerProfile = getProfile(revealedPick.user_id);
-  const userGuess = guesses.find(g => g.guesser_id === user?.id);
-  const otherGuesses = guesses.filter(g => g.guesser_id !== user?.id);
-  const userIsCorrect = userGuess?.guessed_user_id === revealedPick.user_id;
+  const pickerNames = slotRows.map(r => getProfile(r.user_id)?.display_name || 'Unknown').join(' & ');
+  const pickerOf = (pickId: string) => slotRows.find(r => r.id === pickId)?.user_id;
+  // A guesser may have one guess per row of a shared pick — fold them into one line.
+  const byGuesser = new Map<string, GuessRow[]>();
+  guesses.forEach(g => { byGuesser.set(g.guesser_id, [...(byGuesser.get(g.guesser_id) || []), g]); });
+  const summarize = (gs: GuessRow[]) => ({
+    names: gs.map(g => getProfile(g.guessed_user_id)?.display_name || 'Unknown').join(' & '),
+    correct: gs.length === slotRows.length && gs.every(g => g.guessed_user_id === pickerOf(g.movie_pick_id)),
+  });
+  const mine = user ? byGuesser.get(user.id) : undefined;
+  const userGuess = mine ? summarize(mine) : null;
+  const userIsCorrect = userGuess?.correct ?? false;
+  const otherGuesses = [...byGuesser.entries()].filter(([id]) => id !== user?.id).map(([guesser_id, gs]) => ({ guesser_id, ...summarize(gs) }));
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -120,7 +134,7 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
                   </div>
                 )}
                 <span className="text-xs text-primary font-medium">
-                  Picked by {pickerProfile?.display_name || 'Unknown'}
+                  Picked by {pickerNames || pickerProfile?.display_name || 'Unknown'}
                 </span>
               </div>
             </div>
@@ -136,7 +150,7 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
             >
               <p className="text-xs text-muted-foreground mb-1">Your guess</p>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{getProfile(userGuess.guessed_user_id)?.display_name || 'Unknown'}</span>
+                <span className="text-sm font-medium">{userGuess.names}</span>
                 <div className={`flex items-center gap-1 text-xs font-medium ${userIsCorrect ? 'text-green-400' : 'text-destructive'}`}>
                   {userIsCorrect ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
                   {userIsCorrect ? 'Correct!' : 'Wrong'}
@@ -151,7 +165,7 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
               <p className="text-xs text-muted-foreground mb-2">Everyone's guesses</p>
               <div className="space-y-1">
                 {otherGuesses.map((g, i) => {
-                  const isCorrect = g.guessed_user_id === revealedPick.user_id;
+                  const isCorrect = g.correct;
                   return (
                     <motion.div
                       key={g.guesser_id}
@@ -166,7 +180,7 @@ const MovieRevealDialog = ({ season, moviePicks, profiles, getProfile }: Props) 
                       <div className="flex items-center gap-1">
                         <span className="text-muted-foreground">guessed</span>
                         <span className={`font-medium ${isCorrect ? 'text-green-400' : 'text-foreground'}`}>
-                          {getProfile(g.guessed_user_id)?.display_name || 'Unknown'}
+                          {g.names}
                         </span>
                         {isCorrect && <Check className="w-3 h-3 text-green-400" />}
                         {!isCorrect && <X className="w-3 h-3 text-destructive/50" />}

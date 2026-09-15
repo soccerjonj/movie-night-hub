@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { pickUnits, orderedUnits, unitAtSlot, unitCount, shuffle } from '@/lib/pickUnits';
 import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { getClubLabels } from '@/lib/clubTypes';
@@ -182,9 +183,13 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
     if (!season) return;
     setLoading(true);
     try {
-      const shuffled = [...moviePicks].sort(() => Math.random() - 0.5);
-      for (let i = 0; i < shuffled.length; i++) {
-        const { error: pickError } = await supabase.from('movie_picks').update({ watch_order: i }).eq('id', shuffled[i].id);
+      // One slot per unit: a shared pick's rows all get the same watch_order.
+      const units = shuffle(pickUnits(moviePicks));
+      for (let i = 0; i < units.length; i++) {
+        const { error: pickError } = await supabase
+          .from('movie_picks')
+          .update({ watch_order: i })
+          .in('id', units[i].map(p => p.id));
         if (pickError) throw pickError;
       }
       const { error: seasonError } = await supabase.from('seasons').update({ status: 'guessing' }).eq('id', season.id);
@@ -224,12 +229,12 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
   const revealCurrentPicker = async () => {
     if (!season) return;
-    const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
-    const currentPick = sortedPicks[season.current_movie_index];
-    if (!currentPick) return;
+    const slotRows = unitAtSlot(moviePicks, season.current_movie_index);
+    if (slotRows.length === 0) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('movie_picks').update({ revealed: true }).eq('id', currentPick.id);
+      // A shared pick has several rows in this slot — reveal all of its pickers.
+      const { error } = await supabase.from('movie_picks').update({ revealed: true }).in('id', slotRows.map(p => p.id));
       if (error) throw error;
       toast.success('Picker revealed!');
       onUpdate();
@@ -242,12 +247,11 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
   const unrevealCurrentPicker = async () => {
     if (!season) return;
-    const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
-    const currentPick = sortedPicks[season.current_movie_index];
-    if (!currentPick) return;
+    const slotRows = unitAtSlot(moviePicks, season.current_movie_index);
+    if (slotRows.length === 0) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('movie_picks').update({ revealed: false }).eq('id', currentPick.id);
+      const { error } = await supabase.from('movie_picks').update({ revealed: false }).in('id', slotRows.map(p => p.id));
       if (error) throw error;
       toast.success('Picker hidden again!');
       onUpdate();
@@ -667,13 +671,13 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm">
-                      <ListOrdered className="w-4 h-4 mr-1" /> {isBookClub ? `Assigned Reading${currentReadingIndex ? ` #${currentReadingIndex}` : ''}` : `${labels.Item} ${season.current_movie_index + 1}/${moviePicks.length}`}
+                      <ListOrdered className="w-4 h-4 mr-1" /> {isBookClub ? `Assigned Reading${currentReadingIndex ? ` #${currentReadingIndex}` : ''}` : `${labels.Item} ${season.current_movie_index + 1}/${unitCount(moviePicks)}`}
                       <ChevronDown className="w-3 h-3 ml-1" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align="start" className="w-64 p-2 max-h-[300px] overflow-y-auto">
                     <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Jump to {labels.item}:</p>
-                    {[...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0)).map((pick, i) => (
+                    {orderedUnits(moviePicks).map((unit, i) => { const pick = unit[0]; return (
                       <button
                         key={pick.id}
                         onClick={() => jumpToMovie(i)}
@@ -688,11 +692,11 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                         <span className="truncate">{pick.title}</span>
                         {i === season.current_movie_index && <span className="text-[10px] text-primary ml-auto shrink-0">current</span>}
                       </button>
-                    ))}
+                    ); })}
                   </PopoverContent>
                 </Popover>
 
-                {season.current_movie_index >= moviePicks.length - 1 && (
+                {season.current_movie_index >= unitCount(moviePicks) - 1 && (
                   <Button variant="gold" size="sm" onClick={startReview} disabled={loading}>
                     <Star className="w-4 h-4 mr-1" /> Start {labels.seasonNoun} Review
                   </Button>
@@ -727,9 +731,8 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
                 )}
 
                 {!isBookClub && (() => {
-                  const sortedPicks = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
-                  const currentPick = sortedPicks[season.current_movie_index];
-                  const isRevealed = currentPick?.revealed;
+                  const slotRows = unitAtSlot(moviePicks, season.current_movie_index);
+                  const isRevealed = slotRows.length > 0 && slotRows.every(p => p.revealed);
                   return isRevealed ? (
                     <Button variant="outline" size="sm" onClick={unrevealCurrentPicker} disabled={loading}>
                       <EyeOff className="w-4 h-4 mr-1" /> Unreveal Picker

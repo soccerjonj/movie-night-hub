@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { orderedUnits, shuffle, unitPickerNames } from '@/lib/pickUnits';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,8 @@ export default function StartWatchingDialog({
   open, onOpenChange, season, moviePicks, profiles, onUpdate, labels, showCallDate,
 }: Props) {
   const [orderMode, setOrderMode] = useState<'random' | 'manual'>('random');
-  const [orderedPicks, setOrderedPicks] = useState<MoviePick[]>([]);
+  // Units, not rows: a shared pick is one entry that occupies one slot.
+  const [orderedPicks, setOrderedPicks] = useState<MoviePick[][]>([]);
   const [callDate, setCallDate] = useState('');
   const [callTime, setCallTime] = useState('19:30');
   const [callTimezone, setCallTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -35,8 +37,7 @@ export default function StartWatchingDialog({
   // Initialize ordered picks and default call date when dialog opens
   useEffect(() => {
     if (open) {
-      const sorted = [...moviePicks].sort((a, b) => (a.watch_order ?? 0) - (b.watch_order ?? 0));
-      setOrderedPicks(sorted);
+      setOrderedPicks(orderedUnits(moviePicks));
       const nextMon = nextMonday(new Date());
       setCallDate(format(nextMon, 'yyyy-MM-dd'));
       setCallTime('19:30');
@@ -60,19 +61,14 @@ export default function StartWatchingDialog({
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      let picksToSave: MoviePick[];
-      if (orderMode === 'random') {
-        picksToSave = [...moviePicks].sort(() => Math.random() - 0.5);
-      } else {
-        picksToSave = orderedPicks;
-      }
+      const unitsToSave: MoviePick[][] = orderMode === 'random' ? shuffle(orderedUnits(moviePicks)) : orderedPicks;
 
-      // Save watch order
-      for (let i = 0; i < picksToSave.length; i++) {
+      // Save watch order — every row of a unit shares the slot
+      for (let i = 0; i < unitsToSave.length; i++) {
         const { error } = await supabase
           .from('movie_picks')
           .update({ watch_order: i })
-          .eq('id', picksToSave[i].id);
+          .in('id', unitsToSave[i].map(p => p.id));
         if (error) throw error;
       }
 
@@ -158,7 +154,7 @@ export default function StartWatchingDialog({
             {/* Manual reorder list */}
             {orderMode === 'manual' && (
               <div ref={listRef} className="space-y-1 rounded-lg border border-border p-2">
-                {orderedPicks.map((pick, idx) => (
+                {orderedPicks.map((unit, idx) => { const pick = unit[0]; return (
                   <div
                     key={pick.id}
                     className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs bg-muted/30 hover:bg-muted/50 transition-colors"
@@ -178,10 +174,10 @@ export default function StartWatchingDialog({
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{pick.title}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{getProfileName(pick.user_id)}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{unitPickerNames(unit, getProfileName)}</p>
                     </div>
                   </div>
-                ))}
+                ); })}
               </div>
             )}
           </div>

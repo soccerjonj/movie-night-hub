@@ -190,7 +190,10 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
       {/* Movie club: cinematic full-bleed Now Watching hero */}
       {season.status === 'watching' && currentMovie && clubType !== 'book' && (() => {
         const pickerRevealed = !season.guessing_enabled || (currentMovie.revealed && (currentMovie.watch_order ?? 0) < season.current_movie_index);
-        const pickerName = getProfile(currentMovie.user_id)?.display_name ?? '?';
+        const pickerName = moviePicks
+          .filter(p => p.watch_order === currentMovie.watch_order)
+          .map(p => getProfile(p.user_id)?.display_name ?? '?')
+          .join(' & ');
         return (
           <div className="relative overflow-hidden rounded-2xl min-h-[300px] sm:min-h-[280px] flex flex-col justify-end ring-1 ring-white/5">
             {/* Backdrop layer */}
