@@ -3,8 +3,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock, Pencil, PartyPopper, X, Eye, Link2 } from 'lucide-react';
+import { Check, HelpCircle, Film, ChevronDown, ChevronUp, CheckCircle2, Clock, Pencil, PartyPopper, X, Eye, Link2, ArrowRight } from 'lucide-react';
+import GuessingIntro from './GuessingIntro';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -38,6 +38,13 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   // guessing, but the roster of who picked (and how many) is the answer bank.
   const [pickCounts, setPickCounts] = useState<Record<string, number>>({});
   const [myGroup, setMyGroup] = useState<number | null>(null);
+  // Intro animation: shown once per member per season, flag written on completion
+  const introKey = `guessing_intro_seen_${season.id}_${user?.id}`;
+  const [introSeen, setIntroSeen] = useState<boolean>(() => {
+    try { return !!localStorage.getItem(introKey); } catch { return true; }
+  });
+  const [openSlotId, setOpenSlotId] = useState<string | null>(null);
+  const [flashUnitId, setFlashUnitId] = useState<string | null>(null);
 
   const storageKey = `${STORAGE_KEY_PREFIX}${season.id}_${user?.id}`;
 
@@ -132,16 +139,6 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     return counts;
   }, [guesses]);
 
-  const getAvailableMembers = (pickId: string) => {
-    return members
-      .filter(m => m.user_id !== user?.id)
-      .filter(m => {
-        const maxSlots = memberPickCounts[m.user_id] || 0;
-        const usedSlots = guessCountPerMember[m.user_id] || 0;
-        if (guesses[pickId] === m.user_id) return true;
-        return usedSlots < maxSlots;
-      });
-  };
 
   const toggleOverview = (pickId: string) => {
     setExpandedOverviews(prev => ({ ...prev, [pickId]: !prev[pickId] }));
@@ -215,6 +212,23 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   }, [moviePicks, myGroup, user?.id]);
   const guessedNames = (unit: MoviePick[]) =>
     unit.map(r => (guesses[r.id] ? getProfile(guesses[r.id])?.display_name : null)).filter(Boolean).join(' & ') || '—';
+
+  /** Members who can be guessed at all this season (excludes self and co-pick partners). */
+  const guessableMembers = members.filter(m => (memberPickCounts[m.user_id] || 0) > 0);
+  /** The unit(s) a member has already been named for. */
+  const usedFor = (memberId: string) =>
+    otherUnits.filter(u => u.some(r => guesses[r.id] === memberId));
+  const jumpToUnit = (unit: MoviePick[]) => {
+    const el = document.getElementById(`guess-unit-${unit[0].id}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setFlashUnitId(unit[0].id);
+    setOpenSlotId(null);
+    window.setTimeout(() => setFlashUnitId(null), 1400);
+  };
+  const finishIntro = () => {
+    try { localStorage.setItem(introKey, '1'); } catch { /* ignore */ }
+    setIntroSeen(true);
+  };
   const allGuessed = otherPicks.every(p => guesses[p.id]);
   const guessingMembers = members.filter(m => !profiles.find(p => p.user_id === m.user_id)?.is_placeholder);
 
@@ -222,6 +236,10 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
 
   const submittedCount = guessingMembers.filter(m => submittedMembers.has(m.user_id)).length;
   const submitPct = guessingMembers.length > 0 ? (submittedCount / guessingMembers.length) * 100 : 0;
+
+  if (showForm && !submitted && !introSeen && otherUnits.length > 0) {
+    return <GuessingIntro units={otherUnits} seasonNumber={season.season_number} onDone={finishIntro} />;
+  }
 
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
@@ -458,7 +476,11 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
               const isLong = (pick.overview?.length || 0) > TRUNCATE_LEN;
               const expanded = expandedOverviews[pick.id];
               return (
-                <div key={pick.id} className="bg-muted/20 rounded-xl p-3 space-y-2">
+                <div
+                  key={pick.id}
+                  id={`guess-unit-${pick.id}`}
+                  className={`bg-muted/20 rounded-xl p-3 space-y-2 transition-shadow duration-300 ${flashUnitId === pick.id ? 'ring-2 ring-primary shadow-[0_0_24px_-6px_hsl(38_90%_55%/0.6)]' : ''}`}
+                >
                   <div className="flex items-start gap-3">
                     {pick.poster_url ? (
                       <img src={pick.poster_url} alt={pick.title} className="w-12 h-[72px] sm:w-14 sm:h-[84px] rounded-lg object-cover flex-shrink-0 shadow-md" />
@@ -501,40 +523,33 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                     {(() => {
                       const guessedProfile = guesses[pick.id] ? getProfile(guesses[pick.id]) : null;
                       const hasGuess = !!guesses[pick.id];
+                      const isOpen = openSlotId === pick.id;
                       return (
-                        <Select
-                          value={guesses[pick.id] || ''}
-                          onValueChange={(val) => setGuesses(prev => ({ ...prev, [pick.id]: val }))}
+                        <button
+                          type="button"
+                          onClick={() => setOpenSlotId(isOpen ? null : pick.id)}
+                          aria-expanded={isOpen}
+                          className={`flex-1 min-w-0 h-9 px-3 text-sm rounded-full border transition-colors flex items-center justify-between gap-2 ${
+                            hasGuess
+                              ? 'bg-violet-500/12 border-violet-500/25 text-violet-200'
+                              : 'bg-transparent border-dashed border-primary/40 text-primary'
+                          }`}
                         >
-                          <SelectTrigger
-                            className={`w-full h-9 text-sm rounded-full border transition-colors [&>svg]:opacity-100 ${
-                              hasGuess
-                                ? 'bg-violet-500/12 border-violet-500/25 text-violet-200 [&>svg]:text-violet-300'
-                                : 'bg-transparent border-dashed border-primary/40 text-primary [&>svg]:text-primary'
-                            }`}
-                          >
-                            {hasGuess ? (
-                              <span className="flex items-center gap-1.5 min-w-0">
-                                <Avatar className="w-4 h-4 shrink-0">
-                                  <AvatarImage src={guessedProfile?.avatar_url || undefined} />
-                                  <AvatarFallback className="text-[8px]">{(guessedProfile?.display_name || '?')[0]}</AvatarFallback>
-                                </Avatar>
-                                <span className="truncate font-medium">{guessedProfile?.display_name || 'Unknown'}</span>
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1.5 font-medium">
-                                <HelpCircle className="w-3.5 h-3.5" /> Tap to guess
-                              </span>
-                            )}
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getAvailableMembers(pick.id).map((member) => (
-                              <SelectItem key={member.user_id} value={member.user_id}>
-                                {getProfile(member.user_id)?.display_name || 'Unknown'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          {hasGuess ? (
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              <Avatar className="w-4 h-4 shrink-0">
+                                <AvatarImage src={guessedProfile?.avatar_url || undefined} />
+                                <AvatarFallback className="text-[8px]">{(guessedProfile?.display_name || '?')[0]}</AvatarFallback>
+                              </Avatar>
+                              <span className="truncate font-medium">{guessedProfile?.display_name || 'Unknown'}</span>
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 font-medium">
+                              <HelpCircle className="w-3.5 h-3.5" /> Tap to guess
+                            </span>
+                          )}
+                          {isOpen ? <ChevronUp className="w-3.5 h-3.5 shrink-0 opacity-70" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0 opacity-70" />}
+                        </button>
                       );
                     })()}
                     {guesses[pick.id] && (
@@ -551,6 +566,60 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                       </button>
                     )}
                   </div>
+                  {openSlotId === pick.id && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {guessableMembers.map((m) => {
+                        const name = getProfile(m.user_id)?.display_name || 'Unknown';
+                        const isCurrent = guesses[pick.id] === m.user_id;
+                        const usedUp = !isCurrent && (guessCountPerMember[m.user_id] || 0) >= (memberPickCounts[m.user_id] || 0);
+                        const elsewhere = usedUp ? usedFor(m.user_id) : [];
+                        if (usedUp) {
+                          return (
+                            <button
+                              key={m.user_id}
+                              type="button"
+                              onClick={() => elsewhere[0] && jumpToUnit(elsewhere[0])}
+                              title={elsewhere[0] ? `Already picked for ${elsewhere[0][0].title} — tap to jump` : undefined}
+                              className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/20 px-2.5 py-1 text-xs text-muted-foreground/70 hover:text-primary hover:border-primary/30 transition-colors"
+                            >
+                              <span className="line-through decoration-muted-foreground/60">{name}</span>
+                              {elsewhere[0] && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] text-primary/80 max-w-[110px] truncate">
+                                  <ArrowRight className="w-2.5 h-2.5 shrink-0" /> {elsewhere[0][0].title}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        }
+                        return (
+                          <button
+                            key={m.user_id}
+                            type="button"
+                            onClick={() => {
+                              setGuesses(prev => {
+                                const next = { ...prev };
+                                if (isCurrent) delete next[pick.id]; else next[pick.id] = m.user_id;
+                                return next;
+                              });
+                              setOpenSlotId(null);
+                            }}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                              isCurrent
+                                ? 'bg-violet-500/20 border-violet-500/40 text-violet-200'
+                                : 'bg-card border-border/60 text-foreground hover:border-primary/50 hover:text-primary'
+                            }`}
+                          >
+                            <Avatar className="w-4 h-4 shrink-0">
+                              <AvatarImage src={getProfile(m.user_id)?.avatar_url || undefined} />
+                              <AvatarFallback className="text-[8px]">{name[0]}</AvatarFallback>
+                            </Avatar>
+                            {name}
+                            {isCurrent && <Check className="w-3 h-3" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   ))}
                 </div>
               );
