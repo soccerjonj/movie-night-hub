@@ -280,7 +280,8 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
         setTakenIds((prev) => new Set([...prev, movie.id]));
         toast.error(TAKEN_MSG);
       } else {
-        toast.error(err instanceof Error ? err.message : "Failed to save movie pick");
+        const msg = (err as { message?: string })?.message;
+        toast.error(msg ? `Couldn't save pick: ${msg}` : "Failed to save movie pick");
       }
     } finally {
       setSubmitting(false);

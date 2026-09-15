@@ -229,8 +229,9 @@ CREATE TABLE IF NOT EXISTS public.movie_picks (
   watch_order INT,
   revealed    BOOLEAN NOT NULL DEFAULT false,
   pick_group  INT,               -- co-pick group (shared pick), see season_participants.pick_group
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(season_id, user_id)
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  -- NOTE: no UNIQUE(season_id, user_id) — dropped in 20260304205814 so a member
+  -- can hold several picks in a multi-pick season.
 );
 
 ALTER TABLE public.movie_picks ENABLE ROW LEVEL SECURITY;
@@ -641,16 +642,27 @@ BEGIN
     RAISE EXCEPTION 'Already picked by someone in the club' USING ERRCODE = '23505';
   END IF;
 
+  -- No unique (season_id, user_id) constraint exists (multi-pick seasons rely on
+  -- that), so update-or-insert explicitly. A member's in-progress pick is the
+  -- one without a watch_order yet.
+  UPDATE public.movie_picks p SET
+    tmdb_id    = _tmdb_id,
+    title      = _title,
+    poster_url = _poster_url,
+    year       = _year,
+    overview   = _overview,
+    pick_group = _grp
+  WHERE p.season_id = _season_id
+    AND p.user_id = ANY (_targets)
+    AND p.watch_order IS NULL;
+
   INSERT INTO public.movie_picks (season_id, user_id, tmdb_id, title, poster_url, year, overview, pick_group)
   SELECT _season_id, u, _tmdb_id, _title, _poster_url, _year, _overview, _grp
   FROM unnest(_targets) AS u
-  ON CONFLICT (season_id, user_id) DO UPDATE SET
-    tmdb_id    = EXCLUDED.tmdb_id,
-    title      = EXCLUDED.title,
-    poster_url = EXCLUDED.poster_url,
-    year       = EXCLUDED.year,
-    overview   = EXCLUDED.overview,
-    pick_group = EXCLUDED.pick_group;
+  WHERE NOT EXISTS (
+    SELECT 1 FROM public.movie_picks p
+    WHERE p.season_id = _season_id AND p.user_id = u AND p.watch_order IS NULL
+  );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 REVOKE ALL ON FUNCTION public.submit_pick(UUID, INT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon;
