@@ -779,7 +779,7 @@ const Stats = ({ group, profiles, members }: Props) => {
   const maxLang = Math.max(1, ...stats.langRows.map(r => r.count));
   const maxCountry = Math.max(1, ...stats.countryRows.map(r => r.count));
 
-  const openDrill = (title: string, pickIds: string[], mode: 'default' | 'decade' = 'default') => {
+  const openDrill = (title: string, pickIds: string[], mode: 'default' | 'decade' | 'timeline' = 'default') => {
     if (pickIds.length === 0) return;
     if (pickIds.length === 1) {
       setSelectedPickId(pickIds[0]);

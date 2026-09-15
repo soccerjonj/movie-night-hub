@@ -227,10 +227,10 @@ const MemberProfile = () => {
 
       // Member join date
       const { data: memberData } = await supabase
-        .from('group_members').select('created_at')
+        .from('group_members').select('joined_at')
         .eq('group_id', groupId).eq('user_id', userId).single();
-      if (memberData?.created_at) {
-        setMemberSince(new Date(memberData.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }));
+      if (memberData?.joined_at) {
+        setMemberSince(new Date(memberData.joined_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }));
       }
 
       if (seasonIds.length === 0) { setLoading(false); return; }
