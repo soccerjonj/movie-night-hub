@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
@@ -23,7 +23,17 @@ const TRUNCATE_LEN = 100;
 
 const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Props) => {
   const { user } = useAuth();
-  const [guesses, setGuesses] = useState<Record<string, string>>({});
+  const storageKey = `${STORAGE_KEY_PREFIX}${season.id}_${user?.id}`;
+  const readDraft = (key: string): Record<string, string> => {
+    try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; }
+  };
+  // Start from the saved draft so a reload (iOS evicts backgrounded PWAs freely)
+  // never shows an empty form while the DB check is still in flight.
+  const [guesses, setGuesses] = useState<Record<string, string>>(() => (user ? readDraft(storageKey) : {}));
+  // Which storage key the load effect has finished for. Persisting before that
+  // would overwrite the stored draft with the initial state — the bug that lost
+  // guesses on every reload.
+  const loadedKeyRef = useRef<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [expandedOverviews, setExpandedOverviews] = useState<Record<string, boolean>>({});
@@ -45,8 +55,6 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   });
   const [openSlotId, setOpenSlotId] = useState<string | null>(null);
   const [flashUnitId, setFlashUnitId] = useState<string | null>(null);
-
-  const storageKey = `${STORAGE_KEY_PREFIX}${season.id}_${user?.id}`;
 
   const myPartnerIds = useMemo(() => {
     if (myGroup == null || !user) return new Set<string>();
@@ -77,11 +85,10 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
         data.forEach(g => { map[g.movie_pick_id] = g.guessed_user_id; });
         setGuesses(map);
       } else {
-        try {
-          const draft = localStorage.getItem(storageKey);
-          if (draft) setGuesses(JSON.parse(draft));
-        } catch { /* ignore */ }
+        const draft = readDraft(storageKey);
+        if (Object.keys(draft).length > 0) setGuesses(draft);
       }
+      loadedKeyRef.current = storageKey;
     };
 
     const loadSubmissionStatus = async () => {
@@ -124,8 +131,9 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   }, [season.id, user, storageKey]);
 
   useEffect(() => {
+    if (loadedKeyRef.current !== storageKey) return;
     if (!submitted && !editing && user) {
-      localStorage.setItem(storageKey, JSON.stringify(guesses));
+      try { localStorage.setItem(storageKey, JSON.stringify(guesses)); } catch { /* ignore */ }
     }
   }, [guesses, submitted, editing, storageKey, user]);
 
