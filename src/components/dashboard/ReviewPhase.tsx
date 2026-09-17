@@ -147,6 +147,8 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
 
   // Check if everyone has submitted - show results
   const everyoneSubmitted = submittedCount >= members.length;
+  // `members` is the season roster; a member the admin sat out watches results only
+  const inSeason = !!user && members.some(m => m.user_id === user.id);
 
   // Calculate aggregate scores (lower is better since rank 1 = favorite)
   const getAggregateScores = () => {
@@ -190,7 +192,9 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
             </span>
           )}
           <p className="text-xs sm:text-sm text-foreground/70 leading-relaxed mt-2.5">
-            {submitted
+            {!inSeason
+              ? `You sat this ${labels.seasonNoun.toLowerCase()} out — results appear once everyone has ranked.`
+              : submitted
               ? `You've submitted your rankings! ${everyoneSubmitted ? 'Results are in!' : `Waiting for others (${submittedCount}/${members.length}).`}`
               : `Drag your ${labels.items} from favorite to least — your ranking sets the scoreboard.`}
           </p>
@@ -322,7 +326,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
       )}
 
       {/* Helper line */}
-      {!submitted && !everyoneSubmitted && (
+      {inSeason && !submitted && !everyoneSubmitted && (
         <p className="text-[11px] text-muted-foreground/70 mt-3 text-center">
           Only you see your order until everyone submits.
         </p>
@@ -342,7 +346,7 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
       )}
 
       {/* Locked-results teaser while waiting on others */}
-      {submitted && !everyoneSubmitted && (
+      {inSeason && submitted && !everyoneSubmitted && (
         <div className="mt-4 rounded-2xl bg-muted/15 border border-dashed border-border/40 p-4 flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-muted/30 flex items-center justify-center shrink-0">
             <Lock className="w-4 h-4 text-muted-foreground" />
