@@ -88,6 +88,13 @@ const History = ({ group, profiles, members }: Props) => {
           .from('movie_picks')
           .select('season_id, user_id')
           .in('season_id', seasonIds);
+        // Roster per season; a season with no participant rows means the whole club
+        const { data: partsData } = await supabase
+          .from('season_participants')
+          .select('season_id, user_id')
+          .in('season_id', seasonIds);
+        const rosterSize = new Map<string, number>();
+        (partsData || []).forEach((r: { season_id: string }) => rosterSize.set(r.season_id, (rosterSize.get(r.season_id) || 0) + 1));
 
         const pickCounts = new Map<string, Set<string>>();
         (picksData || []).forEach((p: { season_id: string; user_id: string }) => {
@@ -97,9 +104,10 @@ const History = ({ group, profiles, members }: Props) => {
 
         const eligibleSeasons = seasonRows.filter(s => {
           if (s.status === 'picking') return false;
-          if (members.length === 0) return true;
+          const expected = rosterSize.get(s.id) || members.length;
+          if (expected === 0) return true;
           const count = pickCounts.get(s.id)?.size ?? 0;
-          return count >= members.length;
+          return count >= expected;
         });
 
         setSeasons(eligibleSeasons);

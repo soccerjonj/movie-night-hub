@@ -695,6 +695,10 @@ BEGIN
   IF _gid IS NULL OR NOT public.is_group_member(_uid, _gid) THEN
     RAISE EXCEPTION 'Not a member of this club';
   END IF;
+  IF EXISTS (SELECT 1 FROM public.season_participants sp WHERE sp.season_id = _season_id)
+     AND NOT EXISTS (SELECT 1 FROM public.season_participants sp WHERE sp.season_id = _season_id AND sp.user_id = _uid) THEN
+    RAISE EXCEPTION 'You are not taking part in this season';
+  END IF;
   _my_grp := public.my_pick_group(_season_id);
 
   CREATE TEMP TABLE _sub ON COMMIT DROP AS

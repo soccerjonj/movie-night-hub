@@ -57,6 +57,8 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
   const [isOpen, setIsOpen] = useState(!collapsed);
   const [availableSeasons, setAvailableSeasons] = useState<{ id: string; status: string; current_movie_index: number; season_number: number }[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
+  // season_id -> roster size (seasons without participant rows = whole club)
+  const [rosterSize, setRosterSize] = useState<Record<string, number>>({});
   const userViewOverride = useRef(false);
 
   useEffect(() => {
@@ -119,10 +121,14 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
       const sMap = new Map(seasonData.map(s => [s.id, s]));
       setSeasonMap(sMap);
 
-      const [guessesRes, picksRes] = await Promise.all([
+      const [guessesRes, picksRes, partsRes] = await Promise.all([
         supabase.from('guesses').select('guesser_id, guessed_user_id, movie_pick_id, season_id').in('season_id', seasonIds),
         supabase.from('movie_picks').select('id, user_id, season_id, revealed, watch_order, title, poster_url').in('season_id', seasonIds),
+        supabase.from('season_participants').select('season_id, user_id').in('season_id', seasonIds),
       ]);
+      const sizes: Record<string, number> = {};
+      (partsRes.data || []).forEach(r => { sizes[r.season_id] = (sizes[r.season_id] || 0) + 1; });
+      setRosterSize(sizes);
 
       const fetchedGuesses = (guessesRes.data || []) as GuessRow[];
       const fetchedPicks = picksRes.data || [];
@@ -413,7 +419,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                       <p className="text-xs text-muted-foreground mb-2">Everyone&apos;s rankings</p>
                       <div className="text-xs mb-2">
                         <span className="text-primary font-semibold">{detail.avgRank.toFixed(1)} avg rank</span>
-                        <span className="text-muted-foreground"> ({detail.rankings.length}/{members.length} ranked)</span>
+                        <span className="text-muted-foreground"> ({detail.rankings.length}/{rosterSize[selectedSeasonId] || members.length} ranked)</span>
                       </div>
                       <div className="space-y-1">
                         {[...members]
