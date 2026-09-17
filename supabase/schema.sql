@@ -624,6 +624,10 @@ BEGIN
   IF _status <> 'picking' THEN
     RAISE EXCEPTION 'Picking is closed for this season';
   END IF;
+  IF EXISTS (SELECT 1 FROM public.season_participants sp WHERE sp.season_id = _season_id)
+     AND NOT EXISTS (SELECT 1 FROM public.season_participants sp WHERE sp.season_id = _season_id AND sp.user_id = _uid) THEN
+    RAISE EXCEPTION 'You are not taking part in this season';
+  END IF;
 
   _grp := public.my_pick_group(_season_id);
   IF _grp IS NULL THEN

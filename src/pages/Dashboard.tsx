@@ -30,7 +30,7 @@ import { getClubLabels } from '@/lib/clubTypes';
 const Dashboard = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const { user, signOut } = useAuth();
-  const { group, season, moviePicks, members, profiles, loading, isAdmin, refetch, getProfile } = useGroup(groupId);
+  const { group, season, moviePicks, members, seasonMembers, participantIds, profiles, loading, isAdmin, refetch, getProfile } = useGroup(groupId);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [tab, setTab] = useState<'current' | 'club' | 'history' | 'stats'>('current');
@@ -251,6 +251,7 @@ const Dashboard = () => {
                   season={season}
                   moviePicks={moviePicks}
                   members={members}
+                  participantIds={participantIds}
                   profiles={profiles}
                   onUpdate={refetch}
                   showPanel={showAdminPanel}
@@ -269,19 +270,19 @@ const Dashboard = () => {
               {/* Phase-specific content */}
               {season?.status === 'picking' && (
                 isBookClub ? (
-                  <BookPickPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
+                  <BookPickPhase season={season} moviePicks={moviePicks} members={seasonMembers} profiles={profiles} onUpdate={refetch} />
                 ) : (
-                  <MoviePickPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
+                  <MoviePickPhase season={season} moviePicks={moviePicks} members={seasonMembers} profiles={profiles} onUpdate={refetch} />
                 )
               )}
               {season?.status === 'guessing' && !isBookClub && (
-                <GuessingPhase season={season} moviePicks={moviePicks} members={members} profiles={profiles} onUpdate={refetch} />
+                <GuessingPhase season={season} moviePicks={moviePicks} members={seasonMembers} profiles={profiles} onUpdate={refetch} />
               )}
               {season?.status === 'watching' && (
-                <WatchingPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} getProfile={getProfile} isAdmin={isAdmin && !adminViewAsMember} onUpdate={refetch} clubType={labels.type} meetingType={group.meeting_type} />
+                <WatchingPhase season={season} moviePicks={moviePicks} profiles={profiles} members={seasonMembers} getProfile={getProfile} isAdmin={isAdmin && !adminViewAsMember} onUpdate={refetch} clubType={labels.type} meetingType={group.meeting_type} />
               )}
               {season?.status === 'reviewing' && (
-                <ReviewPhase season={season} moviePicks={moviePicks} profiles={profiles} members={members} onUpdate={refetch} clubType={labels.type} />
+                <ReviewPhase season={season} moviePicks={moviePicks} profiles={profiles} members={seasonMembers} onUpdate={refetch} clubType={labels.type} />
               )}
 
               {/* Scoreboard - only for clubs that have guessing */}
@@ -290,7 +291,7 @@ const Dashboard = () => {
               )}
 
               {/* Guesses reminder (shows first) */}
-              <UnsubmittedGuessesReminder season={season} moviePicks={moviePicks} members={members} profiles={profiles} onDismissed={() => setGuessesDismissed(true)} onUpdate={refetch} />
+              <UnsubmittedGuessesReminder season={season} moviePicks={moviePicks} members={seasonMembers} profiles={profiles} onDismissed={() => setGuessesDismissed(true)} onUpdate={refetch} />
 
               {/* Unranked seasons reminder (shows after guesses dismissed) */}
               {guessesDismissed && (

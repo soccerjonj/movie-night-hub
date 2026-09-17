@@ -70,6 +70,8 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
   const [takenIds, setTakenIds] = useState<Set<number>>(new Set());
 
   const userPick = moviePicks.find((p) => p.user_id === user?.id);
+  // `members` is the season roster; someone the admin sat out isn't in it
+  const inSeason = !!user && members.some((m) => m.user_id === user.id);
   const userConstraint = user ? constraints[user.id] : null;
   const myGroup = user ? (groupOf[user.id] ?? null) : null;
   const partners = user && myGroup != null
@@ -421,7 +423,12 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
         </div>
       )}
 
-      {userPick && !editing ? (
+      {!inSeason ? (
+        <div className="mt-4 rounded-2xl bg-muted/15 border border-border/30 px-4 py-5 text-center">
+          <p className="text-sm font-semibold">You're sitting this season out</p>
+          <p className="text-xs text-muted-foreground mt-1">The admin removed you from this season's roster. You'll still see how it goes — and you're in for the next one.</p>
+        </div>
+      ) : userPick && !editing ? (
         /* Your pick: poster on its own blurred backdrop */
         <div className="mt-4 relative rounded-2xl overflow-hidden ring-1 ring-white/5">
           {userPick.poster_url && (

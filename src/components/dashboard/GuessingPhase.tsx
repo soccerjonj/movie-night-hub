@@ -237,6 +237,18 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
   const submittedCount = guessingMembers.filter(m => submittedMembers.has(m.user_id)).length;
   const submitPct = guessingMembers.length > 0 ? (submittedCount / guessingMembers.length) * 100 : 0;
 
+  const inSeason = !!user && members.some(m => m.user_id === user.id);
+  if (!inSeason) {
+    return (
+      <div className="glass-card rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6">
+        <div className="rounded-2xl bg-muted/15 border border-border/30 px-4 py-5 text-center">
+          <p className="text-sm font-semibold">You're sitting this season out</p>
+          <p className="text-xs text-muted-foreground mt-1">Guessing is for this season's participants. You'll see the reveals as they happen.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (showForm && !submitted && !introSeen && otherUnits.length > 0) {
     return <GuessingIntro units={otherUnits} seasonNumber={season.season_number} onDone={finishIntro} />;
   }

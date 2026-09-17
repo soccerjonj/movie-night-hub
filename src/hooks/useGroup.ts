@@ -67,6 +67,8 @@ export function useGroup(groupId?: string) {
   const [season, setSeason] = useState<Season | null>(null);
   const [moviePicks, setMoviePicks] = useState<MoviePick[]>([]);
   const [members, setMembers] = useState<GroupMember[]>([]);
+  // user_ids in season_participants for the current season (empty = legacy season with no rows)
+  const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -127,6 +129,9 @@ export function useGroup(groupId?: string) {
 
         // Get movie picks for this season via the masked feed: secret columns
         // (film during picking, picker until revealed) come back null.
+        const { data: parts } = await supabase.from('season_participants').select('user_id').eq('season_id', s.id);
+        setParticipantIds((parts ?? []).map(r => r.user_id));
+
         const { data: picks, error: picksErr } = await supabase.rpc('get_season_picks', { _season_id: s.id });
         if (picksErr) {
           // RPC not deployed yet (migration pending) — fall back to a direct read
@@ -141,6 +146,7 @@ export function useGroup(groupId?: string) {
       } else {
         setSeason(null);
         setMoviePicks([]);
+        setParticipantIds([]);
       }
     } catch (err) {
       console.error('Error fetching group data:', err);
@@ -155,5 +161,11 @@ export function useGroup(groupId?: string) {
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
-  return { group, season, moviePicks, members, profiles, loading, isAdmin, refetch: fetchData, getProfile };
+  // Members taking part in the current season. Seasons created before participant
+  // tracking have no rows, so an empty list means everyone.
+  const seasonMembers = participantIds.length > 0
+    ? members.filter(m => participantIds.includes(m.user_id))
+    : members;
+
+  return { group, season, moviePicks, members, seasonMembers, participantIds, profiles, loading, isAdmin, refetch: fetchData, getProfile };
 }

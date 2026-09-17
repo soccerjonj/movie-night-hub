@@ -18,6 +18,7 @@ import AddPlaceholderDialog from './AddPlaceholderDialog';
 import EditMovieInfoDialog from './EditMovieInfoDialog';
 import ChangePickedMovieDialog from './ChangePickedMovieDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TMDB_API_TOKEN } from '@/lib/apiKeys';
 import PlacesAutocomplete from './PlacesAutocomplete';
@@ -48,11 +49,13 @@ interface Props {
   season: Season | null;
   moviePicks: MoviePick[];
   members: GroupMember[];
+  /** user_ids in season_participants for the current season; empty = legacy season, everyone's in */
+  participantIds: string[];
   profiles: Profile[];
   onUpdate: () => void;
 }
 
-const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, showPanel, setShowPanel }: Props & { showPanel: boolean; setShowPanel: (v: boolean) => void }) => {
+const AdminPanel = ({ group, season, moviePicks, members, participantIds, profiles, onUpdate, showPanel, setShowPanel }: Props & { showPanel: boolean; setShowPanel: (v: boolean) => void }) => {
   const labels = getClubLabels(group.club_type);
   const isBookClub = labels.type === 'book';
   const showCallDate = group.meeting_type === 'remote' && !isBookClub;
@@ -205,6 +208,42 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
 
 
+
+  // Season participation (picking phase only — later phases have picks, order and
+  // guesses that depend on the roster). Legacy seasons have no participant rows,
+  // meaning everyone; the first removal materialises rows for everyone else.
+  const isParticipant = (userId: string) => participantIds.length === 0 || participantIds.includes(userId);
+  const setParticipation = async (userId: string, inSeason: boolean) => {
+    if (!season) return;
+    setLoading(true);
+    try {
+      if (inSeason) {
+        const { error } = await supabase.from('season_participants').insert({ season_id: season.id, user_id: userId });
+        if (error) throw error;
+      } else {
+        if (participantIds.length === 0) {
+          const rows = members.filter(m => m.user_id !== userId).map(m => ({ season_id: season.id, user_id: m.user_id }));
+          if (rows.length > 0) {
+            const { error } = await supabase.from('season_participants').insert(rows);
+            if (error) throw error;
+          }
+        } else {
+          const { error } = await supabase.from('season_participants').delete().eq('season_id', season.id).eq('user_id', userId);
+          if (error) throw error;
+        }
+        // Drop any pick they'd already made this season
+        const { error: pickErr } = await supabase.from('movie_picks').delete().eq('season_id', season.id).eq('user_id', userId);
+        if (pickErr) throw pickErr;
+      }
+      const name = profiles.find(p => p.user_id === userId)?.display_name || 'Member';
+      toast.success(inSeason ? `${name} is back in this ${labels.seasonNoun.toLowerCase()}` : `${name} is sitting this ${labels.seasonNoun.toLowerCase()} out`);
+      onUpdate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update participation');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const jumpToMovie = async (index: number) => {
     if (!season) return;
@@ -586,6 +625,33 @@ const AdminPanel = ({ group, season, moviePicks, members, profiles, onUpdate, sh
 
             {season?.status === 'picking' && (
               <>
+                {/* Who's in this season */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={loading}>
+                      <Users className="w-4 h-4 mr-1" />
+                      Participants {members.filter(m => isParticipant(m.user_id)).length}/{members.length}
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-72 p-2 max-h-[320px] overflow-y-auto">
+                    <p className="text-xs text-muted-foreground px-2 py-1 mb-1">
+                      Who's taking part this {labels.seasonNoun.toLowerCase()}. Sitting someone out removes their pick.
+                    </p>
+                    {members.map(m => {
+                      const p = profiles.find(pr => pr.user_id === m.user_id);
+                      const on = isParticipant(m.user_id);
+                      const isSelf = m.user_id === group.admin_user_id;
+                      return (
+                        <div key={m.user_id} className={`flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg ${on ? '' : 'opacity-60'}`}>
+                          <span className="text-sm truncate">{p?.display_name || 'Unknown'}{isSelf ? ' (you)' : ''}</span>
+                          <Switch checked={on} disabled={loading} onCheckedChange={(v) => setParticipation(m.user_id, v)} aria-label={`${on ? 'Remove' : 'Add'} ${p?.display_name || 'member'}`} />
+                        </div>
+                      );
+                    })}
+                  </PopoverContent>
+                </Popover>
+
                 {/* Toggle guessing on/off during picking */}
                 {!isBookClub && (
                   <Button
