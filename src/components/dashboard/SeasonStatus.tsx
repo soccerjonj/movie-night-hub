@@ -159,7 +159,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
               </span>
               <h3 className="font-display text-2xl sm:text-3xl font-bold leading-[1.05]">
                 {labels.seasonNoun} {season.season_number}{season.title ? ` · ${season.title}` : ''}
-                <span className="text-gradient-gold"> — a wrap</span>
+                <span className="text-gradient-gold"> is a wrap</span>
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground mt-2">
                 {uniquePicks.length} {labels.items} watched, ranked, and guessed.
@@ -239,7 +239,7 @@ const SeasonStatus = ({ season, moviePicks, getProfile, clubType, group }: Props
                 </p>
               ) : (
                 <span className="inline-flex items-center gap-1.5 mt-2 rounded-full bg-violet-500/15 border border-violet-500/25 px-2.5 py-1 text-[11px] font-medium text-violet-300">
-                  <User className="w-3 h-3" /> Picker hidden — see your guess below
+                  <User className="w-3 h-3" /> Picker still secret. Your guess is in the schedule below.
                 </span>
               )}
 
@@ -378,7 +378,7 @@ const ShareSeasonButton = ({ season, group, labels, prominent = false }: { seaso
   const { share, sharing } = useShare();
   const onClick = () => {
     const groupName = group?.name || 'My Movie Club';
-    const seasonLabel = `${labels.seasonNoun} ${season.season_number}${season.title ? ` — ${season.title}` : ''}`;
+    const seasonLabel = `${labels.seasonNoun} ${season.season_number}${season.title ? `: ${season.title}` : ''}`;
     share({
       title: `${groupName} · ${seasonLabel}`,
       text: `${groupName} just wrapped ${seasonLabel}!`,

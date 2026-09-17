@@ -193,10 +193,10 @@ const ReviewPhase = ({ season, moviePicks, profiles, members, onUpdate, clubType
           )}
           <p className="text-xs sm:text-sm text-foreground/70 leading-relaxed mt-2.5">
             {!inSeason
-              ? `You sat this ${labels.seasonNoun.toLowerCase()} out — results appear once everyone has ranked.`
+              ? `You sat this ${labels.seasonNoun.toLowerCase()} out. Results show up once everyone has ranked.`
               : submitted
               ? `You've submitted your rankings! ${everyoneSubmitted ? 'Results are in!' : `Waiting for others (${submittedCount}/${members.length}).`}`
-              : `Drag your ${labels.items} from favorite to least — your ranking sets the scoreboard.`}
+              : `Drag your ${labels.items} from favorite to least favorite. Your ranking counts toward the scoreboard.`}
           </p>
         </div>
       </div>

@@ -168,7 +168,7 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
               <SelectContent>
                 {seasons.map(s => (
                   <SelectItem key={s.id} value={s.id}>
-                    {labels.seasonNoun} {s.season_number}{s.title ? ` — ${s.title}` : ''}
+                    {labels.seasonNoun} {s.season_number}{s.title ? `: ${s.title}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -220,7 +220,7 @@ const ImportGuessesDialog = ({ group, profiles, onImported }: Props) => {
               )}
               {coPickers.size > 0 && (
                 <div className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-2">
-                  Co-picked with {[...coPickers].map(id => getProfile(id)?.display_name).join(', ')} — their shared movie and names are excluded.
+                  Co-picked with {[...coPickers].map(id => getProfile(id)?.display_name).join(', ')} so their shared movie and names are left out.
                 </div>
               )}
               <p className="text-xs text-muted-foreground">

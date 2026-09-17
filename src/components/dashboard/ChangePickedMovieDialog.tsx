@@ -197,7 +197,7 @@ const ChangePickedMovieDialog = ({ group, profiles, onUpdated }: Props) => {
                 <SelectContent>
                   {seasons.map(s => (
                     <SelectItem key={s.id} value={s.id}>
-                      {labels.seasonNoun} {s.season_number}{s.title ? ` — ${s.title}` : ''}
+                      {labels.seasonNoun} {s.season_number}{s.title ? `: ${s.title}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -279,7 +279,7 @@ const ChangePickedMovieDialog = ({ group, profiles, onUpdated }: Props) => {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{movie.title}</p>
                     <p className="text-[11px] text-muted-foreground truncate">
-                      {movie.release_date?.split('-')[0] || '—'}
+                      {movie.release_date?.split('-')[0] || '-'}
                       {movie.overview ? ` · ${movie.overview}` : ''}
                     </p>
                   </div>

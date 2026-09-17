@@ -449,7 +449,7 @@ const Scoreboard = ({ group, season, profiles, members, collapsed = false }: Pro
                                 <div className="flex items-center gap-1">
                                   <span className="text-muted-foreground">ranked</span>
                                   <span className={`font-medium ${hasRank ? (item.rank === 1 ? 'text-green-400' : 'text-foreground') : 'text-muted-foreground italic'}`}>
-                                    {hasRank ? `${item.rank}` : '—'}
+                                    {hasRank ? `${item.rank}` : '-'}
                                   </span>
                                   {hasRank && item.rank === 1 && <Check className="w-3 h-3 text-green-400" />}
                                   {!hasRank && <X className="w-3 h-3 text-destructive/50" />}

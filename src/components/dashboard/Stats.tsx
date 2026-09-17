@@ -807,8 +807,8 @@ const Stats = ({ group, profiles, members }: Props) => {
   const onShare = () => {
     const groupName = group.name || 'Our movie club';
     share({
-      title: `${groupName} — club stats`,
-      text: `${groupName} watched ${stats.total} ${labels.items} across ${decadeCount} decade${decadeCount === 1 ? '' : 's'}${!isBookClub && stats.runtimeCount > 0 ? ` — ${formatRuntime(stats.totalRuntime)} together` : ''}.`,
+      title: `${groupName} club stats`,
+      text: `${groupName} watched ${stats.total} ${labels.items} across ${decadeCount} decade${decadeCount === 1 ? '' : 's'}${!isBookClub && stats.runtimeCount > 0 ? `, ${formatRuntime(stats.totalRuntime)} together` : ''}.`,
       url: typeof window !== 'undefined' ? window.location.href : undefined,
     });
   };
@@ -839,7 +839,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       {/* Runtime + Avg rating (movie-only) */}
       {!isBookClub && (
         <Tile index={1} label="Total runtime">
-          <div className="font-display text-2xl font-bold mt-1.5">{stats.runtimeCount > 0 ? formatRuntime(stats.totalRuntime) : '—'}</div>
+          <div className="font-display text-2xl font-bold mt-1.5">{stats.runtimeCount > 0 ? formatRuntime(stats.totalRuntime) : 'n/a'}</div>
           {stats.runtimeCount > 0 && stats.runtimeCount < stats.total && (
             <p className="text-[10px] text-muted-foreground mt-1">from {stats.runtimeCount}/{stats.total}</p>
           )}
@@ -848,7 +848,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       {!isBookClub && (
         <Tile index={2} label="Avg TMDB">
           <div className="flex items-baseline gap-1 mt-1.5">
-            <span className="font-display text-2xl font-bold text-gradient-gold">{stats.avgRating != null ? stats.avgRating.toFixed(1) : '—'}</span>
+            <span className="font-display text-2xl font-bold text-gradient-gold">{stats.avgRating != null ? stats.avgRating.toFixed(1) : 'n/a'}</span>
             {stats.avgRating != null && <span className="text-xs text-muted-foreground font-medium">/10</span>}
           </div>
           {stats.avgRating != null && <div className="mt-1.5"><StarRating avg={stats.avgRating / 10} size={12} /></div>}
@@ -865,7 +865,7 @@ const Stats = ({ group, profiles, members }: Props) => {
       >
         <div className="flex items-baseline justify-between gap-2 mt-1.5">
           <span className="font-display text-2xl font-bold">
-            {stats.oldest && stats.newest ? `${stats.oldest.y}–${stats.newest.y}` : '—'}
+            {stats.oldest && stats.newest ? `${stats.oldest.y} to ${stats.newest.y}` : 'n/a'}
           </span>
           {stats.avgYear != null && (
             <span className="text-[10px] text-muted-foreground rounded-full bg-muted/40 px-2 py-0.5">avg <span className="text-primary font-semibold">{stats.avgYear}</span></span>
@@ -1032,7 +1032,7 @@ const Stats = ({ group, profiles, members }: Props) => {
                           {p?.poster_url ? <img src={p.poster_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Film className="w-3 h-3 text-muted-foreground" /></div>}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[11px] font-semibold leading-tight line-clamp-2">{p?.title || '—'}</p>
+                          <p className="text-[11px] font-semibold leading-tight line-clamp-2">{p?.title || 'Untitled'}</p>
                           <p className={`text-xs font-bold mt-1 ${rec.accent}`}>{rec.valIcon}{rec.val}</p>
                         </div>
                       </div>
@@ -1192,7 +1192,7 @@ const Stats = ({ group, profiles, members }: Props) => {
                       <div className="relative w-11 shrink-0 flex flex-col items-center">
                         <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-border/50" />
                         {showYear && (
-                          <span className="relative z-10 font-display text-[11px] font-bold text-primary tabular-nums bg-background px-1">{year ?? '—'}</span>
+                          <span className="relative z-10 font-display text-[11px] font-bold text-primary tabular-nums bg-background px-1">{year ?? '?'}</span>
                         )}
                         <span className={`relative z-10 w-2.5 h-2.5 rounded-full bg-primary ring-[3px] ring-background ${showYear ? 'mt-1' : 'mt-1.5'}`} />
                       </div>
@@ -1334,7 +1334,7 @@ const MovieDetailView = ({
           </div>
           {season && (
             <div className="text-[11px] text-muted-foreground">
-              Season {season.season_number}{season.title ? ` — ${season.title}` : ''}
+              Season {season.season_number}{season.title ? `: ${season.title}` : ''}
             </div>
           )}
           {tmdb?.directors && tmdb.directors.length > 0 && (

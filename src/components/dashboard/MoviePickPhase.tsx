@@ -248,7 +248,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
     return () => clearTimeout(timer);
   }, [query, yearFilter]);
 
-  const TAKEN_MSG = "Someone in the club already picked that film — choose another.";
+  const TAKEN_MSG = "Someone in the club already picked that one. Choose another.";
 
   const pickMovie = async (movie: TMDBMovie) => {
     if (!user) return;
@@ -426,7 +426,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
       {!inSeason ? (
         <div className="mt-4 rounded-2xl bg-muted/15 border border-border/30 px-4 py-5 text-center">
           <p className="text-sm font-semibold">You're sitting this season out</p>
-          <p className="text-xs text-muted-foreground mt-1">The admin removed you from this season's roster. You'll still see how it goes — and you're in for the next one.</p>
+          <p className="text-xs text-muted-foreground mt-1">The admin took you off this season's roster. You can still follow along, and you're in for the next one.</p>
         </div>
       ) : userPick && !editing ? (
         /* Your pick: poster on its own blurred backdrop */
@@ -511,7 +511,7 @@ const MoviePickPhase = ({ season, moviePicks, members, profiles, onUpdate }: Pro
           {partners.length > 0 && (
             <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
               <Link2 className="w-3.5 h-3.5 text-primary" />
-              Shared pick — whatever you choose counts for you and {partners.map((m) => profiles.find((p) => p.user_id === m.user_id)?.display_name || "Unknown").join(" & ")}.
+              Shared pick: whatever you choose counts for you and {partners.map((m) => profiles.find((p) => p.user_id === m.user_id)?.display_name || "Unknown").join(" & ")}.
             </p>
           )}
           {editing && userPick && (

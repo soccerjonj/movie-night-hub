@@ -347,7 +347,7 @@ const History = ({ group, profiles, members }: Props) => {
             <SelectItem value="all">All {labels.seasonNounPlural}</SelectItem>
             {seasons.map(s => (
               <SelectItem key={s.id} value={s.id}>
-                {labels.seasonNoun} {s.season_number}{s.title ? ` — ${s.title}` : ''}
+                {labels.seasonNoun} {s.season_number}{s.title ? `: ${s.title}` : ''}
               </SelectItem>
             ))}
           </SelectContent>
@@ -378,7 +378,7 @@ const History = ({ group, profiles, members }: Props) => {
                     <div key={`sep-${seasonId}`} className="col-span-full flex items-center gap-3 py-1">
                       <div className="flex-1 h-px bg-border/30" />
                       <span className="text-[11px] text-muted-foreground/60 font-medium whitespace-nowrap">
-                        {labels.seasonNoun} {seasonInfo.season_number}{seasonInfo.title ? ` — ${seasonInfo.title}` : ''}
+                        {labels.seasonNoun} {seasonInfo.season_number}{seasonInfo.title ? `: ${seasonInfo.title}` : ''}
                       </span>
                       <div className="flex-1 h-px bg-border/30" />
                     </div>
@@ -386,7 +386,7 @@ const History = ({ group, profiles, members }: Props) => {
                   {selectedSeasonId === 'all' && seasonInfo && groupIdx === 0 && (
                     <div key={`label-${seasonId}`} className="col-span-full">
                       <span className="text-[11px] text-muted-foreground/60 font-medium">
-                        {labels.seasonNoun} {seasonInfo.season_number}{seasonInfo.title ? ` — ${seasonInfo.title}` : ''}
+                        {labels.seasonNoun} {seasonInfo.season_number}{seasonInfo.title ? `: ${seasonInfo.title}` : ''}
                       </span>
                     </div>
                   )}

@@ -505,7 +505,7 @@ const WatchingPhase = ({ season, moviePicks, profiles, members, getProfile, isAd
       <Dialog open={!!posterPickTarget} onOpenChange={open => !open && setPosterPickTarget(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Choose a poster — {posterPickTarget?.title}</DialogTitle>
+            <DialogTitle>Choose a poster for {posterPickTarget?.title}</DialogTitle>
           </DialogHeader>
           {loadingAltPosters ? (
             <div className="text-center text-muted-foreground py-10 text-sm">Loading posters…</div>

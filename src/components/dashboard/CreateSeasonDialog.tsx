@@ -488,7 +488,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
               onClick={handleCreate}
               disabled={loading || selectedParticipants.length < 1}
             >
-            {loading ? 'Creating...' : `Create ${labels.seasonNoun} ${currentSeasonNumber + 1}${title ? ` — ${title}` : ''}`}
+            {loading ? 'Creating...' : `Create ${labels.seasonNoun} ${currentSeasonNumber + 1}${title ? `: ${title}` : ''}`}
             </Button>
           </div>
         </div>

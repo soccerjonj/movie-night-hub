@@ -196,7 +196,7 @@ const RankingInsights = ({ userId, groupId, profiles, variant = 'default', dense
         <p className="text-xs font-semibold text-foreground/90">No taste signals yet</p>
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           <span className="block">Favorite picker appears after you rank other members&apos; movies in completed or reviewing seasons.</span>
-          <span className="block mt-1.5">Biggest fan and biggest critic use how others ranked movies you picked — including co-picks, as long as someone ranked that title.</span>
+          <span className="block mt-1.5">Biggest fan and biggest critic are based on how others ranked the movies you picked, co-picks included.</span>
         </p>
       </div>
     );

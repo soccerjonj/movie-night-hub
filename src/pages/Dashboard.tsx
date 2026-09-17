@@ -119,7 +119,7 @@ const Dashboard = () => {
               <h1 className="font-display text-base sm:text-lg font-bold truncate">{group.name}</h1>
               {season && tab === 'current' && (
                 <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
-                  {labels.seasonNoun} {season.season_number}{season.title ? ` — ${season.title}` : ''}
+                  {labels.seasonNoun} {season.season_number}{season.title ? `: ${season.title}` : ''}
                 </p>
               )}
             </div>

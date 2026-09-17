@@ -216,7 +216,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moviePicks, myGroup, user?.id]);
   const guessedNames = (unit: MoviePick[]) =>
-    unit.map(r => (guesses[r.id] ? getProfile(guesses[r.id])?.display_name : null)).filter(Boolean).join(' & ') || '—';
+    unit.map(r => (guesses[r.id] ? getProfile(guesses[r.id])?.display_name : null)).filter(Boolean).join(' & ') || 'No guess';
 
   /** Members who can be guessed at all this season (excludes self and co-pick partners). */
   const guessableMembers = members.filter(m => (memberPickCounts[m.user_id] || 0) > 0);
@@ -326,8 +326,8 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
             {submitted && !editing
               ? (guessingMembers.length - submittedCount > 0
                   ? `${guessingMembers.length - submittedCount} still guessing · pickers stay secret until watch day.`
-                  : "Everyone's in — pickers are revealed film by film on watch day.")
-              : 'Match each movie to the member who chose it — use each name once.'}
+                  : "Everyone's in. Pickers get revealed one film at a time on watch day.")
+              : 'Match each movie to the person who picked it. Each name gets used once.'}
           </p>
         </div>
       </div>
@@ -376,7 +376,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                               <AvatarImage src={gp?.avatar_url || undefined} />
                               <AvatarFallback className="text-[8px]">{(gp?.display_name || '?')[0]}</AvatarFallback>
                             </Avatar>
-                            <span className="truncate">{gp?.display_name || '—'}</span>
+                            <span className="truncate">{gp?.display_name || 'No guess'}</span>
                           </span>
                         ))}
                       </div>
@@ -411,7 +411,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
             </div>
             {hasUsedEdit ? (
               <div className="flex items-center gap-1.5 px-4 py-2.5 border-t border-white/5 text-xs text-muted-foreground/70">
-                <Pencil className="w-3.5 h-3.5" /> Your one edit has been used — these are final.
+                <Pencil className="w-3.5 h-3.5" /> You've used your one edit. These are final.
               </div>
             ) : (
               <button
@@ -435,7 +435,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
           {otherUnits.length === 0 && (
             <div className="rounded-2xl bg-muted/15 border border-border/30 px-4 py-5 text-center">
               <p className="text-sm font-semibold">The lineup didn't load</p>
-              <p className="text-xs text-muted-foreground mt-1">Close the app fully and reopen it — you may be on an older version.</p>
+              <p className="text-xs text-muted-foreground mt-1">Close the app fully and reopen it. You might be on an older version.</p>
             </div>
           )}
           <div className="space-y-3">
@@ -548,7 +548,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
                               key={m.user_id}
                               type="button"
                               onClick={() => elsewhere[0] && jumpToUnit(elsewhere[0])}
-                              title={elsewhere[0] ? `Already picked for ${elsewhere[0][0].title} — tap to jump` : undefined}
+                              title={elsewhere[0] ? `Already used for ${elsewhere[0][0].title}. Tap to jump there.` : undefined}
                               className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/20 px-2.5 py-1 text-xs text-muted-foreground/70 hover:text-primary hover:border-primary/30 transition-colors"
                             >
                               <span className="line-through decoration-muted-foreground/60">{name}</span>
@@ -597,7 +597,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
           </div>
 
           <p className="mt-3 text-[11px] text-muted-foreground text-center">
-            Every name gets used once — a shared pick takes one name per slot.
+            Every name gets used once. A shared pick takes one name per slot.
           </p>
 
           <div className={`mt-4 rounded-xl transition-all duration-500 ${allGuessed && !submitting ? 'shadow-[0_0_24px_-6px_hsl(38_90%_55%_/_0.5)]' : ''}`}>

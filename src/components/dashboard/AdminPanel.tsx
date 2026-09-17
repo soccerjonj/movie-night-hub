@@ -593,7 +593,7 @@ const AdminPanel = ({ group, season, moviePicks, members, participantIds, profil
           {season && !editingSeason && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
-                {labels.seasonNoun} {season.season_number}{season.title ? ` — ${season.title}` : ''}
+                {labels.seasonNoun} {season.season_number}{season.title ? `: ${season.title}` : ''}
               </span>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={startEditingSeason}>
                 <Pencil className="w-3 h-3" />
@@ -1148,13 +1148,13 @@ const AdminPanel = ({ group, season, moviePicks, members, participantIds, profil
       <Dialog open={!!posterPickTarget} onOpenChange={open => !open && setPosterPickTarget(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Choose a poster — {posterPickTarget?.title}</DialogTitle>
+            <DialogTitle>Choose a poster for {posterPickTarget?.title}</DialogTitle>
           </DialogHeader>
           {loadingAltPosters ? (
             <div className="text-center text-muted-foreground py-10 text-sm">Loading posters…</div>
           ) : altPosters.length === 0 && !loadingAltPosters ? (
             <div className="text-center text-muted-foreground py-10 text-sm">
-              {posterPickTarget?.tmdb_id ? 'No alternate posters found.' : 'No TMDB ID — search for this movie first to enable poster swapping.'}
+              {posterPickTarget?.tmdb_id ? 'No alternate posters found.' : 'No TMDB match yet. Search for this movie first to swap posters.'}
             </div>
           ) : (
             <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto py-1">

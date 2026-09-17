@@ -85,14 +85,14 @@ export const BADGES: Record<BadgeId, BadgeDef> = {
     id: 'bold_choices',
     emoji: '💔',
     label: 'Bold Choices',
-    description: 'Picks the group rarely loves — worn proudly',
+    description: 'Picks the group rarely loves. Worn proudly.',
     direction: 'low',
   },
   casual_viewer: {
     id: 'casual_viewer',
     emoji: '🛋️',
     label: 'Casual Viewer',
-    description: "Skips a lot of guesses and rankings — here for the vibes, not the homework",
+    description: "Skips a lot of guesses and rankings. Here for the vibes, not the homework.",
     direction: 'low',
   },
 };

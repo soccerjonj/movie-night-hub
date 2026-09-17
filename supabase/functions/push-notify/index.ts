@@ -38,7 +38,7 @@ function compose(e: EventRow): { title: string; body: string; url: string; tag: 
   const at = p.next_call_date ?? undefined;
   switch (e.kind) {
     case "season_open":
-      return { title: `Season ${n} is open`, body: p.title ? `Pick your movie — theme: ${p.title}` : "Pick your movie.", url, tag: `season-${e.season_id}` };
+      return { title: `Season ${n} is open`, body: p.title ? `Pick your movie. Theme: ${p.title}` : "Pick your movie.", url, tag: `season-${e.season_id}` };
     case "guessing_open":
       return { title: "Picks are in", body: "Guess who picked what.", url, tag: `season-${e.season_id}` };
     case "watching_open":
@@ -49,7 +49,7 @@ function compose(e: EventRow): { title: string; body: string; url: string; tag: 
     case "call_1h":
       return { title: "Call in an hour", body: `${p.film ?? "Movie call"} · {at}`, url, tag: `call-${e.season_id}`, at };
     case "review_open":
-      return { title: "Rank the season", body: "Everyone's watched — order your favorites.", url, tag: `season-${e.season_id}` };
+      return { title: "Rank the season", body: "Everyone's watched. Put them in order.", url, tag: `season-${e.season_id}` };
     case "season_complete":
       return { title: `Season ${n} is a wrap`, body: "See who guessed best.", url, tag: `season-${e.season_id}` };
     case "nudge_pick":

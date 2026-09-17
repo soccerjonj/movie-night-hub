@@ -186,7 +186,7 @@ const PastRankingsDialog = ({ open, onOpenChange, groupId, profiles, onUpdate }:
                 <SelectContent>
                   {unrankedSeasons.map(s => (
                     <SelectItem key={s.id} value={s.id}>
-                      Season {s.season_number}{s.title ? ` — ${s.title}` : ''}
+                      Season {s.season_number}{s.title ? `: ${s.title}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>

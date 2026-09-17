@@ -518,7 +518,7 @@ const MemberProfile = () => {
   const seasonNumForPick = (pick: PickRow) => seasons.find(s => s.id === pick.season_id)?.season_number ?? 0;
   const seasonHeading = (sn: number) => {
     const s = seasons.find(ss => ss.season_number === sn);
-    return s?.title ? `Season ${sn} — ${s.title}` : `Season ${sn}`;
+    return s?.title ? `Season ${sn}: ${s.title}` : `Season ${sn}`;
   };
 
   // Seasons participated count
@@ -817,7 +817,7 @@ const MemberProfile = () => {
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">No badges yet — rank picks and join guessing rounds to unlock achievements.</p>
+          <p className="text-xs text-muted-foreground">No badges yet. Rank picks and join guessing rounds to earn them.</p>
         )}
       </div>
 
@@ -976,7 +976,7 @@ const MemberProfile = () => {
               if (total > 0) parts.push(`${pct}% guess accuracy`);
               if (earned.length > 0) parts.push(`${earned.length} badge${earned.length === 1 ? '' : 's'}`);
               if (memberPicks.length > 0) parts.push(`${memberPicks.length} pick${memberPicks.length === 1 ? '' : 's'}`);
-              const statLine = parts.length ? ` — ${parts.join(' · ')}` : '';
+              const statLine = parts.length ? `: ${parts.join(' · ')}` : '';
               share({
                 title: `${name} on Movie Club Hub`,
                 text: `${name} on ${groupName}${statLine}`,
@@ -1087,7 +1087,7 @@ const MemberProfile = () => {
             <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider mt-1">Badges</p>
           </div>
           <div className="flex-1 text-center py-2.5">
-            <p className={`font-display text-lg font-bold tabular-nums leading-none ${accuracyTextClass}`}>{total > 0 ? `${pct}%` : '—'}</p>
+            <p className={`font-display text-lg font-bold tabular-nums leading-none ${accuracyTextClass}`}>{total > 0 ? `${pct}%` : 'n/a'}</p>
             <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider mt-1">Accuracy</p>
           </div>
           {overallAvg !== null && (
@@ -1339,7 +1339,7 @@ const MemberProfile = () => {
           {loadingBackdrops ? (
             <div className="text-center text-muted-foreground py-8 text-sm">Loading backdrops…</div>
           ) : coverBackdrops.length === 0 && !coverSearch ? (
-            <div className="text-center text-muted-foreground py-8 text-sm">No backdrops from your picks yet — search for any movie above.</div>
+            <div className="text-center text-muted-foreground py-8 text-sm">No backdrops from your picks yet. Search for any movie above.</div>
           ) : coverBackdrops.length > 0 ? (
             <div className="space-y-2 max-h-[50vh] overflow-y-auto">
               {coverUrl && (

@@ -227,7 +227,7 @@ const EditPicksDialog = ({ group, profiles, onUpdated }: Props) => {
               <SelectContent>
                 {seasons.map(s => (
                   <SelectItem key={s.id} value={s.id}>
-                    {labels.seasonNoun} {s.season_number}{s.title ? ` — ${s.title}` : ''}
+                    {labels.seasonNoun} {s.season_number}{s.title ? `: ${s.title}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
