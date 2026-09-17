@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import SeasonStatus from '@/components/dashboard/SeasonStatus';
+import NotificationsCard from '@/components/dashboard/NotificationsCard';
 import AdminPanel from '@/components/dashboard/AdminPanel';
 import MoviePickPhase from '@/components/dashboard/MoviePickPhase';
 import BookPickPhase from '@/components/dashboard/BookPickPhase';
@@ -265,6 +266,7 @@ const Dashboard = () => {
               )}
 
               {/* Season Status */}
+              <NotificationsCard />
               {season && <SeasonStatus season={season} moviePicks={moviePicks} getProfile={getProfile} clubType={labels.type} group={group} />}
 
               {/* Phase-specific content */}

@@ -124,6 +124,72 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_events: {
+        Row: {
+          created_at: string
+          dedupe_key: string
+          group_id: string
+          id: string
+          kind: string
+          payload: Json
+          recipient_ids: string[] | null
+          season_id: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key: string
+          group_id: string
+          id?: string
+          kind: string
+          payload?: Json
+          recipient_ids?: string[] | null
+          season_id?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string
+          group_id?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          recipient_ids?: string[] | null
+          season_id?: string | null
+          sent_at?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       guess_edits: {
         Row: {
           created_at: string
@@ -525,6 +591,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      season_recipient_ids: {
+        Args: { _season_id: string }
+        Returns: string[]
+      }
       check_taken_picks: {
         Args: { _season_id: string; _tmdb_ids: number[] }
         Returns: number[]

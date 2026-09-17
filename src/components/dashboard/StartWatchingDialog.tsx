@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { orderedUnits, shuffle, unitPickerNames } from '@/lib/pickUnits';
+import { pokeNotifications } from '@/lib/notify';
 import { supabase } from '@/integrations/supabase/client';
 import { Season, MoviePick, Profile } from '@/hooks/useGroup';
 import { Button } from '@/components/ui/button';
@@ -93,6 +94,7 @@ export default function StartWatchingDialog({
       if (error) throw error;
 
       toast.success(`${labels.Watching} started!`);
+      pokeNotifications('watching_open');
       onOpenChange(false);
       onUpdate();
     } catch (err: unknown) {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { pokeNotifications } from '@/lib/notify';
 import { supabase } from '@/integrations/supabase/client';
 import { Group, GroupMember, Profile } from '@/hooks/useGroup';
 import { getClubLabels } from '@/lib/clubTypes';
@@ -205,6 +206,7 @@ const CreateSeasonDialog = ({ group, members, profiles, currentSeasonNumber, onC
 
       toast.success(`${labels.seasonNoun} ${seasonNumber} created!`);
       setOpen(false);
+      pokeNotifications('season_open');
       onCreated();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : `Failed to create ${labels.seasonNoun.toLowerCase()}`);

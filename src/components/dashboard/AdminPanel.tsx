@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { pickUnits, orderedUnits, unitAtSlot, unitCount, shuffle } from '@/lib/pickUnits';
+import { pokeNotifications } from '@/lib/notify';
 import { supabase } from '@/integrations/supabase/client';
 import { Group, Season, MoviePick, GroupMember, Profile } from '@/hooks/useGroup';
 import { getClubLabels } from '@/lib/clubTypes';
@@ -198,6 +199,7 @@ const AdminPanel = ({ group, season, moviePicks, members, participantIds, profil
       const { error: seasonError } = await supabase.from('seasons').update({ status: 'guessing' }).eq('id', season.id);
       if (seasonError) throw seasonError;
       toast.success('Guessing round started!');
+      pokeNotifications('guessing_open');
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to start guessing round');
@@ -261,6 +263,7 @@ const AdminPanel = ({ group, season, moviePicks, members, participantIds, profil
       const { error } = await supabase.from('seasons').update(updateData).eq('id', season.id);
       if (error) throw error;
       toast.success(`Jumped to ${labels.item} ${index + 1}!`);
+      pokeNotifications('next_film');
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to jump to movie');
@@ -484,6 +487,7 @@ const AdminPanel = ({ group, season, moviePicks, members, participantIds, profil
       }).eq('id', season.id);
       if (error) throw error;
       toast.success(`${labels.seasonNoun} review started! Members can now rank ${labels.items}.`);
+      pokeNotifications('review_open');
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to start review');
@@ -499,6 +503,7 @@ const AdminPanel = ({ group, season, moviePicks, members, participantIds, profil
       const { error } = await supabase.from('seasons').update({ status: 'completed' }).eq('id', season.id);
       if (error) throw error;
       toast.success(`${labels.seasonNoun} completed!`);
+      pokeNotifications('season_complete');
       onUpdate();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to complete season');

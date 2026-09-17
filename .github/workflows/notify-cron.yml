@@ -1,0 +1,22 @@
+name: Push notification cron
+
+# Every 30 minutes: asks the push-notify edge function to create scheduled
+# notifications (call reminders, nudges) and send anything queued.
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run push-notify
+        run: |
+          out=$(curl -sS -X POST "$NOTIFY_FUNCTION_URL" -H "x-cron-secret: $NOTIFY_CRON_SECRET" -H "content-type: application/json" -d '{}' -w "\nHTTP %{http_code}")
+          echo "$out"
+          echo "$out" | tail -1 | grep -q "HTTP 200" || { echo "::error::push-notify did not return 200"; exit 1; }
+        env:
+          NOTIFY_FUNCTION_URL: ${{ secrets.NOTIFY_FUNCTION_URL }}
+          NOTIFY_CRON_SECRET: ${{ secrets.NOTIFY_CRON_SECRET }}
