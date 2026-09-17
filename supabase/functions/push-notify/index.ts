@@ -1,4 +1,5 @@
 // push-notify — drains notification_events and sends web push.
+// Deployed via the dashboard under the name "smooth-api" (see src/lib/notify.ts).
 //
 // Called two ways:
 //   • by the app after an admin action (user JWT in Authorization) — a "poke"
