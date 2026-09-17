@@ -134,13 +134,10 @@ export function useGroup(groupId?: string) {
 
         const { data: picks, error: picksErr } = await supabase.rpc('get_season_picks', { _season_id: s.id });
         if (picksErr) {
-          // RPC not deployed yet (migration pending) — fall back to a direct read
-          const { data: direct } = await supabase
-            .from('movie_picks')
-            .select('*')
-            .eq('season_id', s.id)
-            .order('watch_order', { ascending: true });
-          setMoviePicks((direct as MoviePick[]) ?? []);
+          // A direct read would only return the caller's own picks under the
+          // current policy and produce a half-empty UI, so don't fall back —
+          // keep whatever we had and make the failure visible.
+          console.error('get_season_picks failed:', picksErr);
         } else if (picks) setMoviePicks(picks as MoviePick[]);
         else setMoviePicks([]);
       } else {

@@ -234,7 +234,7 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
     try { localStorage.setItem(introKey, '1'); } catch { /* ignore */ }
     setIntroSeen(true);
   };
-  const allGuessed = otherPicks.every(p => guesses[p.id]);
+  const allGuessed = otherPicks.length > 0 && otherPicks.every(p => guesses[p.id]);
   const guessingMembers = members.filter(m => !profiles.find(p => p.user_id === m.user_id)?.is_placeholder);
 
   const showForm = !submitted || editing;
@@ -432,6 +432,12 @@ const GuessingPhase = ({ season, moviePicks, members, profiles, onUpdate }: Prop
       {/* Movie list - shown when not submitted or editing */}
       {showForm && (
         <>
+          {otherUnits.length === 0 && (
+            <div className="rounded-2xl bg-muted/15 border border-border/30 px-4 py-5 text-center">
+              <p className="text-sm font-semibold">The lineup didn't load</p>
+              <p className="text-xs text-muted-foreground mt-1">Close the app fully and reopen it — you may be on an older version.</p>
+            </div>
+          )}
           <div className="space-y-3">
             {otherUnits.map((unit) => {
               const pick = unit[0];
