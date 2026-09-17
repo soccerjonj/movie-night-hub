@@ -213,6 +213,9 @@ const AdminPanel = ({ group, season, moviePicks, members, participantIds, profil
   // guesses that depend on the roster). Legacy seasons have no participant rows,
   // meaning everyone; the first removal materialises rows for everyone else.
   const isParticipant = (userId: string) => participantIds.length === 0 || participantIds.includes(userId);
+  // Season roster size — what "everyone has picked" is measured against (a shared
+  // pick writes one row per group member, so rows == roster when complete).
+  const rosterCount = members.filter(m => isParticipant(m.user_id)).length;
   const setParticipation = async (userId: string, inSeason: boolean) => {
     if (!season) return;
     setLoading(true);
@@ -630,7 +633,7 @@ const AdminPanel = ({ group, season, moviePicks, members, participantIds, profil
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" disabled={loading}>
                       <Users className="w-4 h-4 mr-1" />
-                      Participants {members.filter(m => isParticipant(m.user_id)).length}/{members.length}
+                      Participants {rosterCount}/{members.length}
                       <ChevronDown className="w-3 h-3 ml-1" />
                     </Button>
                   </PopoverTrigger>
@@ -708,17 +711,17 @@ const AdminPanel = ({ group, season, moviePicks, members, participantIds, profil
                 })()}
 
                 {!isBookClub && season.guessing_enabled ? (
-                  <Button variant="gold" size="sm" onClick={startGuessingRound} disabled={loading || moviePicks.length < members.length}>
+                  <Button variant="gold" size="sm" onClick={startGuessingRound} disabled={loading || moviePicks.length < rosterCount}>
                     <Shuffle className="w-4 h-4 mr-1" /> Start Guessing Round
-                    {moviePicks.length < members.length && (
-                      <span className="ml-1 text-xs">({moviePicks.length}/{members.length} picks)</span>
+                    {moviePicks.length < rosterCount && (
+                      <span className="ml-1 text-xs">({moviePicks.length}/{rosterCount} picks)</span>
                     )}
                   </Button>
                 ) : (
-                  <Button variant="gold" size="sm" onClick={() => setShowStartWatching(true)} disabled={loading || moviePicks.length < members.length}>
+                  <Button variant="gold" size="sm" onClick={() => setShowStartWatching(true)} disabled={loading || moviePicks.length < rosterCount}>
                     <Play className="w-4 h-4 mr-1" /> Start {labels.Watching}
-                    {moviePicks.length < members.length && (
-                      <span className="ml-1 text-xs">({moviePicks.length}/{members.length} picks)</span>
+                    {moviePicks.length < rosterCount && (
+                      <span className="ml-1 text-xs">({moviePicks.length}/{rosterCount} picks)</span>
                     )}
                   </Button>
                 )}
