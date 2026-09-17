@@ -958,7 +958,7 @@ const MemberProfile = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Sticky header */}
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/40 pt-safe">
+      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/40">
         <div className="flex items-center gap-1 px-3 py-3 max-w-2xl mx-auto">
           <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 -ml-1.5" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4" />
@@ -1100,7 +1100,7 @@ const MemberProfile = () => {
       </div>
 
       {/* Sticky tabs */}
-      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/40 mt-3 pt-safe">
+      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/40 mt-3">
         <div className="flex max-w-2xl mx-auto px-2">
           {tabBtn('overview', 'Overview')}
           {tabBtn('picks', isBookClub ? 'Books' : 'Picks', memberPicks.length)}

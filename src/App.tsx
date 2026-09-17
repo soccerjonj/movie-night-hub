@@ -30,6 +30,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <div aria-hidden className="fixed inset-x-0 top-0 z-[60] bg-background pointer-events-none" style={{ height: 'env(safe-area-inset-top)' }} />
       <Toaster />
       <Sonner />
       <BrowserRouter>
